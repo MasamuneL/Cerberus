@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Entornos virtuales
+.venv/
+venv/
+.env
+
+# Datos: solo se versiona la muestra Data/001 (vía Git LFS).
+# El resto se descarga de TCIA (ver README).
+Data/*
+!Data/001/
+
+# Pesos MONAI: se descargan solos al ejecutar el notebook
+models/
+
+# Marimo (sesiones/caché locales)
+__marimo__/
+
+# Escenas Mayavi exportadas
+*.npz
+
+# IDE / SO
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

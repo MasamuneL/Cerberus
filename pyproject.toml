@@ -1,0 +1,25 @@
+[project]
+name = "cerberus"
+version = "0.1.0"
+description = "EDA, visualización 3D y segmentación de glioblastoma (CFB-GBM) con marimo, Mayavi y MONAI"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "huggingface-hub>=2.2.0",
+    "ipython>=9.17.1",
+    "marimo>=0.25.2",
+    "matplotlib>=3.11.2",
+    "mayavi>=4.9.0",
+    "monai[nibabel]>=1.6.1",
+    "nibabel>=5.4.2",
+    "numpy>=2.4.6",
+    "pandas>=3.0.6",
+    "plotly>=7.1.0",
+    "pydicom>=3.0.2",
+    "pyqt5>=5.15.11",
+    "requests>=2.34.2",
+    "scikit-image>=0.26.0",
+    "scikit-learn>=1.9.1",
+    "scipy>=1.17.1",
+    "torch>=2.14.1",
+]

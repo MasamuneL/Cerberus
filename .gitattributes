@@ -1,0 +1,15 @@
+# Volúmenes médicos e imágenes pesadas -> Git LFS
+*.nii.gz filter=lfs diff=lfs merge=lfs -text
+*.nii filter=lfs diff=lfs merge=lfs -text
+*.dcm filter=lfs diff=lfs merge=lfs -text
+*.mha filter=lfs diff=lfs merge=lfs -text
+*.nrrd filter=lfs diff=lfs merge=lfs -text
+*.tif filter=lfs diff=lfs merge=lfs -text
+*.tiff filter=lfs diff=lfs merge=lfs -text
+
+# Pesos de modelos
+*.pt filter=lfs diff=lfs merge=lfs -text
+*.pth filter=lfs diff=lfs merge=lfs -text
+*.ts filter=lfs diff=lfs merge=lfs -text
+*.onnx filter=lfs diff=lfs merge=lfs -text
+*.safetensors filter=lfs diff=lfs merge=lfs -text
