@@ -22,7 +22,7 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 | F3 · Viewer | ✅ | feat/F2-F4-ui | 3a80169 | 2026-10-27 | Vikingo / Claude Code (subagente F2-F4) | falta revisión visual WebGL |
 | F4 · VolumetryPanel | ✅ | feat/F2-F4-ui | 3a80169 | 2026-10-27 | Vikingo / Claude Code (subagente F2-F4) | falta revisión visual WebGL |
 | F5 · SegmentationPanel | ✅ | feat/F5-segmentation-panel | 2c19db0 | 2026-10-27 | Vikingo / Claude Code (subagente) | falta prueba visual |
-| F6 · UploadPanel | 🟡 | feat/F6-upload-panel | | 2026-10-27 | Vikingo / Claude Code (subagente) | contra contrato §7 mientras cierra B8 |
+| F6 · UploadPanel | ✅ | feat/F6-upload-panel | b4c25e3 | 2026-10-27 | Vikingo / Claude Code (subagente) | flujo DICOM se valida en E2E con B8 |
 | D1 · README | ⬜ | | | | | al final |
 | E2E · Verificación §10 | ⬜ | | | | | al final |
 
@@ -163,3 +163,13 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
   el panel deja de seguirlo; el resultado aparece al volver a abrir el estudio.
 - **Checks:** `npm run build` ✅. **Pendiente:** prueba visual con Redis + worker (va en el E2E de §10).
 - **Siguiente paso:** B8 en curso; F6 se lanza ya contra el contrato §7.
+
+### CP-012 · 2026-10-27 · F6 · `b4c25e3`
+- **Hecho:** `UploadPanel.tsx` (modal que se abre con "Subir estudio"): validación de paciente, tiempo y secuencia
+  en el cliente; NIfTI → 201 y abre el estudio; ZIP → polling del manifest cada 2 s, tabla de series con un
+  select por serie (sugerencia + "Ignorar"), bloqueo por secuencias repetidas, Confirmar y Cancelar (DELETE).
+  Aviso de anonimización siempre visible.
+- **Desviaciones:** el mensaje de éxito de NIfTI casi no se ve porque el panel se cierra y abre el estudio. Un 404
+  del manifest detiene el polling y muestra el error.
+- **Checks:** `npm run build` ✅. Construido sobre el contrato §7; el flujo DICOM se valida en el E2E cuando cierre B8.
+- **Siguiente paso:** cerrar B8 → E2E §10 → D1 (README).
