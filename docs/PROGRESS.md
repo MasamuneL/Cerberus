@@ -14,7 +14,7 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 | B4 · API de lectura | ✅ | feat/B4-read-api | 045c005 | 2026-10-27 | Vikingo / Claude Code (subagente) | |
 | B5 · segmentation | ✅ | feat/B5-segmentation | 2dea83a | 2026-10-27 | Vikingo / Claude Code (subagente) | |
 | B6 · jobs | 🟡 | feat/B6-jobs | | 2026-10-27 | Vikingo / Claude Code (subagente) | dueño de main.py en la ola 5 |
-| B7 · subida NIfTI | 🟡 | feat/B7-nifti-upload | | 2026-10-27 | Vikingo / Claude Code (subagente) | el orquestador conecta el router en main.py |
+| B7 · subida NIfTI | ✅ | feat/B7-nifti-upload | e210db6 | 2026-10-27 | Vikingo / Claude Code (subagente) | router se conecta en main.py tras B6 |
 | B8 · ingesta DICOM | ⬜ | | | | | depende de B6, B7 |
 | F0 · Scaffold | ✅ | feat/F0-scaffold | 8aa033a | 2026-10-27 | Vikingo / Claude Code (subagente) | |
 | F1 · API client | ✅ | feat/F1-api-client | d40323f | 2026-10-27 | Vikingo / Claude Code (subagente) | |
@@ -128,3 +128,14 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 - **Nota de entorno:** en la máquina del orquestador el puerto 5173 lo ocupa otro proyecto; para probar se usó
   `npx vite --port 5180 --strictPort`.
 - **Siguiente paso:** B6 y B7 en curso → F5 (panel de segmentación) → B8 + F6.
+
+### CP-009 · 2026-10-27 · B7 · `e210db6`
+- **Hecho:** `routers/uploads.py` con `POST /uploads` (multipart). Escribe en streaming a `storage/tmp` en bloques de
+  1 MiB con tope `max_upload_mb` (413), valida un NIfTI 3D (acepta 4D con última dimensión 1) y lo guarda como
+  `.nii.gz` en la ruta de §6. Duplicado → 409, `.zip` → 501 hasta B8, otra extensión → 415. `tmp` se limpia
+  siempre. 16 tests.
+- **Desviaciones:** el router **todavía no está incluido en `main.py`**: B6 es dueño de ese archivo en esta ola y el
+  orquestador lo conecta al cerrar B6 (los tests montan el router en su propia app). Los tests tipan la respuesta
+  como `Any` por el `TestClient` de Starlette.
+- **Checks:** ruff ✅ · pyright 0 ✅ · 16 passed ✅.
+- **Siguiente paso:** cerrar B6 → conectar uploads en `main.py` → F5 y B8 en paralelo.
