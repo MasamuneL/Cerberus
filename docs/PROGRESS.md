@@ -13,15 +13,15 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 | B3 · volumetry | ✅ | feat/B3-volumetry | 2d27219 | 2026-10-27 | Vikingo / Claude Code (subagente) | |
 | B4 · API de lectura | ✅ | feat/B4-read-api | 045c005 | 2026-10-27 | Vikingo / Claude Code (subagente) | |
 | B5 · segmentation | ✅ | feat/B5-segmentation | 2dea83a | 2026-10-27 | Vikingo / Claude Code (subagente) | |
-| B6 · jobs | 🟡 | feat/B6-jobs | | 2026-10-27 | Vikingo / Claude Code (subagente) | dueño de main.py en la ola 5 |
-| B7 · subida NIfTI | ✅ | feat/B7-nifti-upload | e210db6 | 2026-10-27 | Vikingo / Claude Code (subagente) | router se conecta en main.py tras B6 |
-| B8 · ingesta DICOM | ⬜ | | | | | depende de B6, B7 |
+| B6 · jobs | ✅ | feat/B6-jobs | a528a9b | 2026-10-27 | Vikingo / Claude Code (subagente) | |
+| B7 · subida NIfTI | ✅ | feat/B7-nifti-upload | e210db6, 8d6f4aa | 2026-10-27 | Vikingo / Claude Code (subagente) | |
+| B8 · ingesta DICOM | 🟡 | feat/B8-dicom-ingest | | 2026-10-27 | Vikingo / Claude Code (subagente) | |
 | F0 · Scaffold | ✅ | feat/F0-scaffold | 8aa033a | 2026-10-27 | Vikingo / Claude Code (subagente) | |
 | F1 · API client | ✅ | feat/F1-api-client | d40323f | 2026-10-27 | Vikingo / Claude Code (subagente) | |
 | F2 · StudyList | ✅ | feat/F2-F4-ui | 3a80169 | 2026-10-27 | Vikingo / Claude Code (subagente F2-F4) | falta revisión visual WebGL |
 | F3 · Viewer | ✅ | feat/F2-F4-ui | 3a80169 | 2026-10-27 | Vikingo / Claude Code (subagente F2-F4) | falta revisión visual WebGL |
 | F4 · VolumetryPanel | ✅ | feat/F2-F4-ui | 3a80169 | 2026-10-27 | Vikingo / Claude Code (subagente F2-F4) | falta revisión visual WebGL |
-| F5 · SegmentationPanel | ⬜ | | | | | depende de F3, B6 |
+| F5 · SegmentationPanel | 🟡 | feat/F5-segmentation-panel | | 2026-10-27 | Vikingo / Claude Code (subagente) | |
 | F6 · UploadPanel | ⬜ | | | | | depende de F1, B7, B8 |
 | D1 · README | ⬜ | | | | | al final |
 | E2E · Verificación §10 | ⬜ | | | | | al final |
@@ -139,3 +139,16 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
   como `Any` por el `TestClient` de Starlette.
 - **Checks:** ruff ✅ · pyright 0 ✅ · 16 passed ✅.
 - **Siguiente paso:** cerrar B6 → conectar uploads en `main.py` → F5 y B8 en paralelo.
+
+### CP-010 · 2026-10-27 · B6 + conexión de B7 · `a528a9b`, `8d6f4aa`
+- **Hecho (B6):** `deps.get_redis` (pool arq lazy; 503 en español si Redis no está), `worker.py`
+  (`segment_study` con `asyncio.to_thread`, `ingest_dicom` como stub para B8, `max_jobs=1`, `job_timeout=1800`),
+  `routers/jobs.py` (`GET /api/jobs/{id}`) y POST/GET de segmentación en `studies.py`. 21 tests.
+- **E2E real por la cola (Redis + worker + API, 001/t0, mps):** 13.2 s; WT 53.51 · TC 31.01 · ET 20.99 cm³;
+  **Dice TC 0.857 / WT 0.718**, igual que la llamada directa de CP-007. Redis caído → 503.
+- **Hecho (`8d6f4aa`):** el router de uploads se incluyó en `main.py`; sus tests ya usan la app real.
+- **Desviaciones (B6):** `conn_retries=1` para fallar rápido (503 en ~2 s); errores de Redis en enqueue/status → 503;
+  `enqueue_job` devuelve None → 409; `monai_seg.json` corrupto → 500; resultado expirado → `not_found`. Con Redis
+  caído, el POST responde 503 antes que 404.
+- **Checks:** ruff ✅ · pyright 0 ✅ · pytest 170 passed ✅.
+- **Siguiente paso:** F5 (panel de segmentación) y B8 (ingesta DICOM) en paralelo; después F6.
