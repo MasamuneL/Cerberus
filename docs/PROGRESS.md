@@ -11,10 +11,10 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 | B1 · config + sequences | ✅ | feat/B1-config-sequences | bad8563 | 2026-10-27 | Vikingo / Claude Code (subagente) | |
 | B2 · catalog | ✅ | feat/B2-catalog | 0f0927f | 2026-10-27 | Vikingo / Claude Code (subagente) | |
 | B3 · volumetry | ✅ | feat/B3-volumetry | 2d27219 | 2026-10-27 | Vikingo / Claude Code (subagente) | |
-| B4 · API de lectura | 🟡 | feat/B4-read-api | | 2026-10-27 | Vikingo / Claude Code (subagente) | |
-| B5 · segmentation | 🟡 | feat/B5-segmentation | | 2026-10-27 | Vikingo / Claude Code (subagente) | |
-| B6 · jobs | ⬜ | | | | | depende de B4, B5 |
-| B7 · subida NIfTI | ⬜ | | | | | depende de B4 |
+| B4 · API de lectura | ✅ | feat/B4-read-api | 045c005 | 2026-10-27 | Vikingo / Claude Code (subagente) | |
+| B5 · segmentation | ✅ | feat/B5-segmentation | 2dea83a | 2026-10-27 | Vikingo / Claude Code (subagente) | |
+| B6 · jobs | 🟡 | feat/B6-jobs | | 2026-10-27 | Vikingo / Claude Code (subagente) | dueño de main.py en la ola 5 |
+| B7 · subida NIfTI | 🟡 | feat/B7-nifti-upload | | 2026-10-27 | Vikingo / Claude Code (subagente) | el orquestador conecta el router en main.py |
 | B8 · ingesta DICOM | ⬜ | | | | | depende de B6, B7 |
 | F0 · Scaffold | ✅ | feat/F0-scaffold | 8aa033a | 2026-10-27 | Vikingo / Claude Code (subagente) | |
 | F1 · API client | ✅ | feat/F1-api-client | d40323f | 2026-10-27 | Vikingo / Claude Code (subagente) | |
@@ -96,3 +96,20 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 - **Desviaciones:** un GTV vacío lanza `ValueError` (el notebook dividía entre cero). `ndi.label` se desempaqueta
   con un `isinstance` para que pyright quede en 0 errores. Si falta la carpeta del paciente, `longitudinal` devuelve `[]`.
 - **Siguiente paso:** B4 (API de lectura) en paralelo con B5 y F2-F4, que siguen en curso.
+
+### CP-007 · 2026-10-27 · B5 + B4 · `2dea83a`, `045c005`
+- **Hecho (B5):** `segmentation.py` con `run_segmentation(study_files, out_dir, models_dir, predictor=None)`: grid de
+  1 mm, normalización numpy equivalente a MONAI, predictor inyectable (por defecto el bundle BraTS SegResNet) y
+  salida `monai_seg.nii.gz` + `.json`. 5 tests rápidos y 1 `slow`.
+- **Validación con el modelo real (001/t0, mps, 17.7 s):** canales T1c←t1gd, T1←t1eg, T2←t2star, FLAIR←flair, sin
+  warnings. WT 53.51 · TC 31.01 · ET 20.99 cm³. **Dice vs GTV: TC 0.857, WT 0.718**. TC dentro del rango
+  interobservador 0.72–0.88. Referencia para el E2E.
+- **Hecho (B4):** `main.py` (`create_app`, CORS, `/api/health`), `deps.py` (`settings_dep`, `SettingsDep`) y
+  `routers/studies.py` con los 5 GET de §7. 20 tests. Smoke test real: 8 estudios, volumetría 001/t0 = 33.14 cm³,
+  descarga de t1gd de 74 634 926 bytes y path traversal → 404.
+- **Desviaciones:** (B5) imports desde submódulos de monai por pyright; tuplas en `blocks_down/up`. (B4) la ruta de
+  archivos acepta GET y HEAD; `longitudinal` devuelve 422 si algún tiempo tiene el GTV vacío; dependencias con
+  `Annotated` (`SettingsDep`).
+- **Checks:** ruff ✅ · format ✅ · pyright 0 ✅ · pytest 133 passed ✅ · slow 1 passed ✅.
+- **Siguiente paso:** ola 5: B6 (jobs; dueño de `main.py`) y B7 (subida de NIfTI; su router lo conecta el
+  orquestador al hacer merge). F2-F4 siguen en curso y se conectan contra B4 real al cerrar.
