@@ -23,8 +23,8 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 | F4 · VolumetryPanel | ✅ | feat/F2-F4-ui | 3a80169 | 2026-10-27 | Vikingo / Claude Code (subagente F2-F4) | falta revisión visual WebGL |
 | F5 · SegmentationPanel | ✅ | feat/F5-segmentation-panel | 2c19db0 | 2026-10-27 | Vikingo / Claude Code (subagente) | falta prueba visual |
 | F6 · UploadPanel | ✅ | feat/F6-upload-panel | b4c25e3 | 2026-10-27 | Vikingo / Claude Code (subagente) | flujo DICOM se valida en E2E con B8 |
-| D1 · README | 🟡 | docs/D1-readme | | 2026-10-27 | Vikingo / Claude Code (subagente) | |
-| E2E · Verificación §10 | 🟡 | | | 2026-10-27 | Vikingo / Claude Code (orquestador) | |
+| D1 · README | ✅ | docs/D1-readme | 656b2b1 | 2026-10-27 | Vikingo / Claude Code (subagente) | |
+| E2E · Verificación §10 | ✅ | main | 656b2b1 | 2026-10-27 | Vikingo / Claude Code (orquestador) | API/flujo ✅; falta revisión visual WebGL por una persona |
 
 ## Bitácora de checkpoints
 
@@ -191,3 +191,21 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
   (5) solo acepta y borra zips dentro de `storage/tmp`; (6) una serie no 3D → `converted=False`.
 - **Checks:** ruff ✅ · format ✅ · pyright 0 ✅ · pytest 240 passed ✅ · slow DICOM 2 passed ✅.
 - **Siguiente paso:** D1 (README, subagente) en paralelo con el E2E §10 completo (orquestador).
+
+### CP-014 · 2026-10-27 · D1 + E2E §10 · `656b2b1`
+- **Hecho (D1):** README con la sección App web (requisitos, arranque en 4 terminales, arquitectura, funciones,
+  tabla de 14 endpoints, variables de entorno), Desarrollo en equipo (AGENTS/PLAN/PROGRESS, checks), Resultados de
+  referencia y aviso de privacidad DICOM.
+- **E2E §10 con la pila real** (redis-server :6379 + worker arq + API :8000 + Vite :5180, llamadas a través del
+  proxy de Vite):
+  - 8 estudios; volumetría 001/t0 GTV = 33.14 cm³ ✅; longitudinal 005: t0 76.44 → t1 66.73 (SD) → t2 61.75 (SD) ✅.
+  - Segmentación 005/t1 por la cola: completada en 18.1 s; WT 145.89 · TC 55.09 · ET 31.27 cm³; **Dice TC 0.892 /
+    WT 0.598**; `monai_seg.nii.gz` servible ✅.
+  - Subida NIfTI (flair de 001 como 900/t0) → 201; duplicado → 409 ✅.
+  - ZIP DICOM sintético con datos personales falsos (2 series: "AX T1 POST GD" con agente de contraste y "AX FLAIR")
+    → 202 → manifest `ready` con sugerencias t1gd y flair → confirm 201 ✅. `storage/tmp` vacío, staging eliminado y
+    **ningún dato personal** (nombre, ID, nacimiento, institución, accession, fecha) en `storage/` ni en `Data/901` ✅.
+  - Los estudios de prueba 900 y 901 se borraron al terminar.
+- **Pendiente humano:** revisión visual en el navegador (render de Niivue, colores del GTV y de las etiquetas,
+  panel de segmentación y modal de subida). En esta máquina no hubo navegador automatizable.
+- **Siguiente paso:** MVP completo a nivel de API y flujo. Queda la revisión visual y luego la fase 2 (§1 "No incluye").
