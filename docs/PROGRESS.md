@@ -9,18 +9,18 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 |---|---|---|---|---|---|---|
 | B0 · Bootstrap | ✅ | feat/B0-bootstrap | 31d619a | 2026-10-27 | Vikingo / Claude Code (orquestador) | |
 | B1 · config + sequences | ✅ | feat/B1-config-sequences | bad8563 | 2026-10-27 | Vikingo / Claude Code (subagente) | |
-| B2 · catalog | 🟡 | feat/B2-catalog | | 2026-10-27 | Vikingo / Claude Code (subagente) | depende de B1 |
+| B2 · catalog | ✅ | feat/B2-catalog | 0f0927f | 2026-10-27 | Vikingo / Claude Code (subagente) | |
 | B3 · volumetry | 🟡 | feat/B3-volumetry | | 2026-10-27 | Vikingo / Claude Code (subagente) | depende de B1 |
 | B4 · API de lectura | ⬜ | | | | | depende de B2, B3 |
-| B5 · segmentation | ⬜ | | | | | depende de B2 |
+| B5 · segmentation | 🟡 | feat/B5-segmentation | | 2026-10-27 | Vikingo / Claude Code (subagente) | |
 | B6 · jobs | ⬜ | | | | | depende de B4, B5 |
 | B7 · subida NIfTI | ⬜ | | | | | depende de B4 |
 | B8 · ingesta DICOM | ⬜ | | | | | depende de B6, B7 |
 | F0 · Scaffold | ✅ | feat/F0-scaffold | 8aa033a | 2026-10-27 | Vikingo / Claude Code (subagente) | |
 | F1 · API client | ✅ | feat/F1-api-client | d40323f | 2026-10-27 | Vikingo / Claude Code (subagente) | |
-| F2 · StudyList | ⬜ | | | | | depende de F1, B4 |
-| F3 · Viewer | ⬜ | | | | | depende de F1, B4 |
-| F4 · VolumetryPanel | ⬜ | | | | | depende de F1, B4 |
+| F2 · StudyList | 🟡 | feat/F2-study-list | | 2026-10-27 | Vikingo / Claude Code (subagente F2-F4) | contra contrato §7; conecta al cerrar B4 |
+| F3 · Viewer | 🟡 | feat/F3-viewer | | 2026-10-27 | Vikingo / Claude Code (subagente F2-F4) | contra contrato §7; conecta al cerrar B4 |
+| F4 · VolumetryPanel | 🟡 | feat/F4-volumetry-panel | | 2026-10-27 | Vikingo / Claude Code (subagente F2-F4) | contra contrato §7; conecta al cerrar B4 |
 | F5 · SegmentationPanel | ⬜ | | | | | depende de F3, B6 |
 | F6 · UploadPanel | ⬜ | | | | | depende de F1, B7, B8 |
 | D1 · README | ⬜ | | | | | al final |
@@ -73,3 +73,17 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 - **Desviaciones:** alias extra `ModelChannel` en `types.ts`. Sin diferencias entre §7 y `schemas.py`.
 - **Checks:** `npm run build` ✅ (strict).
 - **Siguiente paso:** cerrar B2 y B3 (en curso) y lanzar la ola 4.
+
+### CP-005 · 2026-10-27 · B2 + fix LFS · `0f0927f`, `4470662`
+- **Hecho (B2):** `catalog.py` con `list_studies(data_dir, results_dir)`, `get_study(...)` (volúmenes leídos solo
+  del header) y `sequence_path(...)`. Valida paciente, tiempo, secuencia y que el prefijo y el tiempo del archivo
+  coincidan con sus carpetas; la basura se ignora. 12 tests.
+- **Desviaciones (B2):** `list_studies` recibe también `results_dir` (lo necesita `has_segmentation`). La regex usa
+  `fullmatch` + `re.ASCII` + `t\d+`.
+- **Fix (`4470662`):** la regla LFS `*.ts` (pensada para pesos TorchScript) metía los archivos TypeScript del
+  frontend en Git LFS. Ahora es `models/**/*.ts` y los archivos se renormalizaron a blobs normales. Si clonaste
+  antes de este commit: `git pull && git lfs pull`.
+- **Incidente:** el subagente de B3 se cortó por un error transitorio de la API; se retomó con su contexto.
+- **Checks:** catalog: ruff ✅ · pyright ✅ · 12 passed ✅.
+- **Siguiente paso:** B3 (retomado), B5 (segmentation) y F2+F3+F4 (un solo subagente, porque comparten `App.tsx`)
+  en paralelo. Después: B4 → conectar el frontend → ola 5.
