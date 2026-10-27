@@ -18,9 +18,9 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 | B8 · ingesta DICOM | ⬜ | | | | | depende de B6, B7 |
 | F0 · Scaffold | ✅ | feat/F0-scaffold | 8aa033a | 2026-10-27 | Vikingo / Claude Code (subagente) | |
 | F1 · API client | ✅ | feat/F1-api-client | d40323f | 2026-10-27 | Vikingo / Claude Code (subagente) | |
-| F2 · StudyList | 🟡 | feat/F2-study-list | | 2026-10-27 | Vikingo / Claude Code (subagente F2-F4) | contra contrato §7; conecta al cerrar B4 |
-| F3 · Viewer | 🟡 | feat/F3-viewer | | 2026-10-27 | Vikingo / Claude Code (subagente F2-F4) | contra contrato §7; conecta al cerrar B4 |
-| F4 · VolumetryPanel | 🟡 | feat/F4-volumetry-panel | | 2026-10-27 | Vikingo / Claude Code (subagente F2-F4) | contra contrato §7; conecta al cerrar B4 |
+| F2 · StudyList | ✅ | feat/F2-F4-ui | 3a80169 | 2026-10-27 | Vikingo / Claude Code (subagente F2-F4) | falta revisión visual WebGL |
+| F3 · Viewer | ✅ | feat/F2-F4-ui | 3a80169 | 2026-10-27 | Vikingo / Claude Code (subagente F2-F4) | falta revisión visual WebGL |
+| F4 · VolumetryPanel | ✅ | feat/F2-F4-ui | 3a80169 | 2026-10-27 | Vikingo / Claude Code (subagente F2-F4) | falta revisión visual WebGL |
 | F5 · SegmentationPanel | ⬜ | | | | | depende de F3, B6 |
 | F6 · UploadPanel | ⬜ | | | | | depende de F1, B7, B8 |
 | D1 · README | ⬜ | | | | | al final |
@@ -113,3 +113,18 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 - **Checks:** ruff ✅ · format ✅ · pyright 0 ✅ · pytest 133 passed ✅ · slow 1 passed ✅.
 - **Siguiente paso:** ola 5: B6 (jobs; dueño de `main.py`) y B7 (subida de NIfTI; su router lo conecta el
   orquestador al hacer merge). F2-F4 siguen en curso y se conectan contra B4 real al cerrar.
+
+### CP-008 · 2026-10-27 · F2 + F3 + F4 · `3a80169`
+- **Hecho:** `StudyList.tsx` (agrupada por paciente, con badges GTV y Seg), `Viewer.tsx` (una sola instancia de
+  Niivue; secuencia, overlay del GTV con opacidad, overlay `monai_seg` con colormap de etiquetas y fallback `warm`,
+  vistas MPR/axial/coronal/sagital/3D, leyenda) y `VolumetryPanel.tsx` (volumetría + tabla RANO longitudinal).
+  `App.tsx` conecta lista → detalle → visor + panel. Un solo commit y una sola rama porque los tres editan `App.tsx`.
+- **Verificado por HTTP contra la API real a través del proxy de Vite:** 8 estudios, longitudinal 001, descarga
+  de t1gd (74 MB, `application/gzip`), módulos servidos.
+- **Pendiente:** revisión visual en el navegador (render WebGL de Niivue y colores del mapa de etiquetas). En esta
+  sesión no hubo navegador automatizable (falta la extensión de Playwright MCP). Ver §10.
+- **Desviaciones:** `StudyList` recibe además `loading` y `error`; `monai_seg` no aparece en el selector de
+  secuencias; overlay de segmentación a opacidad 0.6; `showSegmentation` queda en `false` hasta F5.
+- **Nota de entorno:** en la máquina del orquestador el puerto 5173 lo ocupa otro proyecto; para probar se usó
+  `npx vite --port 5180 --strictPort`.
+- **Siguiente paso:** B6 y B7 en curso → F5 (panel de segmentación) → B8 + F6.
