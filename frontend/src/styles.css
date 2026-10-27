@@ -92,3 +92,30 @@ body {
 .data-table td { text-align: right; font-variant-numeric: tabular-nums; }
 .data-table tr.current td { color: var(--accent); }
 .note { margin: 0.5rem 0 0; font-size: 0.8rem; color: var(--text-muted); }
+
+/* Columna derecha: volumetría + segmentación */
+.side-panels { display: flex; flex-direction: column; gap: 1rem; flex-shrink: 0; }
+
+/* SegmentationPanel */
+.btn-primary {
+  width: 100%; padding: 0.45rem 0.75rem; margin-bottom: 0.5rem;
+  background: var(--accent); color: #0b1220; font: inherit; font-weight: 600;
+  border: 1px solid var(--accent); border-radius: 4px; cursor: pointer;
+}
+.btn-primary:hover:not(:disabled) { filter: brightness(1.1); }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+.alert {
+  margin: 0.5rem 0; padding: 0.5rem 0.75rem; font-size: 0.85rem;
+  background: rgba(255, 107, 107, 0.12); color: #ff8a8a;
+  border: 1px solid #ff6b6b; border-radius: 4px;
+}
+.job-status { margin: 0.25rem 0; font-size: 0.9rem; font-variant-numeric: tabular-nums; }
+.job-status.ok { color: #6fcf73; }
+.job-status.error { color: #ff6b6b; }
+.warnings {
+  margin: 0.75rem 0 0; padding: 0.5rem 0.75rem 0.5rem 1.75rem; font-size: 0.85rem;
+  background: rgba(224, 161, 0, 0.12); color: #ffd166;
+  border-left: 3px solid #e0a100; border-radius: 4px;
+}
+.warnings li + li { margin-top: 0.25rem; }
+.seg-legend { margin-top: 0.75rem; }

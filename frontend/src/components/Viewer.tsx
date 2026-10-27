@@ -61,6 +61,11 @@ export default function Viewer({ study, showSegmentation, segmentationVersion = 
 
   const segAvailable = study.has_segmentation || showSegmentation;
 
+  // Una segmentación nueva vuelve a encender el overlay aunque el usuario lo hubiera apagado.
+  useEffect(() => {
+    if (segmentationVersion > 0) setSegOn(true);
+  }, [segmentationVersion]);
+
   // Una sola instancia de Niivue por canvas montado.
   useEffect(() => {
     const canvas = canvasRef.current;
