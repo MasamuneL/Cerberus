@@ -1,0 +1,34 @@
+"""Aplicación FastAPI de Cerberus (docs/PLAN_MVP.md §7, ticket B4).
+
+Arranque: `uv run uvicorn cerberus_api.main:app --reload --port 8000` (docs en `/docs`).
+"""
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from cerberus_api import __version__
+from cerberus_api.config import get_settings
+from cerberus_api.routers import studies
+
+
+def create_app() -> FastAPI:
+    """Crea la app con CORS desde la configuración y los routers montados en `/api`."""
+    settings = get_settings()
+    app = FastAPI(title="Cerberus API", version=__version__)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.cors_origins,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    @app.get("/api/health")
+    def health() -> dict[str, str]:
+        """Comprobación de vida."""
+        return {"status": "ok"}
+
+    app.include_router(studies.router, prefix="/api")
+    return app
+
+
+app = create_app()
