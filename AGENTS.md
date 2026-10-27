@@ -31,11 +31,14 @@ Tests lentos (modelo real y dcm2niix real): `uv run pytest -m slow`.
 
 ## Flujo de trabajo
 
+0. **Antes de nada:** `git pull` y lee [`docs/PROGRESS.md`](docs/PROGRESS.md) (tablero + último checkpoint).
+   Protocolo completo en `docs/PLAN_MVP.md` §12.
 1. Elige **un** ticket de `docs/PLAN_MVP.md` §8 cuyas dependencias ya estén en `main` (ver §9).
 2. Crea la rama `feat/<ID>-<slug>` (ej. `feat/B3-volumetry`).
 3. Implementa **solo** ese ticket. Si ves algo fuera de alcance, anótalo en el PR; no lo hagas.
 4. Corre los checks de arriba hasta que pasen.
 5. Abre un PR pequeño con el ID del ticket en el título y lista los criterios de aceptación cumplidos.
+6. **Checkpoint:** tras el merge, actualiza `docs/PROGRESS.md` (ticket ✅ + entrada `CP-NNN`) y haz push.
 
 ## Reglas
 
@@ -57,10 +60,13 @@ Tests lentos (modelo real y dcm2niix real): `uv run pytest -m slow`.
    `frontend/node_modules/`, sobre todo Niivue y arq). Si el plan choca con la realidad, adapta y explícalo en el PR.
 9. **Seguridad de rutas:** valida `patient`, `timepoint`, `sequence` y los nombres de archivo con
    `cerberus_api.sequences` **antes** de construir cualquier `Path`.
-10. **Terminología:** la máscara del dataset es **GTV** (excluye edema). No la llames "tumor" en la UI.
+10. **NIfTI tipado:** en el backend usa `cerberus_api.nifti.load_nifti()` en lugar de `nib.load()`, porque pyright
+    tipa `nib.load` como `FileBasedImage`.
+11. **Terminología:** la máscara del dataset es **GTV** (excluye edema). No la llames "tumor" en la UI.
 
 ## Definición de hecho
 
 - Se cumplen los criterios de aceptación del ticket.
 - Pasan los checks de arriba.
 - Docs actualizadas si cambió algo de §5–§7 del plan o de los comandos.
+- Checkpoint registrado en `docs/PROGRESS.md` y pusheado.

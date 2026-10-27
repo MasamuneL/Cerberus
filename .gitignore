@@ -32,3 +32,8 @@ __marimo__/
 .vscode/
 .DS_Store
 Thumbs.db
+
+# App web
+storage/
+frontend/node_modules/
+frontend/dist/

@@ -62,11 +62,12 @@ Redis (:6379) ◄── worker arq ──► MONAI SegResNet (torch, cpu/mps/cud
 Cerberus/
 ├── AGENTS.md  CLAUDE.md  README.md  pyproject.toml  uv.lock
 ├── cerberus_eda.py  cerberus_mayavi.py         # se quedan como están (referencia)
-├── docs/PLAN_MVP.md
+├── docs/PLAN_MVP.md  docs/PROGRESS.md
 ├── backend/
 │   ├── cerberus_api/
 │   │   ├── __init__.py
 │   │   ├── config.py        # Settings (pydantic-settings)
+│   │   ├── nifti.py         # load_nifti(): carga tipada (usar en vez de nib.load)
 │   │   ├── sequences.py     # SEQ_INFO, MRI_SEQS, regex de validación
 │   │   ├── catalog.py       # escaneo de Data/ → Study
 │   │   ├── volumetry.py     # volumetría GTV + RANO
@@ -124,7 +125,7 @@ cd frontend && npm run build                               # tsc -b && vite buil
 Configuración que agrega B0 en `pyproject.toml`:
 - `[build-system]` hatchling; `[tool.hatch.build.targets.wheel] packages = ["backend/cerberus_api"]`.
 - `[tool.ruff]` line-length 120, target-version py311; lint select `E,F,I,UP,B`.
-- `[tool.pyright]` include `["backend"]`, typeCheckingMode `"standard"`. No se usa strict porque
+- `[tool.pyright]` include `["backend"]`, typeCheckingMode `"standard"`, extraPaths `["backend/tests"]`. No se usa strict porque
   nibabel/monai no tienen tipos y generarían ruido.
 - `[tool.pytest.ini_options]` testpaths `["backend/tests"]`, markers `slow`.
 
@@ -406,3 +407,28 @@ backend correspondiente.
 - Sin `brain_mask` (DICOM nuevo) la calidad de MONAI baja. El MVP solo avisa; HD-BET/SynthStrip quedan para fase 2.
 - El GTV no es el "volumen tumoral" (excluye edema). Los textos de la UI deben decir "GTV" y no "tumor".
 - Inferencia en CPU: varios minutos. Por eso es un job asíncrono y la UI no debe bloquearse.
+
+## 12. Checkpoints y trazabilidad entre dispositivos
+
+El estado del desarrollo vive en el repo, no en la memoria de una persona ni de una IA:
+**[`docs/PROGRESS.md`](PROGRESS.md)** es la única fuente de verdad del avance.
+
+**Al empezar una sesión (cualquier dispositivo o herramienta):**
+1. `git checkout main && git pull` y luego `uv sync` (y `npm install` en `frontend/` si existe).
+2. Lee `docs/PROGRESS.md`: el tablero de tickets y el último checkpoint (su campo "Siguiente paso").
+3. Toma un ticket ⬜ cuyas dependencias (§8/§9) estén ✅. Márcalo 🟡 con tu nombre y herramienta, y haz
+   commit + push de ese cambio **antes** de programar. Así nadie más lo toma en otro equipo.
+
+**Al terminar un ticket (checkpoint):**
+1. Checks de §5 en verde.
+2. Haz merge de la rama del ticket a `main` (PR o fast-forward).
+3. En `docs/PROGRESS.md`: marca el ticket ✅ con el commit de merge y la fecha, y agrega una entrada `CP-NNN`
+   a la bitácora con: qué se hizo, archivos principales, desviaciones del plan, pendientes y siguiente paso.
+4. Commit con mensaje `chore(progress): CP-NNN <ticket>` y push.
+
+**Reglas:**
+- La bitácora solo crece hacia abajo. No se reescriben checkpoints viejos; si algo cambió, se escribe uno nuevo.
+- Una desviación del plan (firma distinta, archivo extra, contrato ajustado) se anota en el checkpoint **y**
+  se corrige en este plan en el mismo commit.
+- Si un ticket se bloquea, márcalo ⛔ con el motivo y haz push. El siguiente en tomarlo empieza por ahí.
+- Fechas en formato ISO `YYYY-MM-DD`. Hashes de commit cortos (7 caracteres).
