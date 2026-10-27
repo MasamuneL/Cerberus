@@ -119,3 +119,39 @@ body {
 }
 .warnings li + li { margin-top: 0.25rem; }
 .seg-legend { margin-top: 0.75rem; }
+
+/* F6 · UploadPanel */
+.header-btn, .upload-panel button {
+  background: var(--accent); color: #0b0e12; border: 1px solid var(--accent);
+  border-radius: 4px; padding: 0.35rem 0.8rem; cursor: pointer; font: inherit;
+}
+.header-btn { margin-left: auto; align-self: center; }
+.upload-panel button.btn-secondary { background: transparent; color: var(--text); border-color: var(--border); }
+.upload-panel button:disabled { opacity: 0.45; cursor: not-allowed; }
+.upload-overlay {
+  position: fixed; inset: 0; z-index: 50; background: rgba(0, 0, 0, 0.6);
+  display: flex; align-items: flex-start; justify-content: center; padding: 3rem 1rem; overflow: auto;
+}
+.upload-panel {
+  background: var(--bg-panel); border: 1px solid var(--border); border-radius: 8px;
+  padding: 1rem 1.25rem; width: min(960px, 100%);
+}
+.upload-head { display: flex; justify-content: space-between; align-items: center; }
+.upload-head h2 { margin: 0; font-size: 1.1rem; }
+.upload-notice {
+  border-left: 3px solid #f0b429; background: rgba(240, 180, 41, 0.08);
+  padding: 0.5rem 0.75rem; font-size: 0.85rem;
+}
+.upload-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; align-items: end; }
+.upload-form label { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.85rem; color: var(--text-muted); }
+.upload-form input, .upload-form select, .upload-series select {
+  background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 0.3rem;
+}
+.upload-errors { grid-column: 1 / -1; margin: 0; padding-left: 1.2rem; color: #ff6b6b; font-size: 0.85rem; }
+.upload-status { display: flex; align-items: center; gap: 1rem; margin-top: 1rem; }
+.upload-series { margin-top: 1rem; overflow-x: auto; }
+.upload-series table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.upload-series th, .upload-series td { border-bottom: 1px solid var(--border); padding: 0.35rem 0.5rem; text-align: left; }
+.upload-series tr.muted td { color: var(--text-muted); }
+.upload-actions { display: flex; gap: 0.5rem; margin-top: 0.75rem; }
+.upload-success { color: #5fd38d; }

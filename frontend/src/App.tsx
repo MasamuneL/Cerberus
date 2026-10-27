@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError, getStudy, listStudies } from "./api/client";
 import type { Study, StudyDetail } from "./api/types";
 import SegmentationPanel from "./components/SegmentationPanel";
+import UploadPanel from "./components/UploadPanel";
 import StudyList, { type StudyKey } from "./components/StudyList";
 import Viewer from "./components/Viewer";
 import VolumetryPanel from "./components/VolumetryPanel";
@@ -19,6 +20,7 @@ export default function App() {
   // Contador monótono: invalida la caché de monai_seg en el Viewer tras cada segmentación.
   // No se reinicia al cambiar de estudio para que nunca se repita una URL ya cacheada.
   const [segVersion, setSegVersion] = useState(0);
+  const [showUpload, setShowUpload] = useState(false);
   const selectedRef = useRef<StudyKey | null>(null);
   selectedRef.current = selected;
 
@@ -75,11 +77,33 @@ export default function App() {
     [refreshStudies],
   );
 
+  // Subida terminada: refresca el catálogo, abre el estudio y cierra el panel.
+  const onUploaded = useCallback(
+    async (study: Study) => {
+      await refreshStudies();
+      const cur = selectedRef.current;
+      if (cur && cur.patient === study.patient && cur.timepoint === study.timepoint) {
+        try {
+          setDetail(await getStudy(study.patient, study.timepoint));
+        } catch (e) {
+          setDetailError(`No se pudo abrir el estudio: ${errText(e)}`);
+        }
+      } else {
+        setSelected({ patient: study.patient, timepoint: study.timepoint });
+      }
+      setShowUpload(false);
+    },
+    [refreshStudies],
+  );
+
   return (
     <div className="app">
       <header className="app-header">
         <h1>Cerberus</h1>
         <p>Visor y volumetría de glioblastoma (CFB-GBM)</p>
+        <button type="button" className="header-btn" onClick={() => setShowUpload((v) => !v)}>
+          {showUpload ? "Cerrar subida" : "Subir estudio"}
+        </button>
       </header>
       <div className="app-body">
         <aside className="sidebar">
@@ -93,6 +117,11 @@ export default function App() {
           />
         </aside>
         <main className="viewer">
+          {showUpload && (
+            <div className="upload-overlay">
+              <UploadPanel onUploaded={(st) => void onUploaded(st)} onClose={() => setShowUpload(false)} />
+            </div>
+          )}
           {!selected && <p className="placeholder">Selecciona un estudio para visualizarlo.</p>}
           {selected && detailError && <p className="error">{detailError}</p>}
           {selected && !detail && !detailError && <p className="placeholder">Cargando estudio…</p>}
