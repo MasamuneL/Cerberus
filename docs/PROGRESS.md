@@ -21,8 +21,8 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 | F2 · StudyList | ✅ | feat/F2-F4-ui | 3a80169 | 2026-10-27 | Vikingo / Claude Code (subagente F2-F4) | falta revisión visual WebGL |
 | F3 · Viewer | ✅ | feat/F2-F4-ui | 3a80169 | 2026-10-27 | Vikingo / Claude Code (subagente F2-F4) | falta revisión visual WebGL |
 | F4 · VolumetryPanel | ✅ | feat/F2-F4-ui | 3a80169 | 2026-10-27 | Vikingo / Claude Code (subagente F2-F4) | falta revisión visual WebGL |
-| F5 · SegmentationPanel | 🟡 | feat/F5-segmentation-panel | | 2026-10-27 | Vikingo / Claude Code (subagente) | |
-| F6 · UploadPanel | ⬜ | | | | | depende de F1, B7, B8 |
+| F5 · SegmentationPanel | ✅ | feat/F5-segmentation-panel | 2c19db0 | 2026-10-27 | Vikingo / Claude Code (subagente) | falta prueba visual |
+| F6 · UploadPanel | 🟡 | feat/F6-upload-panel | | 2026-10-27 | Vikingo / Claude Code (subagente) | contra contrato §7 mientras cierra B8 |
 | D1 · README | ⬜ | | | | | al final |
 | E2E · Verificación §10 | ⬜ | | | | | al final |
 
@@ -152,3 +152,14 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
   caído, el POST responde 503 antes que 404.
 - **Checks:** ruff ✅ · pyright 0 ✅ · pytest 170 passed ✅.
 - **Siguiente paso:** F5 (panel de segmentación) y B8 (ingesta DICOM) en paralelo; después F6.
+
+### CP-011 · 2026-10-27 · F5 · `2c19db0`
+- **Hecho:** `SegmentationPanel.tsx`: botón "Segmentar con MONAI" ("Volver a segmentar" si ya hay resultado),
+  estados En cola / Procesando (con segundos transcurridos) / Completado / Falló / Job no encontrado, alertas
+  con el `detail` de la API (ej. 503 de Redis), y tablas de volúmenes, Dice, canales y warnings con leyenda.
+  `App.tsx` refresca la lista y el detalle al completar; `Viewer.tsx` vuelve a encender el overlay en cada nueva
+  segmentación.
+- **Desviaciones:** `segVersion` solo crece (cache-busting seguro). Si se cambia de estudio con un job en curso,
+  el panel deja de seguirlo; el resultado aparece al volver a abrir el estudio.
+- **Checks:** `npm run build` ✅. **Pendiente:** prueba visual con Redis + worker (va en el E2E de §10).
+- **Siguiente paso:** B8 en curso; F6 se lanza ya contra el contrato §7.
