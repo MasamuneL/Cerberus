@@ -1,4 +1,4 @@
-"""Aplicación FastAPI de Cerberus (docs/PLAN_MVP.md §7, tickets B4 y B6).
+"""Aplicación FastAPI de Cerberus (docs/PLAN_MVP.md §7, tickets B4, B6 y B7).
 
 Arranque: `uv run uvicorn cerberus_api.main:app --reload --port 8000` (docs en `/docs`).
 """
@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from cerberus_api import __version__
 from cerberus_api.config import get_settings
 from cerberus_api.deps import close_redis
-from cerberus_api.routers import jobs, studies
+from cerberus_api.routers import jobs, studies, uploads
 
 
 @asynccontextmanager
@@ -40,6 +40,7 @@ def create_app() -> FastAPI:
 
     app.include_router(studies.router, prefix="/api")
     app.include_router(jobs.router, prefix="/api")
+    app.include_router(uploads.router, prefix="/api")
     return app
 
 

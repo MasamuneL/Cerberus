@@ -23,9 +23,8 @@ NiftiBytes = Callable[..., bytes]
 
 
 def _make_app(settings: Settings) -> FastAPI:
-    """App de test: main.py todavía no monta `uploads`, así que se incluye aquí."""
+    """App de test con settings apuntando a `tmp_path` (main.py ya monta `uploads`)."""
     app = create_app()
-    app.include_router(uploads.router, prefix="/api")
     app.dependency_overrides[settings_dep] = lambda: settings
     return app
 
