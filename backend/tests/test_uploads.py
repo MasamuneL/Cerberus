@@ -118,7 +118,7 @@ def test_upload_4d_singleton_squeezed(upload: Upload, settings: Settings, nifti_
         ({"patient": "../001"}, 422),
         ({"timepoint": "x0"}, 422),
         ({"filename": "notas.txt"}, 415),
-        ({"filename": "estudio.zip"}, 501),
+        ({"filename": "estudio.zip"}, 422),  # un NIfTI con extensión .zip no es un ZIP
     ],
 )
 def test_upload_rejected(

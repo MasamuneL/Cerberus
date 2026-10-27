@@ -242,8 +242,9 @@ def test_worker_segment_study_invalid(
         asyncio.run(worker.segment_study({}, patient, timepoint))
 
 
-def test_worker_ingest_dicom_stub() -> None:
-    with pytest.raises(NotImplementedError):
+def test_worker_ingest_dicom_invalid_upload_id() -> None:
+    # B8 ya implementó ingest_dicom (tests completos en test_dicom.py): un id inválido se rechaza antes del disco
+    with pytest.raises(ValueError):
         asyncio.run(worker.ingest_dicom({}, "u1", "/tmp/x.zip"))
 
 
