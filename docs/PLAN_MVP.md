@@ -303,7 +303,7 @@ Cada ticket = una rama `feat/<ID>-<slug>` y un PR. "Hecho" = los criterios se cu
     `ProtocolName`, `ContrastBolusAgent` (si existe), `SeriesNumber` y la lista de archivos.
   - `suggest_sequence(tags) -> str | None`: reglas en orden sobre `description + protocol` en minúsculas:
     `Modality=="CT"`→`ct`; `RTDOSE`/`RTSTRUCT`/otras → `None`; `flair`→`flair`; `adc|apparent`→`adc`;
-    `t2*|t2star|swi|gre` sin `flair`→`t2star`; `t2`→`t2tse`; `t1` con (`gd|gad|post|+c|contrast|ce` o
+    `t2*|t2star|swi|gre` sin `flair` (y `gre` solo si no hay `t1`; CP-013)→`t2star`; `t2`→`t2tse`; `t1` con (`gd|gad|post|+c|contrast|ce` o
     `ContrastBolusAgent` presente)→`t1gd`; `mprage|gre|tfe|spgr` con `t1`→`t1eg`; `t1`→`t1tse`; si nada coincide → `None`.
   - `convert_series(files, out_dir)`: copia los archivos a una carpeta por serie y corre
     `dcm2niix -z y -b n -i y -f series -o <out> <dir>` (binario en `Path(sys.executable).parent / "dcm2niix"`,
