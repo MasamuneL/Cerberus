@@ -8,16 +8,16 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 | Ticket | Estado | Rama | Commit | Fecha | Responsable / herramienta | Notas |
 |---|---|---|---|---|---|---|
 | B0 · Bootstrap | ✅ | feat/B0-bootstrap | 31d619a | 2026-10-27 | Vikingo / Claude Code (orquestador) | |
-| B1 · config + sequences | 🟡 | feat/B1-config-sequences | | 2026-10-27 | Vikingo / Claude Code (subagente) | |
-| B2 · catalog | ⬜ | | | | | depende de B1 |
-| B3 · volumetry | ⬜ | | | | | depende de B1 |
+| B1 · config + sequences | ✅ | feat/B1-config-sequences | bad8563 | 2026-10-27 | Vikingo / Claude Code (subagente) | |
+| B2 · catalog | 🟡 | feat/B2-catalog | | 2026-10-27 | Vikingo / Claude Code (subagente) | depende de B1 |
+| B3 · volumetry | 🟡 | feat/B3-volumetry | | 2026-10-27 | Vikingo / Claude Code (subagente) | depende de B1 |
 | B4 · API de lectura | ⬜ | | | | | depende de B2, B3 |
 | B5 · segmentation | ⬜ | | | | | depende de B2 |
 | B6 · jobs | ⬜ | | | | | depende de B4, B5 |
 | B7 · subida NIfTI | ⬜ | | | | | depende de B4 |
 | B8 · ingesta DICOM | ⬜ | | | | | depende de B6, B7 |
-| F0 · Scaffold | 🟡 | feat/F0-scaffold | | 2026-10-27 | Vikingo / Claude Code (subagente) | |
-| F1 · API client | ⬜ | | | | | depende de F0 |
+| F0 · Scaffold | ✅ | feat/F0-scaffold | 8aa033a | 2026-10-27 | Vikingo / Claude Code (subagente) | |
+| F1 · API client | 🟡 | feat/F1-api-client | | 2026-10-27 | Vikingo / Claude Code (subagente) | depende de F0 |
 | F2 · StudyList | ⬜ | | | | | depende de F1, B4 |
 | F3 · Viewer | ⬜ | | | | | depende de F1, B4 |
 | F4 · VolumetryPanel | ⬜ | | | | | depende de F1, B4 |
@@ -42,3 +42,23 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 - **Checks:** ruff ✅ · format ✅ · pyright 0 errores ✅ · pytest 2 passed ✅.
 - **Siguiente paso:** ola 2 en paralelo con subagentes, B1 (config + sequences) y F0 (scaffold del frontend).
   Después, ola 3: B2, B3 y F1.
+
+### CP-002 · 2026-10-27 · F0 · `8aa033a`
+- **Hecho:** `frontend/` creado a mano con Vite + React + TS. Layout base con barra lateral (lista de estudios)
+  y área principal (visor), ambos placeholders en español. Proxy `/api` → `:8000`. `npm run build` ✅; `npm run dev`
+  sirve "Cerberus" en :5173.
+- **Versiones fijadas:** react 19.3.1, react-dom 19.3.1, @niivue/niivue 0.69.0, vite 8.3.5,
+  @vitejs/plugin-react 6.1.2, typescript 7.0.2, @types/react(-dom) 19.3.0.
+- **Desviaciones:** TypeScript 7.0.2 (el plan no fijaba versión; `tsc -b` funciona). Un solo `tsconfig.json`.
+  `frontend/*.tsbuildinfo` agregado a `.gitignore`. La API real de Niivue quedó verificada y documentada en el
+  ticket F3 del plan.
+
+### CP-003 · 2026-10-27 · B1 · `bad8563`
+- **Hecho:** `config.py` (`Settings` con prefijo `CERBERUS_`, rutas relativas a `REPO_ROOT`, propiedades
+  `results_dir`, `staging_dir` y `tmp_dir`, `get_settings()` con caché) y `sequences.py` (`SEQ_INFO` y `MRI_SEQS`
+  del notebook, `PATIENT_RE`, `TIMEPOINT_RE`, `validate_patient/timepoint/sequence/file_name`).
+- **Desviaciones:** las regex llevan `re.ASCII` para rechazar dígitos no ASCII (ej. "٠٠١"); quedó anotado en §6.
+  Extras públicos: `REPO_ROOT`, `PATIENT_RE`, `TIMEPOINT_RE`.
+- **Checks:** ruff ✅ · format ✅ · pyright 0 ✅ · pytest 78 passed ✅ · `npm run build` ✅.
+- **Siguiente paso:** ola 3 en paralelo con subagentes: B2 (catalog), B3 (volumetry) y F1 (API client).
+  Después, ola 4: B4, B5, F2, F3 y F4.

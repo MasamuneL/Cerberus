@@ -141,7 +141,7 @@ storage/tmp/<uuid>/                                                       # DICO
 ```
 
 Validación (en `sequences.py`, se usa en todos los endpoints antes de tocar el disco):
-- `patient`: `^\d{3}$` · `timepoint`: `^t\d{1,2}$` · `sequence` ∈ claves de `SEQ_INFO`
+- `patient`: `^\d{3}$` · `timepoint`: `^t\d{1,2}$` (ambas con `re.ASCII`: solo dígitos 0-9) · `sequence` ∈ claves de `SEQ_INFO`
   (`t1gd, t1eg, t1tse, t2tse, t2star, flair, adc, ct, rtdose, brain_mask, gtv`).
 - Nombre de archivo servible: secuencia válida o `monai_seg`. Cualquier otro valor → 404. Nunca se construye
   una ruta con texto del usuario sin validarlo antes (evita path traversal).
@@ -345,6 +345,13 @@ Cada ticket = una rama `feat/<ID>-<slug>` y un PR. "Hecho" = los criterios se cu
   `loadVolumes([{ url: fileUrl(...), colormap: "gray" }, ...overlays])`, `setSliceType(nv.sliceTypeMultiplanar)`.
   **Antes de escribir, verificar las firmas en `node_modules/@niivue/niivue` (archivo `.d.ts`)**, porque la API
   cambia entre versiones.
+- API verificada en @niivue/niivue 0.69.0 (F0, CP-002), tipos en `build/niivue/index.d.ts`:
+  `import { Niivue, SLICE_TYPE, NVImage } from "@niivue/niivue"`; `new Niivue(opts?: Partial<NVConfigOptions>)`;
+  `await nv.attachToCanvas(canvas)` (es async: esperar antes de `loadVolumes`);
+  `loadVolumes(list: ImageFromUrlOptions[])` con `{url, name?, colormap?, opacity?, cal_min?, cal_max?, colormapLabel?}`;
+  `setSliceType(SLICE_TYPE.MULTIPLANAR | AXIAL | CORONAL | SAGITTAL | RENDER)`; `setOpacity(volIdx, x)`;
+  `removeVolumeByIndex(i)`; `updateGLVolume()`. Mapa de etiquetas: `nv.volumes[i].setColormapLabel(cm: ColorMap)`
+  y luego `nv.updateGLVolume()` (no existe en la clase `Niivue`), donde `ColorMap = {R,G,B,A,I: number[], labels?}`.
 - Controles: selector de secuencia (todas menos gtv/brain_mask; t1gd por defecto), toggle GTV (colormap `red`,
   opacidad con slider de 0 a 1, 0.4 por defecto), toggle segmentación (`monai_seg`; usar un colormap de etiquetas
   si la versión lo soporta, si no `warm` con `cal_min 0.5`, `cal_max 3`), y `rtdose` con colormap `jet`.
