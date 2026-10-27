@@ -17,7 +17,7 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 | B7 · subida NIfTI | ⬜ | | | | | depende de B4 |
 | B8 · ingesta DICOM | ⬜ | | | | | depende de B6, B7 |
 | F0 · Scaffold | ✅ | feat/F0-scaffold | 8aa033a | 2026-10-27 | Vikingo / Claude Code (subagente) | |
-| F1 · API client | 🟡 | feat/F1-api-client | | 2026-10-27 | Vikingo / Claude Code (subagente) | depende de F0 |
+| F1 · API client | ✅ | feat/F1-api-client | d40323f | 2026-10-27 | Vikingo / Claude Code (subagente) | |
 | F2 · StudyList | ⬜ | | | | | depende de F1, B4 |
 | F3 · Viewer | ⬜ | | | | | depende de F1, B4 |
 | F4 · VolumetryPanel | ⬜ | | | | | depende de F1, B4 |
@@ -62,3 +62,14 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 - **Checks:** ruff ✅ · format ✅ · pyright 0 ✅ · pytest 78 passed ✅ · `npm run build` ✅.
 - **Siguiente paso:** ola 3 en paralelo con subagentes: B2 (catalog), B3 (volumetry) y F1 (API client).
   Después, ola 4: B4, B5, F2, F3 y F4.
+
+### CP-004 · 2026-10-27 · contrato + F1 · `917368e`, `d40323f`
+- **Hecho (orquestador, `917368e`):** `backend/cerberus_api/schemas.py` con todos los modelos de §7. Lo escribió
+  el orquestador antes de la ola 3 para que B2 y B3 no lo editaran a la vez. Los tickets lo importan y no lo modifican.
+- **Hecho (F1, `d40323f`):** `frontend/src/api/types.ts` refleja `schemas.py` campo por campo (snake_case,
+  `X | None` → `X | null`). `api/client.ts` tiene `ApiError(status, detail)`, una función por endpoint, `fileUrl`,
+  `seriesUrl` e `isUploadCreated`. `hooks/useJob.ts` hace polling con `setTimeout` encadenado (sin solapamiento)
+  hasta un estado terminal.
+- **Desviaciones:** alias extra `ModelChannel` en `types.ts`. Sin diferencias entre §7 y `schemas.py`.
+- **Checks:** `npm run build` ✅ (strict).
+- **Siguiente paso:** cerrar B2 y B3 (en curso) y lanzar la ola 4.
