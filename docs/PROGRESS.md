@@ -10,8 +10,8 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 | B0 · Bootstrap | ✅ | feat/B0-bootstrap | 31d619a | 2026-10-27 | Vikingo / Claude Code (orquestador) | |
 | B1 · config + sequences | ✅ | feat/B1-config-sequences | bad8563 | 2026-10-27 | Vikingo / Claude Code (subagente) | |
 | B2 · catalog | ✅ | feat/B2-catalog | 0f0927f | 2026-10-27 | Vikingo / Claude Code (subagente) | |
-| B3 · volumetry | 🟡 | feat/B3-volumetry | | 2026-10-27 | Vikingo / Claude Code (subagente) | depende de B1 |
-| B4 · API de lectura | ⬜ | | | | | depende de B2, B3 |
+| B3 · volumetry | ✅ | feat/B3-volumetry | 2d27219 | 2026-10-27 | Vikingo / Claude Code (subagente) | |
+| B4 · API de lectura | 🟡 | feat/B4-read-api | | 2026-10-27 | Vikingo / Claude Code (subagente) | |
 | B5 · segmentation | 🟡 | feat/B5-segmentation | | 2026-10-27 | Vikingo / Claude Code (subagente) | |
 | B6 · jobs | ⬜ | | | | | depende de B4, B5 |
 | B7 · subida NIfTI | ⬜ | | | | | depende de B4 |
@@ -87,3 +87,12 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 - **Checks:** catalog: ruff ✅ · pyright ✅ · 12 passed ✅.
 - **Siguiente paso:** B3 (retomado), B5 (segmentation) y F2+F3+F4 (un solo subagente, porque comparten `App.tsx`)
   en paralelo. Después: B4 → conectar el frontend → ola 5.
+
+### CP-006 · 2026-10-27 · B3 · `2d27219`
+- **Hecho:** `volumetry.py` con `gtv_volumetry`, `rano_category` y `longitudinal`, portados de
+  `cerberus_eda.py:209-235` y `:300-312` con las mismas fórmulas y el mismo redondeo. 18 tests.
+- **Validación con datos reales (001/t0):** GTV 33.14 cm³ · cerebro 1231.3 cm³ · 2.69 % · LR/AP/SI 38/52/52 mm ·
+  ABC/2 51.38 cm³ (+55.0 %) · 1 componente · medible RANO. Valores de referencia para la verificación E2E (§10).
+- **Desviaciones:** un GTV vacío lanza `ValueError` (el notebook dividía entre cero). `ndi.label` se desempaqueta
+  con un `isinstance` para que pyright quede en 0 errores. Si falta la carpeta del paciente, `longitudinal` devuelve `[]`.
+- **Siguiente paso:** B4 (API de lectura) en paralelo con B5 y F2-F4, que siguen en curso.
