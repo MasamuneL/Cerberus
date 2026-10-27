@@ -1,4 +1,4 @@
-"""Endpoints de lectura de estudios (docs/PLAN_MVP.md §7, ticket B4).
+"""Endpoints de estudios (docs/PLAN_MVP.md §7): lectura (ticket B4) y segmentación MONAI (ticket B6).
 
 Todo identificador que llega en la URL se valida con `cerberus_api.sequences` (directamente o a través de
 `catalog`) **antes** de construir un `Path` (AGENTS.md, regla 9).
@@ -8,11 +8,21 @@ from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
+from pydantic import ValidationError
+from redis.exceptions import RedisError
 
 from cerberus_api import catalog
 from cerberus_api.config import Settings
-from cerberus_api.deps import SettingsDep
-from cerberus_api.schemas import LongitudinalPoint, Study, StudyDetail, Volumetry
+from cerberus_api.deps import REDIS_UNAVAILABLE, RedisDep, SettingsDep
+from cerberus_api.schemas import (
+    JobCreated,
+    LongitudinalPoint,
+    SegmentationResult,
+    Study,
+    StudyDetail,
+    Volumetry,
+)
+from cerberus_api.segmentation import CHANNEL_MAP
 from cerberus_api.sequences import validate_file_name, validate_patient, validate_timepoint
 from cerberus_api.volumetry import gtv_volumetry, longitudinal
 
@@ -90,3 +100,45 @@ def get_longitudinal(patient: str, settings: SettingsDep) -> list[LongitudinalPo
     except ValueError as exc:
         # Algún tiempo tiene el GTV vacío
         raise HTTPException(status_code=422, detail="Algún GTV del paciente está vacío") from exc
+
+
+# Secuencias que alimentan algún canal del modelo (t1gd, t1eg, t1tse, t2tse, t2star, flair)
+_CHANNEL_SEQS = frozenset(seq for cands in CHANNEL_MAP.values() for seq in cands)
+
+
+@router.post("/studies/{patient}/{timepoint}/segmentation", status_code=202)
+async def start_segmentation(patient: str, timepoint: str, settings: SettingsDep, redis: RedisDep) -> JobCreated:
+    """Encola `segment_study` en el worker; 404 si no existe el estudio, 422 sin secuencias de canal."""
+    study = catalog.get_study(settings.data_dir, settings.results_dir, patient, timepoint)
+    if study is None:
+        raise HTTPException(status_code=404, detail="Estudio no encontrado")
+    if not _CHANNEL_SEQS.intersection(study.sequences):
+        raise HTTPException(
+            status_code=422,
+            detail="El estudio no tiene ninguna secuencia MRI para el modelo (t1gd/t1eg/t1tse/t2tse/t2star/flair)",
+        )
+    try:
+        job = await redis.enqueue_job("segment_study", patient, timepoint)
+    except (RedisError, OSError) as exc:
+        raise HTTPException(status_code=503, detail=REDIS_UNAVAILABLE) from exc
+    if job is None:
+        # arq devuelve None si ya existe un job con ese id (no pasa con ids aleatorios)
+        raise HTTPException(status_code=409, detail="La segmentación ya está en cola")
+    return JobCreated(job_id=job.job_id)
+
+
+@router.get("/studies/{patient}/{timepoint}/segmentation")
+def get_segmentation(patient: str, timepoint: str, settings: SettingsDep) -> SegmentationResult:
+    """Resultado de la última segmentación (`monai_seg.json`); 404 si no hay o los IDs son inválidos."""
+    try:
+        validate_patient(patient)
+        validate_timepoint(timepoint)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail="Segmentación no encontrada") from exc
+    path = settings.results_dir / patient / timepoint / "monai_seg.json"
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail="Segmentación no encontrada")
+    try:
+        return SegmentationResult.model_validate_json(path.read_text(encoding="utf-8"))
+    except ValidationError as exc:
+        raise HTTPException(status_code=500, detail="monai_seg.json corrupto") from exc
