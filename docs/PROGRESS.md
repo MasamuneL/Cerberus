@@ -24,12 +24,13 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 | F5 · SegmentationPanel | ✅ | feat/F5-segmentation-panel | 2c19db0 | 2026-10-27 | Vikingo / Claude Code (subagente) | falta prueba visual |
 | F6 · UploadPanel | ✅ | feat/F6-upload-panel | b4c25e3 | 2026-10-27 | Vikingo / Claude Code (subagente) | flujo DICOM se valida en E2E con B8 |
 | D1 · README | ✅ | docs/D1-readme | 656b2b1 | 2026-10-27 | Vikingo / Claude Code (subagente) | |
-| E2E · Verificación §10 | ✅ | main | 656b2b1 | 2026-10-27 | Vikingo / Claude Code (orquestador) | API/flujo ✅; falta revisión visual WebGL por una persona |
+| E2E · Verificación §10 | ✅ | main | 656b2b1 | 2026-10-27 | Vikingo / Claude Code (orquestador) | API/flujo ✅; visual ✅ en CP-020 |
 | B9 · atlas + registro (§13) | ✅ | feat/B9-atlas-registration | 409bf37 | 2026-10-29 | Vikingo / Claude Code (subagente) | |
 | B10 · base de funciones (§13) | ✅ | feat/B10-area-kb | dcd2344 | 2026-10-29 | Vikingo / Claude Code (subagente) | |
 | B11 · reporte + job + API (§13) | ✅ | feat/B11-areas-report | a7371bd | 2026-10-29 | Vikingo / Claude Code (subagente) | |
 | F7 · panel de áreas + overlay (§13) | ✅ | feat/F7-areas-ui | b325bf5 | 2026-10-29 | Vikingo / Claude Code (subagente) | falta prueba con backend real |
-| E2E · áreas (§13) | ✅ | main | a7371bd | 2026-10-29 | Vikingo / Claude Code (orquestador) | API/flujo ✅; falta revisión visual por una persona |
+| E2E · áreas (§13) | ✅ | main | cbca8ad | 2026-10-29 | Vikingo / Claude Code (orquestador) | API/flujo ✅ + visual con Playwright ✅ |
+| F8 · ajustes visuales (Playwright) | ✅ | fix/F8-viewer-centering | cbca8ad | 2026-10-29 | Vikingo / Claude Code (subagente + orquestador) | |
 
 ## Bitácora de checkpoints
 
@@ -285,3 +286,22 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
   que su solapamiento puede ser menor.
 - **Checks:** ruff ✅ · pyright 0 ✅ · pytest 351 passed ✅ · slow ✅ · `npm run build` ✅.
 - **Pendiente:** revisión visual (overlay de áreas, modos, foco, colores y nombres en la lectura del cursor).
+
+### CP-020 · 2026-10-29 · verificación visual con Playwright + F8 · `cbca8ad`
+- **Método:** `playwright-core` 1.64.1 (fuera del repo) con Google Chrome headless y WebGL vía SwiftShader
+  (`--use-angle=swiftshader --enable-unsafe-swiftshader`), viewport 1440×900, contra la pila real en :5180. Nota: leer
+  píxeles del canvas WebGL con `drawImage` devuelve negro (`preserveDrawingBuffer=false`), así que se revisan
+  capturas de pantalla.
+- **Funcionaba de entrada:** lista (8), render 2D/3D, overlays GTV y MONAI alineados (005/t0), tablas de volumetría,
+  RANO y segmentación, panel de áreas (23 filas, BA40 izq. arriba), aviso educativo, modal de subida.
+- **Fallos encontrados → F8:** (1) la mira abría en el centro del volumen y en 001 los cortes no pasaban por el GTV;
+  (2) el panel de áreas a 340 px apilaba las funciones y cortaba la columna "% WT"; (3) warning de React por
+  `key` en `AreasTable`.
+- **Incidente:** el subagente de F8 reportó el centrado como resuelto, pero asignaba mm a `scene.crosshairPos`, que
+  es una **fracción** de la escena. Lo corrigió el orquestador: centroide de vóxeles en el orden del archivo → mm con
+  `hdr.affine` → `nv.mm2frac` (`vox2frac` no sirve porque usa `dimsRAS`, el volumen reorientado). Ahora la mira queda
+  en frac (0.359, 0.333, 0.72) sobre el tumor parietal izquierdo de 001.
+- **Verificado tras F8:** GTV (rojo), MONAI (naranja) y áreas de Brodmann (colores) visibles en 2D y 3D; el foco en
+  BA40 deja solo BA40 en 3D; las funciones van como chips en una fila propia; botón "Centrar en GTV". La consola solo
+  muestra un 404 esperado.
+- **Checks:** `npm run build` ✅.
