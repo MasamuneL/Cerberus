@@ -1,9 +1,29 @@
 // Colores de las áreas del atlas (§13), compartidos por AreasPanel y Viewer.
 // Valor de etiqueta = índice del atlas (hemisferio izquierdo) o índice + 100 (derecho).
-// El tono sale del índice del atlas con el ángulo áureo (colores vecinos bien separados);
-// el hemisferio derecho usa el mismo tono un poco más oscuro.
+//
+// Regla del sistema visual (§14): rojo, naranja y amarillo son exclusivos del tumor. Las áreas solo usan
+// tonos fríos: verdes (100°–160°) y cian → azul → violeta (175°–295°). Nunca 0–60° ni 330–360°.
+// El tono sale del índice del atlas con la razón áurea sobre esos dos tramos (vecinos bien separados);
+// el hemisferio derecho usa el mismo tono con menos luminosidad.
 
-const GOLDEN_ANGLE = 137.508;
+const GOLDEN_RATIO = 0.618033988749895;
+
+// Tramos de tono permitidos [inicio, fin) en grados.
+const HUE_BANDS: [number, number][] = [
+  [100, 160], // verdes
+  [175, 295], // cian, azul, violeta
+];
+const HUE_SPAN = HUE_BANDS.reduce((acc, [a, b]) => acc + (b - a), 0);
+
+/** Lleva t ∈ [0, 1) a un tono dentro de los tramos fríos. */
+function coolHue(t: number): number {
+  let x = t * HUE_SPAN;
+  for (const [a, b] of HUE_BANDS) {
+    if (x < b - a) return a + x;
+    x -= b - a;
+  }
+  return HUE_BANDS[HUE_BANDS.length - 1][1];
+}
 
 function hslToRgb(h: number, s: number, l: number): [number, number, number] {
   // h en grados, s y l en [0, 1]
@@ -21,14 +41,19 @@ function hslToRgb(h: number, s: number, l: number): [number, number, number] {
   return rgb.map((v) => Math.round((v + m) * 255)) as [number, number, number];
 }
 
+/** Tono (grados) de una etiqueta; el mismo para izquierdo y derecho. */
+export function areaHue(label: number): number {
+  const index = label > 100 ? label - 100 : label;
+  return coolHue((index * GOLDEN_RATIO) % 1);
+}
+
 /** Color RGB (0–255) determinista para una etiqueta de brodmann.nii.gz. */
 export function areaColor(label: number): [number, number, number] {
   const right = label > 100;
   const index = right ? label - 100 : label;
-  const hue = (index * GOLDEN_ANGLE) % 360;
   // Alternar saturación evita que dos tonos cercanos se confundan.
-  const sat = index % 2 === 0 ? 0.75 : 0.6;
-  return hslToRgb(hue, sat, right ? 0.45 : 0.6);
+  const sat = index % 2 === 0 ? 0.8 : 0.62;
+  return hslToRgb(areaHue(label), sat, right ? 0.42 : 0.62);
 }
 
 /** El mismo color como CSS `rgb(...)`. */

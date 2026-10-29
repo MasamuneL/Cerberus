@@ -6,6 +6,8 @@ import { useJob } from "../hooks/useJob";
 interface Props {
   study: StudyDetail;
   onCompleted: () => void;
+  /** Avisa cuando una segmentación empieza o termina (indicador en la pestaña). */
+  onBusyChange?: (busy: boolean) => void;
 }
 
 const TERMINAL = new Set(["complete", "failed", "not_found"]);
@@ -39,7 +41,7 @@ function statusText(s: JobStatus | null, elapsed: number): string {
   }
 }
 
-export default function SegmentationPanel({ study, onCompleted }: Props) {
+export default function SegmentationPanel({ study, onCompleted, onBusyChange }: Props) {
   const { patient, timepoint } = study;
   const [result, setResult] = useState<SegmentationResult | null>(null);
   const [loading, setLoading] = useState(true);
@@ -52,6 +54,8 @@ export default function SegmentationPanel({ study, onCompleted }: Props) {
   const handledJobRef = useRef<string | null>(null);
   const onCompletedRef = useRef(onCompleted);
   onCompletedRef.current = onCompleted;
+  const onBusyChangeRef = useRef(onBusyChange);
+  onBusyChangeRef.current = onBusyChange;
 
   const { status, error: pollError } = useJob(jobId);
   const running = jobId !== null && !pollError && (!status || !TERMINAL.has(status.status));
@@ -127,6 +131,9 @@ export default function SegmentationPanel({ study, onCompleted }: Props) {
   };
 
   const busy = starting || running;
+  useEffect(() => {
+    onBusyChangeRef.current?.(busy);
+  }, [busy]);
   const statusClass =
     status?.status === "failed" || status?.status === "not_found"
       ? "error"

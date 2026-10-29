@@ -32,11 +32,24 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 | E2E · áreas (§13) | ✅ | main | cbca8ad | 2026-10-29 | Vikingo / Claude Code (orquestador) | API/flujo ✅ + visual con Playwright ✅ |
 | F8 · ajustes visuales (Playwright) | ✅ | fix/F8-viewer-centering | cbca8ad | 2026-10-29 | Vikingo / Claude Code (subagente + orquestador) | |
 | B12 · dominios funcionales (§14) | ✅ | feat/B12-domains | 1088611 | 2026-10-29 | Vikingo / Claude Code (subagente) | |
-| F9 · capas + paleta + cursor (§14) | 🟡 | feat/F9-viewer-layers | | 2026-10-29 | Vikingo / Claude Code (subagente) | |
-| F10 · pestañas + funciones en riesgo (§14) | 🟡 | feat/F10-side-tabs | | 2026-10-29 | Vikingo / Claude Code (subagente) | |
+| F9 · capas + paleta + cursor (§14) | 🟡 | feature/ux-ui | | 2026-10-29 | Vikingo / Claude Code + Codex | Implementación recuperada; QA en curso |
+| F10 · pestañas + funciones en riesgo (§14) | 🟡 | feature/ux-ui | | 2026-10-29 | Vikingo / Claude Code + Codex | Implementación recuperada; QA en curso |
 | F11 · tipografía + accesibilidad + lista (§14) | ✅ | feat/F11-type-a11y | 5b7b024 | 2026-10-29 | Vikingo / Claude Code (subagente) | |
 
 ## Bitácora de checkpoints
+
+### CP-025 · 2026-10-29 · recuperación del handoff UX/UI (en curso)
+- **Pedido del usuario:** continuar el handoff de Claude, ejecutar o crear QA y subir a `feature/ux-ui`;
+  coordinar subagentes y dejar un estado recuperable. No hacer merge a `main`.
+- **Hecho:** `git pull` al día; rama creada conservando el árbol de F9/F10. Capas fuera del canvas, paleta fría,
+  lectura de cursor, atajos, pestañas y resumen de riesgos recuperados. Revisión paralela de visor y paneles;
+  QA separado en `tools/e2e` con `@axe-core/playwright` fijado y lockfile.
+- **Checks de entrada:** frontend build correcto; ruff y formato correctos; pyright 0 errores;
+  pytest rápido **425 passed, 5 deselected**. Aún no hay aprobación del QA visual actualizado.
+- **Hallazgo:** el QA anterior usa checkbox para MONAI y falla con los nuevos botones. Sus chequeos de píxeles
+  WebGL tampoco son válidos con `preserveDrawingBuffer=false`; reemplazarlos por asserts y capturas revisadas.
+- **Siguiente paso:** terminar revisión F9/F10 y QA a 1440×900 y 1280×800, revisar capturas, corregir los fallos,
+  repetir checks afectados y registrar CP-026 antes del push final a esta rama.
 
 ### CP-001 · 2026-10-27 · B0 · `31d619a`
 - **Hecho:** el paquete `backend/cerberus_api` se instala en modo editable (hatchling); ruff, pyright y pytest

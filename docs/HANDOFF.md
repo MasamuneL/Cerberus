@@ -4,7 +4,7 @@
 > checkpoint. El historial completo está en [`PROGRESS.md`](PROGRESS.md) y el alcance y los contratos en
 > [`PLAN_MVP.md`](PLAN_MVP.md). Las reglas de trabajo están en [`../AGENTS.md`](../AGENTS.md).
 
-**Última actualización:** 2026-10-29 · último checkpoint: CP-024 · rama base: `main`
+**Última actualización:** 2026-10-29 · último checkpoint: CP-025 · rama de trabajo: `feature/ux-ui`
 
 ## 1. Arranque rápido
 
@@ -39,14 +39,26 @@ B12 (dominios funcionales, §14) y F11 (tipografía, tokens AA y lista de estudi
 
 | Ticket | Estado | Qué falta |
 |---|---|---|
-| F9 · panel de capas + paleta fría + barra del cursor + atajos | 🟡 lo implementa un subagente (pendiente: el panel de capas **no debe tapar** el tile coronal; puede ser colapsable o ir fuera del canvas) | `Viewer.tsx`, `areaColors.ts`, `components/viewer.css` y `components/viewer/` |
-| F10 · pestañas + "Funciones en riesgo" + tabla accesible | 🟡 lo implementa un subagente | `App.tsx`, `SidePanel.tsx`, `RiskSummary.tsx`, `AreasPanel.tsx`, `VolumetryPanel.tsx`, `sidepanel.css` |
+| F9 · panel de capas + paleta fría + barra del cursor + atajos | 🟡 implementación recuperada de Claude; revisión y QA en curso | Capas fuera del canvas; comprobar lectura, atajos y opacidades durante cargas |
+| F10 · pestañas + "Funciones en riesgo" + tabla accesible | 🟡 implementación recuperada de Claude; revisión y QA en curso | Botones nativos en las filas; etapas del job sin progreso ficticio |
 
-**Trabajo sin commit:** si el árbol tiene cambios en `frontend/` que no están en `main`, son de F9 y F10. Hay una
-foto del trabajo en curso en la rama **`wip/ux-14`** (puede no compilar; es solo para no perderlo).
+**Continuación con Codex, a petición del usuario:** trabajar y subir exclusivamente a **`feature/ux-ui`**;
+no integrar a `main` durante esta tarea. CP-025 respalda la implementación heredada y las primeras correcciones.
+El respaldo anterior de Claude sigue en `wip/ux-14`.
+
+**Verificación hasta CP-025:** frontend build correcto; ruff y formato correctos; pyright sin errores;
+pytest rápido: **425 passed, 5 deselected**. El QA antiguo falla porque intenta desmarcar un checkbox que ahora
+es un botón `aria-pressed`. Se está actualizando `tools/e2e/verify.mjs` con Playwright y axe, fallos con exit 1,
+capturas a 1440×900 y 1280×800, teclado, riesgos y jobs simulados sin ejecutar MONAI/ANTs.
+
+**Trabajo repartido (solo contexto de esta sesión):** `viewer_f9` revisa el visor y sus componentes;
+`sidepanel_f10` revisa los paneles; `qa` actualiza `tools/e2e/`; el orquestador integra, documenta y sube.
+Notas temporales de recuperación en `/private/tmp/cerberus-{viewer-f9,sidepanel-f10,qa}.md`, si existen;
+el estado durable es esta rama y estos documentos.
 
 ### Cómo terminar §14 si retomas tú
-1. `git fetch && git checkout -b feat/ux-14 origin/wip/ux-14` (o parte de `main` si ya se integró algo).
+1. `git fetch && git checkout feature/ux-ui && git pull --ff-only` (si no existe localmente:
+   `git checkout -b feature/ux-ui origin/feature/ux-ui`).
 2. `cd frontend && npm install && npm run build`. Corrige los errores respetando la propiedad de archivos de
    la tabla de arriba.
 3. Cumple los criterios de §14 en `PLAN_MVP.md`. Lo crítico:
@@ -55,8 +67,8 @@ foto del trabajo en curso en la rama **`wip/ux-14`** (puede no compilar; es solo
      🟡 está a ≤ 10 mm. La severidad se marca con icono y texto, no con los colores del tumor.
    - Accesible por teclado (pestañas con flechas, filas con Enter), `aria-pressed` en los toggles y contraste AA.
 4. Verifica con `tools/e2e` en 1440×900 y 1280×800 y **revisa las capturas**.
-5. Haz un commit por ticket (`feat(F9): …`, `feat(F10): …`, `feat(F11): …`), merge a `main`, escribe el checkpoint
-   CP-0NN en `PROGRESS.md`, actualiza este archivo y haz push.
+5. Termina los fixes de F9/F10, corre el QA actualizado y revisa las PNG. Registra resultados y limitaciones
+   en `PROGRESS.md` y este archivo. Haz commit y push a `feature/ux-ui`; el merge a `main` queda pendiente.
 
 ## 3. Lecciones aprendidas (léelas, ahorran horas)
 - **Niivue `scene.crosshairPos` es una fracción 0–1, no mm.** Para centrar: vóxel (orden del archivo) → mm con
