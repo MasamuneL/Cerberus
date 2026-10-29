@@ -96,6 +96,8 @@ def test_report_overlaps_distances_and_order(synthetic: tuple[Path, Path]) -> No
     assert (ba40.area_cm3, ba40.overlap_gtv_cm3, ba40.overlap_gtv_pct, ba40.distance_mm) == (1.4, 0.2, 14.3, 0.0)
     assert ba40.eloquent is True
     assert "Procesamiento fonológico del lenguaje" in ba40.functions  # función del lado izquierdo
+    assert ba40.domains == ["lenguaje", "sensitivo"]  # dominios: lado izquierdo + generales (§14)
+    assert "lenguaje" not in ba44.domains and "motor" in ba44.domains  # BA44 derecho
 
     # Distancia en z con spacing anisotrópico (2 mm) y en x (1 mm)
     assert by[7].distance_mm == 6.0 and by[7].overlap_gtv_cm3 == 0.0 and by[7].overlap_gtv_pct == 0.0
@@ -108,6 +110,7 @@ def test_report_overlaps_distances_and_order(synthetic: tuple[Path, Path]) -> No
         [],
         False,
     )
+    assert by[9].domains == []
 
     # Sin WT: campos None
     assert all(a.overlap_wt_cm3 is None and a.overlap_wt_pct is None for a in areas)

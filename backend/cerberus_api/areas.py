@@ -19,7 +19,7 @@ from nibabel.processing import resample_from_to
 from scipy import ndimage
 
 from cerberus_api import atlas
-from cerberus_api.area_kb import area_info, functions_for
+from cerberus_api.area_kb import area_info, domains_for, functions_for
 from cerberus_api.atlas import ATLAS_NAME, affine_of
 from cerberus_api.nifti import load_nifti
 from cerberus_api.schemas import AffectedArea, AreaLabel, AreasResult, Hemisphere
@@ -140,6 +140,7 @@ def compute_area_report(
             overlap_wt_pct=round(100.0 * n_wt / n_area, 1) if n_wt is not None else None,
             distance_mm=round(d, 1),
             functions=functions_for(name, hemisphere),
+            domains=domains_for(name, hemisphere),
             eloquent=info.eloquent if info is not None else False,
         )
         if n_gtv > 0:

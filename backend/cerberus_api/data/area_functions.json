@@ -6,6 +6,9 @@
       "Sensibilidad táctil del lado contrario del cuerpo",
       "Discriminación de texturas"
     ],
+    "domains": [
+      "sensitivo"
+    ],
     "eloquent": true,
     "sources": [
       "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
@@ -22,6 +25,9 @@
       "Propiocepción (posición de las articulaciones)",
       "Reconocimiento del tamaño y la forma de objetos al tacto"
     ],
+    "domains": [
+      "sensitivo"
+    ],
     "eloquent": true,
     "sources": [
       "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
@@ -37,6 +43,9 @@
     "functions": [
       "Sensibilidad táctil y propioceptiva del lado contrario del cuerpo",
       "Mapa somatotópico del cuerpo (homúnculo sensitivo)"
+    ],
+    "domains": [
+      "sensitivo"
     ],
     "eloquent": true,
     "sources": [
@@ -55,6 +64,9 @@
       "Movimientos finos de mano y dedos",
       "Mapa somatotópico del cuerpo (homúnculo motor)"
     ],
+    "domains": [
+      "motor"
+    ],
     "eloquent": true,
     "sources": [
       "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
@@ -71,6 +83,10 @@
       "Integración de información somatosensorial",
       "Guía sensorial de los movimientos de brazos y manos"
     ],
+    "domains": [
+      "sensitivo",
+      "motor"
+    ],
     "eloquent": false,
     "sources": [
       "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
@@ -85,6 +101,9 @@
       "Planificación y secuenciación de movimientos",
       "Iniciación del movimiento voluntario",
       "Control de la postura y de movimientos bilaterales"
+    ],
+    "domains": [
+      "motor"
     ],
     "eloquent": true,
     "sources": [
@@ -102,6 +121,10 @@
       "Integración visuomotora (alcanzar y tomar objetos)",
       "Localización espacial y atención visuoespacial"
     ],
+    "domains": [
+      "vision",
+      "motor"
+    ],
     "eloquent": false,
     "sources": [
       "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
@@ -115,6 +138,10 @@
     "functions": [
       "Movimientos oculares voluntarios (sacádicos)",
       "Atención visual dirigida"
+    ],
+    "domains": [
+      "motor",
+      "vision"
     ],
     "eloquent": false,
     "sources": [
@@ -131,6 +158,9 @@
       "Memoria de trabajo",
       "Planificación y organización de la conducta"
     ],
+    "domains": [
+      "ejecutivo"
+    ],
     "eloquent": false,
     "sources": [
       "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
@@ -145,6 +175,9 @@
       "Planificación compleja y razonamiento",
       "Coordinación de varias tareas a la vez"
     ],
+    "domains": [
+      "ejecutivo"
+    ],
     "eloquent": false,
     "sources": [
       "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
@@ -158,6 +191,10 @@
     "functions": [
       "Valoración de recompensas y toma de decisiones",
       "Regulación de la conducta social y emocional"
+    ],
+    "domains": [
+      "ejecutivo",
+      "emocional"
     ],
     "eloquent": false,
     "sources": [
@@ -175,6 +212,11 @@
       "Regulación autonómica y visceral",
       "Procesamiento emocional"
     ],
+    "domains": [
+      "autonomico",
+      "emocional",
+      "sensitivo"
+    ],
     "eloquent": false,
     "sources": [
       "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
@@ -188,6 +230,9 @@
     "functions": [
       "Percepción visual del hemicampo contrario",
       "Procesamiento visual básico (orientación, contraste)"
+    ],
+    "domains": [
+      "vision"
     ],
     "eloquent": true,
     "sources": [
@@ -205,6 +250,9 @@
       "Procesamiento visual temprano de contornos y formas",
       "Relevo de información visual hacia áreas de asociación"
     ],
+    "domains": [
+      "vision"
+    ],
     "eloquent": false,
     "sources": [
       "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
@@ -218,6 +266,9 @@
     "functions": [
       "Percepción del color, el movimiento y la profundidad",
       "Integración de información visual"
+    ],
+    "domains": [
+      "vision"
     ],
     "eloquent": false,
     "sources": [
@@ -233,6 +284,10 @@
       "Reconocimiento visual de objetos (vía visual ventral)",
       "Memoria semántica"
     ],
+    "domains": [
+      "vision",
+      "memoria"
+    ],
     "eloquent": false,
     "sources": [
       "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
@@ -246,6 +301,12 @@
     "functions": [
       "Procesamiento del significado de las palabras (semántica)",
       "Procesamiento auditivo de asociación"
+    ],
+    "domains": [
+      "audicion"
+    ],
+    "domains_left": [
+      "lenguaje"
     ],
     "eloquent": false,
     "sources": [
@@ -267,6 +328,12 @@
       "Percepción de la prosodia y la entonación del habla",
       "Percepción de la música (melodía)"
     ],
+    "domains": [
+      "audicion"
+    ],
+    "domains_left": [
+      "lenguaje"
+    ],
     "eloquent": true,
     "sources": [
       "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
@@ -283,6 +350,9 @@
       "Memoria episódica y autobiográfica",
       "Pensamiento autorreferencial (red neuronal por defecto)"
     ],
+    "domains": [
+      "memoria"
+    ],
     "eloquent": false,
     "sources": [
       "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
@@ -298,6 +368,10 @@
       "Componente afectivo del dolor",
       "Regulación autonómica"
     ],
+    "domains": [
+      "emocional",
+      "autonomico"
+    ],
     "eloquent": false,
     "sources": [
       "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
@@ -312,6 +386,10 @@
       "Regulación del estado de ánimo",
       "Regulación autonómica"
     ],
+    "domains": [
+      "emocional",
+      "autonomico"
+    ],
     "eloquent": false,
     "sources": [
       "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
@@ -325,6 +403,9 @@
     "functions": [
       "Relevo de información hacia y desde el hipocampo",
       "Memoria y orientación espacial"
+    ],
+    "domains": [
+      "memoria"
     ],
     "eloquent": false,
     "sources": [
@@ -341,6 +422,9 @@
       "Formación de la memoria",
       "Navegación espacial"
     ],
+    "domains": [
+      "memoria"
+    ],
     "eloquent": false,
     "sources": [
       "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
@@ -354,6 +438,9 @@
     "functions": [
       "Memoria episódica",
       "Navegación y orientación espacial"
+    ],
+    "domains": [
+      "memoria"
     ],
     "eloquent": false,
     "sources": [
@@ -369,6 +456,9 @@
       "Memoria episódica",
       "Navegación y orientación espacial"
     ],
+    "domains": [
+      "memoria"
+    ],
     "eloquent": false,
     "sources": [
       "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
@@ -382,6 +472,10 @@
     "functions": [
       "Integración de información visuoespacial",
       "Pensamiento autorreferencial (red neuronal por defecto)"
+    ],
+    "domains": [
+      "vision",
+      "otro"
     ],
     "eloquent": false,
     "sources": [
@@ -397,6 +491,10 @@
       "Control cognitivo y detección de errores",
       "Regulación emocional"
     ],
+    "domains": [
+      "ejecutivo",
+      "emocional"
+    ],
     "eloquent": false,
     "sources": [
       "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
@@ -410,6 +508,9 @@
     "functions": [
       "Procesamiento emocional",
       "Procesamiento del dolor"
+    ],
+    "domains": [
+      "emocional"
     ],
     "eloquent": false,
     "sources": [
@@ -425,6 +526,10 @@
       "Procesamiento olfatorio",
       "Formación de la memoria"
     ],
+    "domains": [
+      "memoria",
+      "otro"
+    ],
     "eloquent": false,
     "sources": [
       "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
@@ -439,6 +544,9 @@
       "Memoria de reconocimiento (familiaridad)",
       "Reconocimiento de objetos"
     ],
+    "domains": [
+      "memoria"
+    ],
     "eloquent": false,
     "sources": [
       "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
@@ -452,6 +560,9 @@
     "functions": [
       "Memoria contextual y espacial",
       "Reconocimiento de escenas y lugares"
+    ],
+    "domains": [
+      "memoria"
     ],
     "eloquent": false,
     "sources": [
@@ -473,6 +584,12 @@
     "functions_right": [
       "Reconocimiento de rostros"
     ],
+    "domains": [
+      "vision"
+    ],
+    "domains_left": [
+      "lenguaje"
+    ],
     "eloquent": false,
     "sources": [
       "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
@@ -486,6 +603,10 @@
     "functions": [
       "Memoria semántica",
       "Procesamiento socioemocional"
+    ],
+    "domains": [
+      "memoria",
+      "emocional"
     ],
     "eloquent": false,
     "sources": [
@@ -507,6 +628,15 @@
     ],
     "functions_right": [
       "Atención espacial (su lesión puede causar negligencia del lado izquierdo)"
+    ],
+    "domains": [
+      "otro"
+    ],
+    "domains_left": [
+      "lenguaje"
+    ],
+    "domains_right": [
+      "otro"
     ],
     "eloquent": true,
     "sources": [
@@ -531,6 +661,15 @@
     "functions_right": [
       "Atención espacial (su lesión puede causar negligencia del lado izquierdo)"
     ],
+    "domains": [
+      "sensitivo"
+    ],
+    "domains_left": [
+      "lenguaje"
+    ],
+    "domains_right": [
+      "otro"
+    ],
     "eloquent": true,
     "sources": [
       "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
@@ -546,6 +685,9 @@
     "functions": [
       "Percepción de sonidos (tono e intensidad)",
       "Mapa tonotópico de frecuencias"
+    ],
+    "domains": [
+      "audicion"
     ],
     "eloquent": true,
     "sources": [
@@ -563,6 +705,9 @@
       "Procesamiento auditivo temprano",
       "Análisis de sonidos complejos"
     ],
+    "domains": [
+      "audicion"
+    ],
     "eloquent": true,
     "sources": [
       "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
@@ -578,6 +723,9 @@
     "functions": [
       "Procesamiento del gusto",
       "Sensibilidad de la cara y la boca"
+    ],
+    "domains": [
+      "sensitivo"
     ],
     "eloquent": false,
     "sources": [
@@ -602,6 +750,16 @@
       "Prosodia expresiva del habla",
       "Inhibición de respuestas"
     ],
+    "domains": [
+      "motor"
+    ],
+    "domains_left": [
+      "lenguaje"
+    ],
+    "domains_right": [
+      "otro",
+      "ejecutivo"
+    ],
     "eloquent": true,
     "sources": [
       "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
@@ -625,6 +783,15 @@
       "Prosodia expresiva del habla",
       "Inhibición de respuestas"
     ],
+    "domains": [
+      "ejecutivo"
+    ],
+    "domains_left": [
+      "lenguaje"
+    ],
+    "domains_right": [
+      "otro"
+    ],
     "eloquent": true,
     "sources": [
       "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
@@ -642,6 +809,9 @@
       "Atención sostenida",
       "Planificación y control ejecutivo"
     ],
+    "domains": [
+      "ejecutivo"
+    ],
     "eloquent": false,
     "sources": [
       "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
@@ -656,6 +826,12 @@
       "Procesamiento del significado del lenguaje",
       "Regulación de la conducta"
     ],
+    "domains": [
+      "ejecutivo"
+    ],
+    "domains_left": [
+      "lenguaje"
+    ],
     "eloquent": false,
     "sources": [
       "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
@@ -669,6 +845,9 @@
     "functions": [
       "Planificación y coordinación de movimientos voluntarios",
       "Sincronización de la actividad motora"
+    ],
+    "domains": [
+      "motor"
     ],
     "eloquent": true,
     "sources": [
@@ -686,6 +865,9 @@
       "Control del movimiento (ganglios basales)",
       "Aprendizaje de hábitos motores"
     ],
+    "domains": [
+      "motor"
+    ],
     "eloquent": false,
     "sources": [
       "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
@@ -701,6 +883,11 @@
       "Memoria emocional",
       "Respuestas autonómicas ante amenazas"
     ],
+    "domains": [
+      "emocional",
+      "memoria",
+      "autonomico"
+    ],
     "eloquent": false,
     "sources": [
       "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
@@ -714,6 +901,9 @@
     "functions": [
       "Atención visual",
       "Relevo de información visual hacia áreas de asociación"
+    ],
+    "domains": [
+      "vision"
     ],
     "eloquent": true,
     "sources": [
@@ -737,6 +927,9 @@
     "functions_right": [
       "Memoria visuoespacial (no verbal)"
     ],
+    "domains": [
+      "memoria"
+    ],
     "eloquent": true,
     "sources": [
       "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
@@ -751,6 +944,9 @@
     "kind": "subcortical",
     "functions": [
       "Conducción de la información visual del hemicampo contrario"
+    ],
+    "domains": [
+      "vision"
     ],
     "eloquent": true,
     "sources": [
@@ -768,6 +964,9 @@
       "Coordinación motora (vía rubroespinal)",
       "Relevo de circuitos cerebelosos"
     ],
+    "domains": [
+      "motor"
+    ],
     "eloquent": true,
     "sources": [
       "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
@@ -784,6 +983,9 @@
       "Control del movimiento (ganglios basales)",
       "Aprendizaje basado en recompensas"
     ],
+    "domains": [
+      "motor"
+    ],
     "eloquent": false,
     "sources": [
       "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
@@ -799,6 +1001,10 @@
       "Aprendizaje basado en recompensas",
       "Control del movimiento (ganglios basales)"
     ],
+    "domains": [
+      "ejecutivo",
+      "motor"
+    ],
     "eloquent": false,
     "sources": [
       "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
@@ -812,6 +1018,9 @@
     "functions": [
       "Control del movimiento (ganglios basales)",
       "Aprendizaje"
+    ],
+    "domains": [
+      "motor"
     ],
     "eloquent": false,
     "sources": [
@@ -829,6 +1038,9 @@
       "Regulación del sistema nervioso autónomo",
       "Ritmos circadianos"
     ],
+    "domains": [
+      "autonomico"
+    ],
     "eloquent": true,
     "sources": [
       "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
@@ -844,6 +1056,9 @@
     "functions": [
       "Comunicación entre ambos hemisferios cerebrales"
     ],
+    "domains": [
+      "otro"
+    ],
     "eloquent": false,
     "sources": [
       "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
@@ -856,6 +1071,9 @@
     "kind": "subcortical",
     "functions": [
       "Memoria (circuito de Papez)"
+    ],
+    "domains": [
+      "memoria"
     ],
     "eloquent": true,
     "sources": [
@@ -873,6 +1091,9 @@
       "Alerta y vigilia",
       "Conexiones con el sistema límbico"
     ],
+    "domains": [
+      "otro"
+    ],
     "eloquent": true,
     "sources": [
       "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
@@ -888,6 +1109,9 @@
     "functions": [
       "Producción de dopamina para el control del movimiento",
       "Regulación de los ganglios basales"
+    ],
+    "domains": [
+      "motor"
     ],
     "eloquent": true,
     "sources": [
@@ -905,6 +1129,9 @@
       "Memoria (circuito de Papez)",
       "Relevo límbico hacia la corteza cingulada"
     ],
+    "domains": [
+      "memoria"
+    ],
     "eloquent": true,
     "sources": [
       "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
@@ -921,6 +1148,9 @@
       "Comunicación entre ambos lóbulos temporales",
       "Conexión de vías olfatorias entre hemisferios"
     ],
+    "domains": [
+      "otro"
+    ],
     "eloquent": false,
     "sources": [
       "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
@@ -934,6 +1164,9 @@
     "functions": [
       "Control del movimiento (ganglios basales)",
       "Su lesión puede causar movimientos involuntarios del lado contrario (hemibalismo)"
+    ],
+    "domains": [
+      "motor"
     ],
     "eloquent": true,
     "sources": [
@@ -952,6 +1185,11 @@
       "Memoria",
       "Procesamiento emocional"
     ],
+    "domains": [
+      "ejecutivo",
+      "memoria",
+      "emocional"
+    ],
     "eloquent": true,
     "sources": [
       "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
@@ -966,6 +1204,9 @@
     "kind": "subcortical",
     "functions": [
       "Relevo de la información auditiva hacia la corteza auditiva"
+    ],
+    "domains": [
+      "audicion"
     ],
     "eloquent": true,
     "sources": [
@@ -983,6 +1224,9 @@
       "Relevo límbico hacia la corteza cingulada",
       "Memoria"
     ],
+    "domains": [
+      "memoria"
+    ],
     "eloquent": true,
     "sources": [
       "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
@@ -997,6 +1241,9 @@
     "kind": "subcortical",
     "functions": [
       "Relevo de la información visual hacia la corteza visual primaria"
+    ],
+    "domains": [
+      "vision"
     ],
     "eloquent": true,
     "sources": [
@@ -1014,6 +1261,9 @@
       "Principal salida de los ganglios basales",
       "Control del movimiento"
     ],
+    "domains": [
+      "motor"
+    ],
     "eloquent": false,
     "sources": [
       "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
@@ -1026,6 +1276,9 @@
     "kind": "subcortical",
     "functions": [
       "Regulación del movimiento (vía indirecta de los ganglios basales)"
+    ],
+    "domains": [
+      "motor"
     ],
     "eloquent": false,
     "sources": [
@@ -1040,6 +1293,9 @@
     "functions": [
       "Relevo motor del cerebelo y los ganglios basales hacia la corteza motora",
       "Coordinación del movimiento"
+    ],
+    "domains": [
+      "motor"
     ],
     "eloquent": true,
     "sources": [
@@ -1057,6 +1313,9 @@
       "Relevo de los ganglios basales hacia la corteza premotora",
       "Planificación del movimiento"
     ],
+    "domains": [
+      "motor"
+    ],
     "eloquent": true,
     "sources": [
       "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
@@ -1072,6 +1331,9 @@
     "functions": [
       "Relevo hacia la corteza parietal de asociación",
       "Integración sensorial"
+    ],
+    "domains": [
+      "sensitivo"
     ],
     "eloquent": true,
     "sources": [
@@ -1089,6 +1351,9 @@
       "Relevo de la sensibilidad de la cara",
       "Relevo de la información del gusto"
     ],
+    "domains": [
+      "sensitivo"
+    ],
     "eloquent": true,
     "sources": [
       "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
@@ -1103,6 +1368,9 @@
     "kind": "subcortical",
     "functions": [
       "Relevo de la sensibilidad del cuerpo (tacto, propiocepción, dolor y temperatura)"
+    ],
+    "domains": [
+      "sensitivo"
     ],
     "eloquent": true,
     "sources": [

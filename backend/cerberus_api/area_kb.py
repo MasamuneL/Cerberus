@@ -13,7 +13,7 @@ from importlib.resources import files
 
 from pydantic import BaseModel
 
-from cerberus_api.schemas import AreaKind, Hemisphere
+from cerberus_api.schemas import AreaKind, Domain, Hemisphere
 
 
 class AreaInfo(BaseModel):
@@ -24,6 +24,10 @@ class AreaInfo(BaseModel):
     functions: list[str]  # funciones comunes a ambos hemisferios
     functions_left: list[str] = []  # solo cuando la lateralización está bien establecida
     functions_right: list[str] = []
+    # Dominios funcionales (§14). Atención espacial / integración multimodal / alerta / olfato → "otro".
+    domains: list[Domain] = []
+    domains_left: list[Domain] = []
+    domains_right: list[Domain] = []
     eloquent: bool = False  # lesión → déficit neurológico evidente
     sources: list[str]
 
@@ -51,3 +55,15 @@ def functions_for(name: str, hemisphere: Hemisphere) -> list[str]:
         return []
     side = info.functions_left if hemisphere == "izquierdo" else info.functions_right
     return list(dict.fromkeys([*side, *info.functions]))
+
+
+def domains_for(name: str, hemisphere: Hemisphere) -> list[Domain]:
+    """Dominios funcionales del área en un hemisferio: primero los del lado y luego los generales.
+
+    Sin duplicados y conservando el orden. Un nombre desconocido devuelve `[]`.
+    """
+    info = area_info(name)
+    if info is None:
+        return []
+    side = info.domains_left if hemisphere == "izquierdo" else info.domains_right
+    return list(dict.fromkeys([*side, *info.domains]))

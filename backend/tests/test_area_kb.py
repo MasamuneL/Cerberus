@@ -1,9 +1,12 @@
 """Tests de la base curada de funciones por área (§13, ticket B10)."""
 
+from typing import get_args
+
 import pytest
 
 from cerberus_api import area_kb
-from cerberus_api.area_kb import AreaInfo, area_info, functions_for, load_area_kb
+from cerberus_api.area_kb import AreaInfo, area_info, domains_for, functions_for, load_area_kb
+from cerberus_api.schemas import Domain
 
 BA_NUMBERS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, *range(17, 26), *range(27, 48)]
 SUBCORTICAL = [
@@ -99,3 +102,55 @@ def test_functions_for_side_first_and_dedup(monkeypatch: pytest.MonkeyPatch):
 
 def test_load_is_cached():
     assert load_area_kb() is load_area_kb()
+
+
+# --- Dominios funcionales (§14, ticket B12) ---------------------------------------------------------------
+
+VALID_DOMAINS = set(get_args(Domain))
+
+
+@pytest.mark.parametrize("name", ATLAS_NAMES)
+def test_entry_domains_are_valid(name: str):
+    info = load_area_kb()[name]
+    assert 1 <= len(info.domains) <= 3
+    for doms in (info.domains, info.domains_left, info.domains_right):
+        assert set(doms) <= VALID_DOMAINS
+        assert len(doms) == len(set(doms))
+    for side in ("izquierdo", "derecho"):
+        assert 1 <= len(domains_for(name, side)) <= 4
+
+
+def test_domains_lateralization_and_classics():
+    assert "lenguaje" in domains_for("Brodmann area 44", "izquierdo")
+    assert "lenguaje" not in domains_for("Brodmann area 44", "derecho")
+    assert "lenguaje" in domains_for("Brodmann area 45", "izquierdo")
+    assert "lenguaje" not in domains_for("Brodmann area 45", "derecho")
+    assert "motor" in domains_for("Brodmann area 4", "izquierdo")
+    assert "motor" in domains_for("Brodmann area 4", "derecho")
+    assert "memoria" in domains_for("Hippocampus", "derecho")
+    assert "sensitivo" in domains_for("Brodmann area 3", "izquierdo")
+    assert "vision" in domains_for("Brodmann area 17", "derecho")
+    assert "audicion" in domains_for("Brodmann area 41", "izquierdo")
+    assert "emocional" in domains_for("Amygdala", "izquierdo")
+    assert "autonomico" in domains_for("Hypothalamus", "izquierdo")
+
+
+def test_domains_for_unknown():
+    assert domains_for("Background", "izquierdo") == []
+    assert domains_for("No existe", "derecho") == []
+
+
+def test_domains_for_side_first_and_dedup(monkeypatch: pytest.MonkeyPatch):
+    fake = {
+        "X": AreaInfo(
+            name_es="X",
+            kind="cortical",
+            functions=["f"],
+            domains=["otro", "lenguaje"],
+            domains_left=["lenguaje", "memoria"],
+            sources=["s"],
+        )
+    }
+    monkeypatch.setattr(area_kb, "load_area_kb", lambda: fake)
+    assert domains_for("X", "izquierdo") == ["lenguaje", "memoria", "otro"]
+    assert domains_for("X", "derecho") == ["otro", "lenguaje"]
