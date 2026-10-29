@@ -84,7 +84,7 @@ function AreasTable({ rows, showWt, focusedLabel, onFocusLabel }: TableProps) {
     <table className="data-table areas-table">
       <thead>
         <tr>
-          <th scope="col">Área</th><th scope="col">Hemisferio</th><th scope="col">% GTV</th>
+          <th scope="col">Área</th><th scope="col"><abbr title="Hemisferio">Hem.</abbr></th><th scope="col">% GTV</th>
           <th scope="col">cm³</th><th scope="col">mm</th>{showWt && <th scope="col">% WT</th>}
         </tr>
       </thead>

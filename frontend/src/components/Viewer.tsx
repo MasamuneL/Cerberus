@@ -129,14 +129,18 @@ const SEG_LABELS = {
  * - I son los valores de vóxel; el LUT denso va de min(I) a max(I) y los huecos quedan con alpha 0.
  * - labels puede tener la longitud de I (se alinea por posición con I) o la del LUT denso.
  * - Si se pasa A, se usa tal cual (no se fuerza alpha 0 en el fondo), por eso el 0 va explícito con A=0.
- * Se incluye el 0 para que min = 0: el texto de ubicación de Niivue indexa labels[valor] directamente.
+ * Dos entradas transparentes negativas protegen el fondo: el shader de Niivue fuerza la coordenada
+ * mínima a 2/256 y, con min=0, el filtrado lineal mezcla el color de la etiqueta 1 con el fondo.
+ * Los nombres se indexan por valor real porque Niivue consulta labels[valor] directamente.
  */
 function buildAreasColormap(areas: AreasResult, mode: AreasMode, focus: number | null): LabelColorMap {
   const reported = new Set(areas.areas.map((a) => a.label));
   const lut = [...new Map(areas.lut.filter((l) => l.label > 0).map((l) => [l.label, l])).values()].sort(
     (a, b) => a.label - b.label,
   );
-  const cm: LabelColorMap = { R: [0], G: [0], B: [0], A: [0], I: [0], labels: ["Fondo"] };
+  const cm: LabelColorMap = { R: [0, 0, 0], G: [0, 0, 0], B: [0, 0, 0], A: [0, 0, 0], I: [-2, -1, 0], labels: [] };
+  cm.labels = Array((lut.at(-1)?.label ?? 0) + 3).fill("?");
+  cm.labels[0] = "Fondo";
   for (const l of lut) {
     const [r, g, b] = areaColor(l.label);
     let alpha: number;
@@ -148,7 +152,7 @@ function buildAreasColormap(areas: AreasResult, mode: AreasMode, focus: number |
     cm.B.push(b);
     cm.A.push(alpha);
     cm.I.push(l.label);
-    cm.labels.push(`${l.name_es} (${l.hemisphere})`);
+    cm.labels[l.label] = `${l.name_es} (${l.hemisphere})`;
   }
   return cm;
 }

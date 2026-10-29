@@ -61,8 +61,18 @@
 .sidepanel .panel { width: auto; padding: 0; border: none; background: transparent; }
 
 /* --- Filas de la tabla de áreas: foco de teclado visible --- */
+.sidepanel .areas-table {
+  table-layout: fixed;
+}
+.sidepanel .areas-table th,
+.sidepanel .areas-table td {
+  padding-left: 0.2rem; padding-right: 0.2rem; overflow-wrap: anywhere;
+}
+.sidepanel .areas-table th:first-child { width: 32%; }
+.sidepanel .area-name { min-width: 0; }
 .sidepanel .area-focus {
   padding: 0; border: 0; background: transparent; color: inherit;
+  min-width: 0; max-width: 100%; overflow-wrap: anywhere;
   font: inherit; text-align: left; text-decoration: underline; text-underline-offset: 2px; cursor: pointer;
 }
 .sidepanel .area-focus:focus-visible {

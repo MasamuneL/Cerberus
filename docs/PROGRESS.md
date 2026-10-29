@@ -38,22 +38,6 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 
 ## Bitácora de checkpoints
 
-### CP-025 · 2026-10-29 · recuperación del handoff UX/UI (en curso)
-- **Pedido del usuario:** continuar el handoff de Claude, ejecutar o crear QA y subir a `feature/ux-ui`;
-  coordinar subagentes y dejar un estado recuperable. No hacer merge a `main`.
-- **Hecho:** `git pull` al día; rama creada conservando el árbol de F9/F10. Capas fuera del canvas, paleta fría,
-  lectura de cursor, atajos, pestañas y resumen de riesgos recuperados. Revisión paralela de visor y paneles;
-  QA separado en `tools/e2e` con `@axe-core/playwright` fijado y lockfile.
-- **Checks de entrada:** frontend build correcto; ruff y formato correctos; pyright 0 errores;
-  pytest rápido **425 passed, 5 deselected**. Aún no hay aprobación del QA visual actualizado.
-- **Hallazgo:** el QA anterior usa checkbox para MONAI y falla con los nuevos botones. Sus chequeos de píxeles
-  WebGL tampoco son válidos con `preserveDrawingBuffer=false`; reemplazarlos por asserts y capturas revisadas.
-- **Revisión posterior:** se corrigieron opacidades durante cargas, lecturas parciales y atajos con foco en la
-  subida. Texto GTV: contraste de 4.42:1 a 6.45:1. Revisión independiente sin bloqueantes; build repetido correcto.
-  El QA completo sigue en ejecución y no debe contarse como aprobado todavía.
-- **Siguiente paso:** terminar revisión F9/F10 y QA a 1440×900 y 1280×800, revisar capturas, corregir los fallos,
-  repetir checks afectados y registrar CP-026 antes del push final a esta rama.
-
 ### CP-001 · 2026-10-27 · B0 · `31d619a`
 - **Hecho:** el paquete `backend/cerberus_api` se instala en modo editable (hatchling); ruff, pyright y pytest
   configurados en `pyproject.toml`; fixtures `make_nifti`/`make_study` en `backend/tests/conftest.py`, con un cubo
@@ -365,3 +349,31 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
   sin tocar el árbol de trabajo, donde siguen F9 y F10.
 - **Feedback a F9 (en curso):** el panel de capas flotaba sobre el tile coronal y lo tapaba, y "Áreas…" se truncaba
   a 1280 px. Se le pidió que lo saque del canvas o lo haga colapsable.
+
+### CP-025 · 2026-10-29 · recuperación del handoff UX/UI (en curso)
+- **Pedido del usuario:** continuar el handoff de Claude, ejecutar o crear QA y subir a `feature/ux-ui`;
+  coordinar subagentes y dejar un estado recuperable. No hacer merge a `main`.
+- **Hecho:** `git pull` al día; rama creada conservando el árbol de F9/F10. Capas fuera del canvas, paleta fría,
+  lectura de cursor, atajos, pestañas y resumen de riesgos recuperados. Revisión paralela de visor y paneles;
+  QA separado en `tools/e2e` con `@axe-core/playwright` fijado y lockfile.
+- **Checks de entrada:** frontend build correcto; ruff y formato correctos; pyright 0 errores;
+  pytest rápido **425 passed, 5 deselected**. Aún no hay aprobación del QA visual actualizado.
+- **Hallazgo:** el QA anterior usa checkbox para MONAI y falla con los nuevos botones. Sus chequeos de píxeles
+  WebGL tampoco son válidos con `preserveDrawingBuffer=false`; reemplazarlos por asserts y capturas revisadas.
+- **Revisión posterior:** se corrigieron opacidades durante cargas, lecturas parciales y atajos con foco en la
+  subida. Texto GTV: contraste de 4.42:1 a 6.45:1. Revisión independiente sin bloqueantes; build repetido correcto.
+  El QA completo sigue en ejecución y no debe contarse como aprobado todavía.
+- **Siguiente paso:** terminar revisión F9/F10 y QA a 1440×900 y 1280×800, revisar capturas, corregir los fallos,
+  repetir checks afectados y registrar CP-026 antes del push final a esta rama.
+
+### CP-026 · 2026-10-29 · QA UX/UI y correcciones (en curso)
+- **Hecho:** QA reproducible con asserts, exit 1 al fallar, cierre del navegador, dos tamaños de ventana,
+  axe, pruebas de teclado, funciones en riesgo, paleta, cambios de opacidad durante descarga y jobs simulados.
+  Reportes y capturas ignorados por Git; instrucciones en `tools/e2e/README.md`.
+- **Hallazgos reales:** modo «Todas» pintaba el fondo azul y un cubo opaco en 3D (mezcla del shader Niivue
+  con la primera etiqueta); la tabla de 005/t0 desbordaba 6 px. Corregidos con guardas transparentes en el LUT,
+  nombres alineados por etiqueta real y columnas/envoltura de tabla ajustadas.
+- **Verificación parcial:** capturas de 1440×900 y 1280×800 revisadas; teclado y auditorías axe sin hallazgos
+  en las pantallas comprobadas. La suite completa detectó el desborde antes del fix. **No está aprobada aún.**
+- **Siguiente paso:** comprobar ambas correcciones en Chrome, obtener una pasada final de QA, revisar las
+  capturas nuevas y registrar CP-027. Mantener los cambios en `feature/ux-ui`, sin merge a `main`.

@@ -1,0 +1,38 @@
+# Verificación de UX/UI (§14)
+
+Requiere Chrome instalado, la API y el servidor Vite de desarrollo en ejecución, y los estudios reales
+001/t0 y 005/t0 con segmentación y mapa de áreas. El catálogo de referencia tiene ocho estudios.
+
+```bash
+cd tools/e2e
+npm ci
+CERBERUS_UI=http://localhost:5180 npm run verify
+```
+
+La URL predeterminada es `http://localhost:5173`. `CERBERUS_TIMEOUT` permite cambiar el límite de espera de
+carga de volúmenes (180000 ms por defecto). No ejecutes varias instancias simultáneamente: SwiftShader usa
+bastante CPU y memoria durante la carga de Niivue.
+
+La verificación cubre 1440×900 y 1280×800, pestañas y filas con teclado, capas y lectura del cursor,
+volumetría, segmentación, evolución, funciones en riesgo y límites 5/10 mm, paleta fría, aviso de
+anonimización y axe con reglas WCAG 2.1 AA. Los escenarios de jobs usan `page.route`: ningún POST llega a
+la API real. Las mutaciones no previstas se bloquean y hacen fallar la ejecución. No requiere Redis ni
+worker para los jobs simulados; no ejecuta MONAI, ANTs ni subidas.
+
+Las capturas y `shots/report.json` quedan ignorados por Git. Cualquier aserción fallida produce código de
+salida 1; el navegador se cierra mediante `finally`. Los 404 solo son esperados para endpoints de
+resultados ausentes; otros fallos HTTP, errores JavaScript y errores de consola hacen fallar la prueba.
+
+Revisa las PNG manualmente, especialmente la imagen coronal, los ajustes abiertos y los dos tamaños de
+ventana. No hay línea base visual previa: las capturas no prueban por sí solas ausencia de regresiones.
+El script no lee píxeles con `drawImage(canvas)`: WebGL usa `preserveDrawingBuffer=false`. Comprueba carga
+real y estado de volúmenes y conserva las capturas del compositor para revisión humana. Axe complementa
+las pruebas de teclado; sus hallazgos incompletos quedan en el reporte y requieren revisión humana.
+
+La regresión del fondo del atlas también puede repetirse aisladamente con
+`CERBERUS_UI=http://localhost:5180 node verify-background.mjs`. Este comando verifica las entradas
+transparentes del LUT, el fondo cero, etiquetas visibles y el nombre del área enfocada. Guarda capturas
+de los modos «Todas» y «Solo afectadas», además de `shots/background-report.json`. La suite principal
+incluye las mismas comprobaciones del LUT y verifica la opacidad final tras cambiarla durante una
+descarga interceptada. Las interacciones extendidas del visor y los jobs se ejecutan en 1440×900;
+ambos tamaños cubren pestañas, tablas, datos reales, estudio distinto, aviso de subida y axe.
