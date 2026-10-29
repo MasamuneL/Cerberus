@@ -39,6 +39,23 @@ dev = [
     "pytest>=9.1.1",
     "ruff>=0.17.3",
 ]
+runtime = [
+    "antspyx>=0.5.3",
+    "arq>=0.28.0",
+    "dcm2niix>=1.0.20260724",
+    "fastapi>=0.162.0",
+    "huggingface-hub>=2.2.0",
+    "monai[nibabel]>=1.6.1",
+    "nibabel>=5.4.2",
+    "nilearn>=0.14.1",
+    "numpy>=2.4.6",
+    "pydantic-settings>=2.16.1",
+    "pydicom>=3.0.2",
+    "python-multipart>=0.0.32",
+    "scipy>=1.17.1",
+    "torch>=2.14.1",
+    "uvicorn[standard]>=0.54.0",
+]
 
 [build-system]
 requires = ["hatchling"]
@@ -66,3 +83,11 @@ extraPaths = ["backend/tests"]
 [tool.pytest.ini_options]
 testpaths = ["backend/tests"]
 markers = ["slow: tests que usan el modelo MONAI real o dcm2niix real"]
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu", marker = "sys_platform == 'linux'" }]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
