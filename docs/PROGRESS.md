@@ -35,7 +35,7 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 | F9 · capas + paleta + cursor (§14) | ✅ | feature/ux-ui | fad8562, af22c29, d406354 | 2026-10-29 | Vikingo / Claude Code + Codex | Integrado en main: PR #1, bcef409; CP-028 |
 | F10 · pestañas + funciones en riesgo (§14) | ✅ | feature/ux-ui | fad8562, d406354 | 2026-10-29 | Vikingo / Claude Code + Codex | Integrado en main: PR #1, bcef409; CP-028 |
 | F11 · tipografía + accesibilidad + lista (§14) | ✅ | feat/F11-type-a11y | 5b7b024 | 2026-10-29 | Vikingo / Claude Code (subagente) | |
-| D2a · backend en Docker (§15) | 🟡 | feat/D2-docker-compose | | 2026-10-29 | Vikingo / Claude Code (subagente) | borrador de Codex en wip/d2-docker |
+| D2a · backend en Docker (§15) | ✅ | feat/D2-docker-compose | eb081f4 | 2026-10-29 | Vikingo / Claude Code (subagente) | rama aún sin merge a main |
 | D2b · frontend en Docker (§15) | 🟡 | feat/D2-docker-compose | | 2026-10-29 | Vikingo / Claude Code (subagente) | |
 | D2c · docs Docker (§15) | ⬜ | | | | | al final |
 
@@ -418,3 +418,16 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
   (verificado). `docker compose config` válido.
 - **Plan:** §15 con D2a (backend), D2b (frontend) y D2c (docs). Subagentes en paralelo con propiedad de archivos
   separada; el orquestador integra y valida en Docker Desktop.
+
+### CP-030 · 2026-10-29 · D2a · `eb081f4` (rama `feat/D2-docker-compose`)
+- **Hecho:** backend en Docker sobre el borrador de Codex. Imagen amd64 de 1.49 GB (torch CPU ~727 MB, sin
+  marimo/mayavi/pyqt), api + worker + redis *healthy*, `dcm2niix` funcional en la imagen. Fix: `USER=cerberus` y
+  `HOME=/tmp` (MONAI hace `getpass.getuser()` y fallaba con UID ≠ 1000). Límites de memoria: api 2g, worker 6g.
+  `storage-docker/` agregado a `.gitignore`.
+- **Validación dentro de Docker (001/t0):** WT/TC/ET 53.51/31.01/20.99 cm³, **Dice TC 0.857 / WT 0.718** (igual que
+  en el host); áreas: BA40 izq. arriba (3.74 cm³, 62.9 %).
+- **Rendimiento con Rosetta, CPU:** segmentación 133 s con 4 hilos / 92 s con 8 (host con MPS: ~18 s); áreas 82 s
+  en frío / 29 s con el registro en caché (53 s con 8 hilos). Pico del worker 4.2 GiB, sin OOM.
+- **Pendiente de decidir:** `CERBERUS_CPU_THREADS` por defecto 4 (seguro) vs 8 (~35 % más rápido en 14 CPU).
+- **Siguiente paso:** D2b (frontend/nginx + smoke) en curso → validación final en Docker Desktop → D2c (docs) →
+  merge a main.

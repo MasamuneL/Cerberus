@@ -4,7 +4,7 @@
 > checkpoint. El historial completo está en [`PROGRESS.md`](PROGRESS.md) y el alcance y los contratos en
 > [`PLAN_MVP.md`](PLAN_MVP.md). Las reglas de trabajo están en [`../AGENTS.md`](../AGENTS.md).
 
-**Última actualización:** 2026-10-29 · último checkpoint: CP-029 · rama base: `main`
+**Última actualización:** 2026-10-29 · último checkpoint: CP-030 · rama base: `main`
 
 ## 1. Arranque rápido
 
@@ -103,3 +103,6 @@ Borrador de Codex en la rama **`wip/d2-docker`** (sin probar). Spec y tickets en
 `git checkout -b feat/D2-docker-compose origin/wip/d2-docker`, luego `docker compose up -d --build`,
 `docker compose ps` (todo *healthy*) y `cd tools/e2e && CERBERUS_UI=http://localhost:8080 node verify-docker.mjs`.
 Ojo: el backend es amd64 (Rosetta) por ANTs; el primer build tarda.
+
+**Actualización CP-030:** D2a está hecho en la rama **`feat/D2-docker-compose`** (pusheada); D2b (nginx + smoke) sigue en curso.
+Retoma desde esa rama, no desde `wip/d2-docker`.
