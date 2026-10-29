@@ -25,9 +25,9 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 | F6 · UploadPanel | ✅ | feat/F6-upload-panel | b4c25e3 | 2026-10-27 | Vikingo / Claude Code (subagente) | flujo DICOM se valida en E2E con B8 |
 | D1 · README | ✅ | docs/D1-readme | 656b2b1 | 2026-10-27 | Vikingo / Claude Code (subagente) | |
 | E2E · Verificación §10 | ✅ | main | 656b2b1 | 2026-10-27 | Vikingo / Claude Code (orquestador) | API/flujo ✅; falta revisión visual WebGL por una persona |
-| B9 · atlas + registro (§13) | 🟡 | feat/B9-atlas-registration | | 2026-10-29 | Vikingo / Claude Code (subagente) | |
+| B9 · atlas + registro (§13) | ✅ | feat/B9-atlas-registration | 409bf37 | 2026-10-29 | Vikingo / Claude Code (subagente) | |
 | B10 · base de funciones (§13) | ✅ | feat/B10-area-kb | dcd2344 | 2026-10-29 | Vikingo / Claude Code (subagente) | |
-| B11 · reporte + job + API (§13) | ⬜ | | | | | depende de B9, B10 |
+| B11 · reporte + job + API (§13) | 🟡 | feat/B11-areas-report | | 2026-10-29 | Vikingo / Claude Code (subagente) | |
 | F7 · panel de áreas + overlay (§13) | ✅ | feat/F7-areas-ui | b325bf5 | 2026-10-29 | Vikingo / Claude Code (subagente) | falta prueba con backend real |
 | E2E · áreas (§13) | ⬜ | | | | | al final |
 
@@ -250,3 +250,19 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
   elocuentes en ambos hemisferios (el flag es por área).
 - **Checks:** pyright 0 en sus archivos ✅ · 78 passed ✅. El JSON entra en el wheel sin cambiar pyproject.
 - **Siguiente paso:** cerrar B9 (en curso) → B11.
+
+### CP-018 · 2026-10-29 · B9 · `409bf37`
+- **Hecho:** `atlas.py`: `fetch_atlas`, `fetch_template`, `split_hemispheres` (izquierdo = índice, derecho =
+  índice + 100), `select_sequences` y `map_atlas`. Registro ANTs SyN de t1eg (enmascarada, 1.5 mm) → MNI152 con el GTV
+  dilatado 5 mm excluido del costo en todas las etapas. El atlas vuelve al grid nativo de t1gd con `genericLabel` y se
+  verifica que el affine sea idéntico al de la referencia. Transformaciones en caché por hash de las entradas.
+  13 tests rápidos + 1 slow.
+- **Validación real (001/t0):** 16–17 s (registro ~12 s; ~3 s con caché); 142 etiquetas. Centroide del GTV en MNI
+  **(−38, −51, 36)**, lóbulo parietal inferior izquierdo. Áreas con más vóxeles del GTV: **BA40 izq., BA7 izq.,
+  BA39 izq.**, BA19 izq., BA2 izq. Es coherente con la localización. Dice entre la máscara cerebral registrada y la
+  máscara MNI: 0.93.
+- **Desviaciones:** la plantilla MNI viene empaquetada con nilearn (sin caché en `models/`); `split_hemispheres`
+  acepta `labels`; ANTs multihilo da pequeñas variaciones entre corridas aunque se fije la semilla (BA40 15064 vs
+  14576 vóxeles).
+- **Checks:** ruff ✅ · pyright 0 ✅ · pytest 331 passed ✅ · slow ✅.
+- **Siguiente paso:** B11 (reporte, job y API) y luego el E2E de áreas.
