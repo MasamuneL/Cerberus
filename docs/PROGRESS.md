@@ -38,7 +38,7 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 | D2a · backend en Docker (§15) | ✅ | feat/D2-docker-compose | eb081f4 | 2026-10-29 | Vikingo / Claude Code (subagente) | |
 | D2b · frontend en Docker (§15) | ✅ | feat/D2-docker-compose | 1331265 | 2026-10-29 | Vikingo / Claude Code (subagente) | |
 | D2c · docs Docker (§15) | ✅ | feat/D2-docker-compose | 5a4b229 | 2026-10-29 | Vikingo / Claude Code (orquestador) | |
-| D2e-back · autoajuste + caché HTTP (§16) | 🟡 | feat/D2e-autotune | | 2026-10-29 | Vikingo / Claude Code (subagente) | |
+| D2e-back · autoajuste + caché HTTP (§16) | ✅ | feat/D2e-autotune | e74d08a | 2026-10-29 | Vikingo / Claude Code (subagente) | rama sin merge aún |
 | D2e-front · indicador de recursos + 304 (§16) | 🟡 | feat/D2e-autotune | | 2026-10-29 | Vikingo / Claude Code (subagente) | |
 
 ## Bitácora de checkpoints
@@ -455,3 +455,15 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
   con < 5 GB.
 - **Contrato:** `SystemInfo` + `getSystem()`. Starlette 1.9 envía ETag pero no responde 304 → se implementa en el backend.
 - **Siguiente paso:** D2e-back y D2e-front en paralelo → validación en Docker (incluido `--cpus 2 --memory 4g`) → CP-033.
+
+### CP-033 · 2026-10-29 · D2e-back · `e74d08a` (rama `feat/D2e-autotune`)
+- **Hecho:** `runtime.py` (CPUs por cgroup v2/v1 → afinidad → cpu_count; memoria por cgroup → meminfo → sysctl;
+  dispositivo; emulación vía `VirtualApple` en cpuinfo; `resolve_threads` auto = min(CPUs−1, 8)); el worker aplica
+  los hilos antes de importar torch y ANTs y publica `SystemInfo` en Redis; `GET /api/system` (con fallback si Redis
+  o el worker no están); 304 condicional + `Cache-Control: no-cache` en los NIfTI; compose con `auto`. 474 tests.
+- **Detección real:** host macOS = 14 CPU, 8 hilos, 36 GB, mps. Docker por defecto = 14 CPU, **8 hilos**, 6 GB,
+  cpu, aviso de "emulada". `--cpus 2 --memory 4g` = **1 hilo**, 4 GB, aviso de memoria baja.
+- **Hallazgo:** con `OMP_NUM_THREADS=4` fijo en el compose viejo, `nproc` daba 4 dentro del contenedor; quitarlo
+  liberó los 14 CPU para la detección.
+- **Verificado por el orquestador a través de nginx:** `/api/system` desde el worker y `If-None-Match` → **304, 0 B**.
+- **Siguiente paso:** D2e-front (en curso) → validación → merge → CP-034.
