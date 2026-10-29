@@ -2,6 +2,8 @@ import { Fragment, useEffect, useRef, useState } from "react";
 import { ApiError, getAreas, startAreaMapping } from "../api/client";
 import type { AffectedArea, AreasResult, JobStatus, StudyDetail } from "../api/types";
 import { useJob } from "../hooks/useJob";
+import { areasEstimateText, useSystemInfo } from "../hooks/useSystemInfo";
+import SystemBadge from "./SystemBadge";
 import { areaColorCss } from "./areaColors";
 
 interface Props {
@@ -155,6 +157,7 @@ export default function AreasPanel({ study, onCompleted, onFocusLabel, focusedLa
   const onBusyChangeRef = useRef(onBusyChange);
   onBusyChangeRef.current = onBusyChange;
 
+  const system = useSystemInfo();
   const { status, error: pollError } = useJob(jobId);
   const running = jobId !== null && !pollError && (!status || !TERMINAL.has(status.status));
   const elapsed = startedAt ? Math.max(0, Math.round((now - startedAt) / 1000)) : 0;
@@ -251,6 +254,7 @@ export default function AreasPanel({ study, onCompleted, onFocusLabel, focusedLa
   return (
     <section className="panel areas">
       <h2>Áreas de Brodmann</h2>
+      <SystemBadge />
       <button
         type="button"
         className="btn-primary"
@@ -277,7 +281,7 @@ export default function AreasPanel({ study, onCompleted, onFocusLabel, focusedLa
           No se pudo consultar el job: {pollError}
         </div>
       )}
-      {running && <p className="note">El registro a MNI suele tardar 1–3 min.</p>}
+      {running && <p className="note">{areasEstimateText(system)}</p>}
 
       {loading && <p className="placeholder">Buscando mapa de áreas previo…</p>}
       {loadError && <p className="error">{loadError}</p>}

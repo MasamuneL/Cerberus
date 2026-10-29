@@ -55,6 +55,10 @@ consulta el objeto privado de Niivue. Comprueba HTML compilado, fallback SPA, pr
 catálogo dinámico, volumetría de 001/t0 (33.14 ± 0.01 cm³), cabeceras y descargas NIfTI completas,
 canvas visible, carga terminada y lectura del cursor con intensidades y estado del GTV. También prueba
 pestañas por teclado, atajos, opacidad, ocultar/mostrar el GTV y el formulario de subida sin enviarlo.
+También comprueba el indicador de recursos (§16: texto con «hilos» o «GPU» en Segmentación y Áreas) y
+que al volver a 001/t0 los NIfTI se revaliden con 304. Ambas quedan «pendiente» en `report.pending`, sin
+fallar, mientras `/api/system` responda 404 o los NIfTI no lleven ETag con `Cache-Control: no-cache`; con
+esas cabeceras, ninguna respuesta 304 hace fallar el smoke.
 Solo requiere la muestra 001/t0: no exige ocho estudios ni resultados previos de MONAI o ANTs.
 
 Guarda `shots/docker/report.json` y capturas a 1440×900 y 1280×800, ignorados por Git. Las aserciones

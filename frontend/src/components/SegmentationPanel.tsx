@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { ApiError, getSegmentation, startSegmentation } from "../api/client";
 import type { JobStatus, SegmentationResult, StudyDetail } from "../api/types";
 import { useJob } from "../hooks/useJob";
+import { segEstimateText, useSystemInfo } from "../hooks/useSystemInfo";
+import SystemBadge from "./SystemBadge";
 
 interface Props {
   study: StudyDetail;
@@ -57,6 +59,7 @@ export default function SegmentationPanel({ study, onCompleted, onBusyChange }: 
   const onBusyChangeRef = useRef(onBusyChange);
   onBusyChangeRef.current = onBusyChange;
 
+  const system = useSystemInfo();
   const { status, error: pollError } = useJob(jobId);
   const running = jobId !== null && !pollError && (!status || !TERMINAL.has(status.status));
   const elapsed = startedAt ? Math.max(0, Math.round((now - startedAt) / 1000)) : 0;
@@ -144,6 +147,7 @@ export default function SegmentationPanel({ study, onCompleted, onBusyChange }: 
   return (
     <section className="panel segmentation">
       <h2>Segmentación MONAI</h2>
+      <SystemBadge />
       <button type="button" className="btn-primary" disabled={busy || loading} onClick={() => void start()}>
         {busy ? "Segmentando…" : result ? "Volver a segmentar" : "Segmentar con MONAI"}
       </button>
@@ -159,7 +163,7 @@ export default function SegmentationPanel({ study, onCompleted, onBusyChange }: 
           No se pudo consultar el job: {pollError}
         </div>
       )}
-      {running && <p className="note">Una segmentación real tarda entre 15 y 60 s.</p>}
+      {running && <p className="note">{segEstimateText(system)}</p>}
 
       {loading && <p className="placeholder">Buscando segmentación previa…</p>}
       {loadError && <p className="error">{loadError}</p>}

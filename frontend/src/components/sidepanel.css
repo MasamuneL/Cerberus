@@ -184,3 +184,13 @@
 }
 .risk-more:hover { border-color: var(--accent, #58a6ff); }
 .risk-more:focus-visible { outline: 2px solid var(--focus, #7cc4ff); outline-offset: 1px; }
+
+/* D2e · indicador de recursos de cálculo */
+.system-badge { margin: 0 0 var(--space-3); }
+.system-badge-line {
+  margin: 0; padding: var(--space-1) var(--space-2); font-size: 0.8rem; color: var(--text-muted);
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius);
+  cursor: help; overflow-wrap: anywhere;
+}
+.system-badge-label { color: var(--text); font-weight: 600; }
+.system-badge-warnings { margin-top: var(--space-2); font-size: 0.8rem; }

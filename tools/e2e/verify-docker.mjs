@@ -9,7 +9,7 @@ const OUT = fileURLToPath(new URL("./shots/docker", import.meta.url));
 const TIMEOUT = Number(process.env.CERBERUS_TIMEOUT ?? 180000);
 const report = {
   base: BASE, startedAt: new Date().toISOString(), checks: [], screenshots: [],
-  catalog: [], niftiDownloads: [], expected404: [], networkErrors: [], consoleErrors: [], blockedMutations: [],
+  catalog: [], system: null, pending: [], niftiResponses: [], niftiDownloads: [], expected404: [], networkErrors: [], consoleErrors: [], blockedMutations: [],
   limitations: [
     "Las capturas requieren revisión humana; no existe una línea base visual.",
     "La carga se verifica mediante descargas completas, estado visible y lectura del visor; no se inspecciona la instancia privada de Niivue.",
@@ -25,6 +25,12 @@ let catalog = [];
 const missingResults = new Set();
 const observed404 = new Set();
 const completedFiles = new Set();
+let systemAvailable = false;
+
+function pending(name, reason) {
+  report.pending.push({ viewport: size, name, reason });
+  console.log(`⏳ ${size}: ${name}: pendiente (${reason})`);
+}
 
 async function check(name, fn) {
   try {
@@ -130,6 +136,15 @@ try {
       if (!study.has_areas) missingResults.add(`${prefix}/areas`);
       if (!study.has_segmentation) missingResults.add(`${prefix}/segmentation`);
       if (!study.has_gtv || !study.has_brain_mask) missingResults.add(`${prefix}/volumetry`);
+    }
+    // /api/system (§16) puede no existir todavía: el indicador se oculta y el 404 es esperado.
+    const system = await context.request.get(`${BASE}/api/system`);
+    if (system.status() === 200) {
+      report.system = await system.json();
+      systemAvailable = true;
+    } else {
+      assert.equal(system.status(), 404, `/api/system: HTTP ${system.status()}`);
+      missingResults.add("/api/system");
     }
   });
   await check("volumetría real y cabeceras NIfTI de 001/t0", async () => {
@@ -239,6 +254,22 @@ try {
     }
     await page.getByRole("button", { name: "Ajustes", exact: true }).click();
   });
+  await check("indicador de recursos en Segmentación y Áreas", async () => {
+    if (!systemAvailable) {
+      pending("indicador de recursos", "/api/system responde 404");
+      assert.equal(await page.locator(".system-badge").count(), 0);
+      return;
+    }
+    for (const tab of ["Áreas", "Segmentación"]) {
+      await selectTab(tab);
+      const badge = page.getByRole("tabpanel").locator(".system-badge-line");
+      await badge.waitFor();
+      const text = await badge.textContent();
+      assert.match(text, /hilos|GPU/, text);
+      assert.match(text, /^Cálculo:/, text);
+    }
+    await shot("indicador_recursos");
+  });
   await check("subida: formulario y aviso DICOM sin envío", async () => {
     await page.getByRole("button", { name: "Subir estudio", exact: true }).click();
     await page.getByText(/Los archivos DICOM se anonimizan y se eliminan/).waitFor();
@@ -267,6 +298,69 @@ try {
       await shot("001_longitudinal");
     });
   }
+  size = "1440x900";
+  await check("revalidación NIfTI (ETag/304) al volver al mismo estudio", async () => {
+    // page.route/context.route desactivan la caché HTTP de Chromium: este paso usa un contexto propio sin
+    // intercepción. Las mutaciones no se pueden abortar aquí, pero se registran y hacen fallar el smoke.
+    const cacheContext = await browser.newContext({ viewport: { width: 1440, height: 900 }, reducedMotion: "reduce" });
+    cacheContext.setDefaultTimeout(15000);
+    const previous = page;
+    try {
+      page = await cacheContext.newPage();
+      const responses = [];
+      page.on("request", (request) => {
+        if (!["GET", "HEAD", "OPTIONS"].includes(request.method())) report.blockedMutations.push({ method: request.method(), url: request.url() });
+      });
+      // Playwright entrega la respuesta en caché (200) tras revalidar; el estado real del servidor (304)
+      // solo aparece en Network.responseReceivedExtraInfo de CDP.
+      const cdp = await cacheContext.newCDPSession(page);
+      await cdp.send("Network.enable");
+      const urls = new Map();
+      cdp.on("Network.requestWillBeSent", ({ requestId, request }) => urls.set(requestId, request));
+      cdp.on("Network.responseReceivedExtraInfo", ({ requestId, statusCode, headers }) => {
+        const request = urls.get(requestId);
+        if (!request || request.method !== "GET") return;
+        const path = new URL(request.url).pathname;
+        if (!/\/files\/[^/]+\.nii\.gz$/.test(path)) return;
+        const header = (name) => Object.entries(headers).find(([key]) => key.toLowerCase() === name)?.[1] ?? null;
+        responses.push({ path, status: statusCode, etag: header("etag"), cacheControl: header("cache-control") });
+      });
+      const target = () => page.locator(".study-group").filter({ has: page.getByRole("heading", { name: "Paciente 001", exact: true }) }).locator(".study-item").filter({ has: page.locator(".study-tp", { hasText: /^t0$/ }) }).first();
+      await page.goto(BASE, { waitUntil: "domcontentloaded" });
+      await target().click();
+      await page.getByRole("heading", { name: "Paciente 001 · t0", exact: true }).waitFor();
+      await ready();
+      const before = responses.length;
+      const others = page.locator('.study-item:not([aria-current="true"])');
+      if (await others.count() > 0) {
+        // Cambia a otro estudio y espera a que el visor termine antes de volver.
+        await others.first().click();
+        await page.waitForFunction(() => !/Paciente 001 · t0$/.test(document.querySelector(".study-title")?.textContent ?? ""));
+        await page.locator(".canvas-overlay").waitFor({ state: "detached", timeout: TIMEOUT });
+        await target().click();
+      } else {
+        await page.reload({ waitUntil: "domcontentloaded" });
+        await target().click();
+      }
+      await page.getByRole("heading", { name: "Paciente 001 · t0", exact: true }).waitFor();
+      await ready();
+      const again = responses.slice(before).filter((r) => r.path.startsWith("/api/studies/001/t0/"));
+      report.niftiResponses = responses;
+      assert(again.length > 0, "no hubo peticiones NIfTI al volver a 001/t0");
+      // Starlette ya envía ETag sin atender If-None-Match: la revalidación de §16 se reconoce por
+      // ETag + Cache-Control: no-cache. Sin ambas cabeceras el resultado queda pendiente.
+      const revalidating = responses.some((r) => r.etag && /no-cache/.test(r.cacheControl ?? ""));
+      if (again.some((r) => r.status === 304)) return;
+      if (!revalidating) {
+        pending("revalidación NIfTI", "el backend aún no envía ETag con Cache-Control: no-cache (todas 200)");
+        return;
+      }
+      assert.fail(`ETag presente pero ninguna respuesta 304: ${JSON.stringify(again)}`);
+    } finally {
+      page = previous;
+      await cacheContext.close();
+    }
+  });
   size = "global";
   await check("sin fallos HTTP o de descarga inesperados", async () => assert.deepEqual(report.networkErrors, []));
   await check("sin errores JavaScript o de consola inesperados", async () => {
