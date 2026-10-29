@@ -554,3 +554,31 @@ Cada dominio lista sus áreas (nombre corto + hemisferio + % o distancia) y el a
 | F11 | Tipografía Plex vía `@fontsource`, tokens y contraste AA en `styles.css`, `StudyList` (GTV cm³ por tiempo, badge "Áreas", navegable con teclado), skeletons de carga | `main.tsx`, `styles.css`, `components/StudyList.tsx`, `package.json` |
 
 Ola única en paralelo (B12, F9, F10, F11) → verificación con Playwright (capturas a 1440×900 y 1280×800) → CP.
+
+## 15. D2 · Docker Compose (Docker Desktop)
+
+**Origen:** pedido del usuario; Codex escribió un borrador (respaldado en `wip/d2-docker`, sin build ni pruebas).
+**Meta:** `docker compose up -d --build` desde la raíz (o desde Docker Desktop) levanta Cerberus completo en
+`http://localhost:8080`, y la segmentación y el mapeo de áreas funcionan dentro de los contenedores.
+
+**Hechos verificados (2026-10-29):** Docker Desktop 29.9 / Compose v5.6, contexto `desktop-linux`, aarch64, 14 CPU,
+8 GB de RAM. `antspyx` 0.5.3 y 0.6.3 solo publican wheel **linux x86_64** → el backend usa `platform: linux/amd64`
+(Rosetta; `uname -m` = x86_64 verificado). El frontend (nginx) puede ser nativo arm64.
+
+| Servicio | Imagen | Notas |
+|---|---|---|
+| redis | redis:7.4-alpine (digest) | AOF, healthcheck |
+| api | `docker/backend.Dockerfile` (amd64) | uvicorn :8000 interno, healthcheck `/api/health` |
+| worker | misma imagen | `arq cerberus_api.worker.WorkerSettings` |
+| frontend | `docker/frontend.Dockerfile` | nginx :8080 → estáticos + proxy `/api` → api:8000 |
+
+Volúmenes bind: `./Data`, `./storage`, `./models` (pesos MONAI y atlas en caché; si faltan, se descargan dentro).
+
+### Tickets
+- **D2a · backend en contenedor:** build amd64, api + worker sanos; dentro de Docker: segmentación de 001/t0
+  (Dice TC ≈ 0.857) y mapeo de áreas (BA40 izq. arriba) con tiempos medidos; permisos de los bind mounts
+  (UID/GID en macOS), caché de modelos y atlas, límites de memoria razonables para 8 GB.
+- **D2b · frontend en contenedor:** build de nginx, proxy `/api` (incluye subidas grandes: `client_max_body_size`
+  ≥ `CERBERUS_MAX_UPLOAD_MB`), fallback SPA, cabeceras, `tools/e2e/verify-docker.mjs` en verde y capturas revisadas.
+- **D2c · documentación:** README (sección Docker: requisitos de Docker Desktop, RAM recomendada, primer build,
+  `docker compose up -d --build`, logs, parar y limpiar), HANDOFF y PROGRESS.

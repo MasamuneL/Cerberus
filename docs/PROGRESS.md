@@ -35,6 +35,9 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 | F9 · capas + paleta + cursor (§14) | ✅ | feature/ux-ui | fad8562, af22c29, d406354 | 2026-10-29 | Vikingo / Claude Code + Codex | Integrado en main: PR #1, bcef409; CP-028 |
 | F10 · pestañas + funciones en riesgo (§14) | ✅ | feature/ux-ui | fad8562, d406354 | 2026-10-29 | Vikingo / Claude Code + Codex | Integrado en main: PR #1, bcef409; CP-028 |
 | F11 · tipografía + accesibilidad + lista (§14) | ✅ | feat/F11-type-a11y | 5b7b024 | 2026-10-29 | Vikingo / Claude Code (subagente) | |
+| D2a · backend en Docker (§15) | 🟡 | feat/D2-docker-compose | | 2026-10-29 | Vikingo / Claude Code (subagente) | borrador de Codex en wip/d2-docker |
+| D2b · frontend en Docker (§15) | 🟡 | feat/D2-docker-compose | | 2026-10-29 | Vikingo / Claude Code (subagente) | |
+| D2c · docs Docker (§15) | ⬜ | | | | | al final |
 
 ## Bitácora de checkpoints
 
@@ -406,3 +409,12 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
   de la integración; este checkpoint solo actualiza documentación.
 - **Checkpoint:** tablero y sección 2 de `HANDOFF.md` actualizados para retomar desde `main`. No quedan tareas
   de implementación, QA o merge pendientes de §14. Las propuestas posteriores siguen sin aprobarse.
+
+### CP-029 · 2026-10-29 · arranque de D2 (Docker Compose)
+- **Contexto:** Codex dejó un borrador de Docker (compose con redis, api, worker y frontend; Dockerfiles; grupo
+  `runtime`; smoke `verify-docker.mjs`) sin build, sin pruebas y sin commit. Lo respaldó el orquestador en
+  `wip/d2-docker` (`4f80a7d`).
+- **Hechos:** Docker Desktop aarch64, 14 CPU, 8 GB; ANTs sin wheel ARM Linux → backend amd64 bajo Rosetta
+  (verificado). `docker compose config` válido.
+- **Plan:** §15 con D2a (backend), D2b (frontend) y D2c (docs). Subagentes en paralelo con propiedad de archivos
+  separada; el orquestador integra y valida en Docker Desktop.
