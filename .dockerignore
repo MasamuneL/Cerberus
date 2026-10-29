@@ -1,0 +1,33 @@
+# Solo se envían los archivos necesarios para construir las dos imágenes.
+**
+!pyproject.toml
+!uv.lock
+!backend/
+!backend/cerberus_api/
+!backend/cerberus_api/**
+!frontend/
+!frontend/**
+!docker/
+!docker/**
+
+# Los datos, modelos, entornos locales y secretos nunca forman parte del contexto.
+Data/
+models/
+storage/
+**/.venv/
+**/.git/
+**/node_modules/
+**/dist/
+**/__pycache__/
+**/*.py[cod]
+**/.cache/
+**/.pytest_cache/
+**/.ruff_cache/
+**/.env
+**/.env.*
+**/.npmrc
+**/.netrc
+**/*.pem
+**/*.key
+**/.DS_Store
+**/*.tsbuildinfo

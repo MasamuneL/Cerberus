@@ -1,0 +1,104 @@
+name: cerberus
+
+x-backend: &backend
+  image: cerberus-backend:local
+  build:
+    context: .
+    dockerfile: docker/backend.Dockerfile
+  # ANTs del lockfile solo publica wheel Linux x86_64.
+  platform: linux/amd64
+  user: "${CERBERUS_UID:-1000}:${CERBERUS_GID:-1000}"
+  init: true
+  restart: unless-stopped
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+  environment: &backend-environment
+    CERBERUS_DATA_DIR: /app/Data
+    CERBERUS_STORAGE_DIR: /app/storage
+    CERBERUS_MODELS_DIR: /app/models
+    CERBERUS_REDIS_URL: redis://redis:6379/0
+    CERBERUS_MAX_UPLOAD_MB: "${CERBERUS_MAX_UPLOAD_MB:-2048}"
+    CERBERUS_MAX_ZIP_UNCOMPRESSED_MB: "${CERBERUS_MAX_ZIP_UNCOMPRESSED_MB:-4096}"
+    CERBERUS_CORS_ORIGINS: '["http://localhost:${CERBERUS_HTTP_PORT:-8080}","http://127.0.0.1:${CERBERUS_HTTP_PORT:-8080}"]'
+    OMP_NUM_THREADS: "${CERBERUS_CPU_THREADS:-4}"
+    ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS: "${CERBERUS_CPU_THREADS:-4}"
+    MPLCONFIGDIR: /tmp/matplotlib
+    XDG_CACHE_HOME: /tmp/cache
+  volumes: &backend-volumes
+    - type: bind
+      source: ${CERBERUS_DATA_PATH:-./Data}
+      target: /app/Data
+    - type: bind
+      source: ${CERBERUS_STORAGE_PATH:-./storage}
+      target: /app/storage
+    - type: bind
+      source: ${CERBERUS_MODELS_PATH:-./models}
+      target: /app/models
+
+services:
+  redis:
+    image: redis:7.4-alpine@sha256:8da19c7399dca900c6822a1cf30f9d2285585e2c4b457ff4095b0f4500054d3f
+    user: redis
+    command: ["redis-server", "--appendonly", "yes"]
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    <<: *backend
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  worker:
+    <<: *backend
+    command: ["arq", "cerberus_api.worker.WorkerSettings"]
+    stop_grace_period: 30s
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "arq", "--check", "cerberus_api.worker.WorkerSettings"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+      start_period: 40s
+
+  frontend:
+    image: cerberus-frontend:local
+    build:
+      context: .
+      dockerfile: docker/frontend.Dockerfile
+    ports:
+      - "127.0.0.1:${CERBERUS_HTTP_PORT:-8080}:8080"
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  redis-data:
