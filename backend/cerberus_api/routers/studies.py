@@ -4,9 +4,11 @@ Todo identificador que llega en la URL se valida con `cerberus_api.sequences` (d
 `catalog`) **antes** de construir un `Path` (AGENTS.md, regla 9).
 """
 
+import os
+from email.utils import parsedate_to_datetime
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.responses import FileResponse
 from pydantic import ValidationError
 from redis.exceptions import RedisError
@@ -61,6 +63,35 @@ def _resolve_file(settings: Settings, patient: str, timepoint: str, name: str) -
     return catalog.sequence_path(settings.data_dir, patient, timepoint, name)
 
 
+# Los NIfTI pesan ~75 MB: el navegador los guarda y revalida en cada uso (`no-cache` ≠ `no-store`) para no servir
+# nunca una versión vieja; si no cambiaron, la API responde 304 sin cuerpo (§16, D2e).
+FILE_CACHE_CONTROL = "no-cache"
+
+
+def _etag_matches(if_none_match: str, etag: str) -> bool:
+    """Comparación débil de `If-None-Match` (RFC 9110 §13.1.2): lista separada por comas o `*`."""
+    if if_none_match.strip() == "*":
+        return True
+    target = etag.removeprefix("W/")
+    return any(tag.strip().removeprefix("W/") == target for tag in if_none_match.split(","))
+
+
+def _not_modified(request: Request, response: FileResponse, stat_result: os.stat_result) -> bool:
+    """`True` si la petición condicional permite un 304. `If-Modified-Since` solo cuenta sin `If-None-Match`."""
+    if_none_match = request.headers.get("if-none-match")
+    if if_none_match is not None:
+        return _etag_matches(if_none_match, response.headers["etag"])
+    if_modified_since = request.headers.get("if-modified-since")
+    if if_modified_since is None:
+        return False
+    try:
+        since = parsedate_to_datetime(if_modified_since)
+    except (TypeError, ValueError):
+        return False
+    # Last-Modified tiene resolución de segundos
+    return int(stat_result.st_mtime) <= since.timestamp()
+
+
 # Starlette compila `{name}` como `[^/]+` y escapa el literal `.nii.gz`: sin esa extensión la ruta no casa
 # (404), y un `%2F` llega ya decodificado como `/`, así que tampoco casa. HEAD permite consultar el tamaño
 # (Content-Length) sin descargar el volumen.
@@ -68,14 +99,32 @@ def _resolve_file(settings: Settings, patient: str, timepoint: str, name: str) -
     "/studies/{patient}/{timepoint}/files/{name}.nii.gz",
     methods=["GET", "HEAD"],
     response_class=FileResponse,
-    responses={200: {"content": {"application/gzip": {}}}},
+    responses={200: {"content": {"application/gzip": {}}}, 304: {"description": "No modificado (ETag)"}},
 )
-def get_study_file(patient: str, timepoint: str, name: str, settings: SettingsDep) -> FileResponse:
-    """Descarga un volumen NIfTI (`name` = secuencia o `monai_seg`) como `application/gzip`."""
+def get_study_file(patient: str, timepoint: str, name: str, request: Request, settings: SettingsDep) -> Response:
+    """Descarga un volumen NIfTI (`name` = secuencia o `monai_seg`) como `application/gzip`.
+
+    Lleva `ETag` / `Last-Modified` (los de Starlette) y `Cache-Control: no-cache`; responde 304 si
+    `If-None-Match` (o, sin él, `If-Modified-Since`) coincide. `Range` sigue funcionando (206).
+    """
     path = _resolve_file(settings, patient, timepoint, name)
     if path is None:
         raise HTTPException(status_code=404, detail="Archivo no encontrado")
-    return FileResponse(path, media_type="application/gzip", filename=f"{name}.nii.gz")
+    try:
+        stat_result = path.stat()
+    except OSError as exc:
+        raise HTTPException(status_code=404, detail="Archivo no encontrado") from exc
+    response = FileResponse(
+        path,
+        media_type="application/gzip",
+        filename=f"{name}.nii.gz",
+        stat_result=stat_result,
+        headers={"Cache-Control": FILE_CACHE_CONTROL},
+    )
+    if _not_modified(request, response, stat_result):
+        headers = {k: response.headers[k] for k in ("etag", "last-modified", "cache-control")}
+        return Response(status_code=304, headers=headers)
+    return response
 
 
 @router.get("/studies/{patient}/{timepoint}/volumetry")

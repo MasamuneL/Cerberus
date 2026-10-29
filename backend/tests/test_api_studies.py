@@ -1,5 +1,6 @@
 """Tests de la API de lectura (ticket B4) con `TestClient` y settings apuntando a `tmp_path`."""
 
+import os
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -84,6 +85,76 @@ def test_monai_seg_served_only_when_present(client: TestClient, settings: Settin
     r = client.get(url)
     assert r.status_code == 200
     assert r.content == b"\x1f\x8bfake"
+
+
+# --- §16 · Caché HTTP (ETag / Last-Modified → 304) ----------------------------------------------------
+
+FILE_URL = "/api/studies/001/t0/files/t1gd.nii.gz"
+
+
+def test_file_cache_headers(client: TestClient, settings: Settings, make_study: MakeStudy) -> None:
+    make_study(settings.data_dir)
+    for r in (client.get(FILE_URL), client.head(FILE_URL)):
+        assert r.status_code == 200
+        assert r.headers["cache-control"] == "no-cache"
+        assert r.headers["etag"].startswith('"')
+        assert "last-modified" in r.headers
+        assert r.headers["accept-ranges"] == "bytes"
+
+
+@pytest.mark.parametrize("method", ["GET", "HEAD"])
+def test_file_304_if_none_match(client: TestClient, settings: Settings, make_study: MakeStudy, method: str) -> None:
+    make_study(settings.data_dir)
+    etag = client.head(FILE_URL).headers["etag"]
+    for inm in (etag, f"W/{etag}", f'"otro", {etag}', "*"):
+        r = client.request(method, FILE_URL, headers={"If-None-Match": inm})
+        assert r.status_code == 304, inm
+        assert r.content == b""
+        assert r.headers["etag"] == etag
+        assert r.headers["cache-control"] == "no-cache"
+
+
+def test_file_200_on_etag_mismatch(client: TestClient, settings: Settings, make_study: MakeStudy) -> None:
+    study_dir = make_study(settings.data_dir)
+    r = client.get(FILE_URL, headers={"If-None-Match": '"no-coincide"'})
+    assert r.status_code == 200
+    assert r.content == (study_dir / "1_t0_t1gd.nii.gz").read_bytes()
+
+
+def test_file_etag_changes_when_file_changes(client: TestClient, settings: Settings, make_study: MakeStudy) -> None:
+    study_dir = make_study(settings.data_dir)
+    etag = client.head(FILE_URL).headers["etag"]
+    path = study_dir / "1_t0_t1gd.nii.gz"
+    st = path.stat()
+    os.utime(path, ns=(st.st_atime_ns, st.st_mtime_ns + 5_000_000_000))
+    r = client.get(FILE_URL, headers={"If-None-Match": etag})
+    assert r.status_code == 200
+    assert r.headers["etag"] != etag
+
+
+def test_file_if_modified_since(client: TestClient, settings: Settings, make_study: MakeStudy) -> None:
+    make_study(settings.data_dir)
+    last_modified = client.head(FILE_URL).headers["last-modified"]
+    r = client.get(FILE_URL, headers={"If-Modified-Since": last_modified})
+    assert r.status_code == 304
+    assert r.content == b""
+    assert client.get(FILE_URL, headers={"If-Modified-Since": "Thu, 01 Jan 2004 00:00:00 GMT"}).status_code == 200
+    assert client.get(FILE_URL, headers={"If-Modified-Since": "no es fecha"}).status_code == 200
+    # If-None-Match manda sobre If-Modified-Since
+    both = {"If-None-Match": '"no-coincide"', "If-Modified-Since": last_modified}
+    assert client.get(FILE_URL, headers=both).status_code == 200
+
+
+def test_file_range_still_works(client: TestClient, settings: Settings, make_study: MakeStudy) -> None:
+    study_dir = make_study(settings.data_dir)
+    data = (study_dir / "1_t0_t1gd.nii.gz").read_bytes()
+    r = client.get(FILE_URL, headers={"Range": "bytes=0-99"})
+    assert r.status_code == 206
+    assert r.content == data[:100]
+    assert r.headers["content-range"] == f"bytes 0-99/{len(data)}"
+    etag = r.headers["etag"]
+    assert client.get(FILE_URL, headers={"Range": "bytes=0-99", "If-Range": etag}).status_code == 206
+    assert client.get(FILE_URL, headers={"Range": "bytes=0-99", "If-Range": '"viejo"'}).status_code == 200
 
 
 @pytest.mark.parametrize(

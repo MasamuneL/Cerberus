@@ -105,7 +105,7 @@ así que los resultados se comparten con el modo de desarrollo.
 | Variable (opcional) | Default | Para qué |
 |---|---|---|
 | `CERBERUS_HTTP_PORT` | 8080 | puerto local de la app |
-| `CERBERUS_CPU_THREADS` | 4 | hilos de MONAI/ANTs; con ≥ 12 CPU usa 8 (~35 % más rápido, misma RAM) |
+| `CERBERUS_CPU_THREADS` | auto | hilos de MONAI/ANTs; `auto` = máx(1, mín(CPUs − 1, 8)) según la cuota del contenedor; un número lo fija (ver `GET /api/system`) |
 | `CERBERUS_WORKER_MEM_LIMIT` / `CERBERUS_API_MEM_LIMIT` | 6g / 2g | límites de memoria |
 | `CERBERUS_STORAGE_PATH` | `./storage` | separar los resultados de Docker de los de desarrollo |
 | `CERBERUS_UID` / `CERBERUS_GID` | 1000 | solo en Linux: `$(id -u)` / `$(id -g)` |

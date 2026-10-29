@@ -24,10 +24,10 @@ x-backend: &backend
     CERBERUS_MAX_UPLOAD_MB: "${CERBERUS_MAX_UPLOAD_MB:-2048}"
     CERBERUS_MAX_ZIP_UNCOMPRESSED_MB: "${CERBERUS_MAX_ZIP_UNCOMPRESSED_MB:-4096}"
     CERBERUS_CORS_ORIGINS: '["http://localhost:${CERBERUS_HTTP_PORT:-8080}","http://127.0.0.1:${CERBERUS_HTTP_PORT:-8080}"]'
-    # Hilos de PyTorch e ITK/ANTs. Con 8 hilos 001/t0 tarda ~1.5 min en segmentar y ~1 min en mapear áreas (Rosetta);
-    # la memoria pico no cambia (~4.2 GB).
-    OMP_NUM_THREADS: "${CERBERUS_CPU_THREADS:-4}"
-    ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS: "${CERBERUS_CPU_THREADS:-4}"
+    # Hilos de PyTorch e ITK/ANTs. "auto" = max(1, min(CPUs − 1, 8)) según la cuota del contenedor; un número manda.
+    # El worker fija OMP/MKL/OpenBLAS/ITK al arrancar (cerberus_api/runtime.py). Con 8 hilos 001/t0 tarda ~1.5 min en
+    # segmentar y ~1 min en mapear áreas (Rosetta); la memoria pico no cambia (~4.2 GB).
+    CERBERUS_CPU_THREADS: "${CERBERUS_CPU_THREADS:-auto}"
     # MONAI llama a getpass.getuser() al importarse; con un UID sin entrada en /etc/passwd falla si USER no existe.
     USER: cerberus
     HOME: /tmp

@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from cerberus_api import __version__
 from cerberus_api.config import get_settings
 from cerberus_api.deps import close_redis
-from cerberus_api.routers import jobs, studies, uploads
+from cerberus_api.routers import jobs, studies, system, uploads
 
 
 @asynccontextmanager
@@ -41,6 +41,7 @@ def create_app() -> FastAPI:
     app.include_router(studies.router, prefix="/api")
     app.include_router(jobs.router, prefix="/api")
     app.include_router(uploads.router, prefix="/api")
+    app.include_router(system.router, prefix="/api")
     return app
 
 
