@@ -4,7 +4,7 @@
 > checkpoint. El historial completo está en [`PROGRESS.md`](PROGRESS.md) y el alcance y los contratos en
 > [`PLAN_MVP.md`](PLAN_MVP.md). Las reglas de trabajo están en [`../AGENTS.md`](../AGENTS.md).
 
-**Última actualización:** 2026-10-29 · último checkpoint: CP-026 · rama de trabajo: `feature/ux-ui`
+**Última actualización:** 2026-10-29 · último checkpoint: CP-027 · rama de trabajo: `feature/ux-ui`
 
 ## 1. Arranque rápido
 
@@ -35,55 +35,39 @@ Abre las PNG y revísalas: **no te fíes solo de los ✅**. Leer píxeles del ca
 **Terminado y en `main`:** el MVP completo (B0–B8, F0–F6, D1, E2E), las áreas de Brodmann (§13: B9–B11, F7, F8) y
 B12 (dominios funcionales, §14) y F11 (tipografía, tokens AA y lista de estudios, §14).
 
-**En curso: §14 · Mejoras de UX/UI** (ver la spec completa en `PLAN_MVP.md` §14).
+**Terminados en `feature/ux-ui`, pendientes de integración a `main`: §14 · F9 y F10.**
 
-| Ticket | Estado | Qué falta |
+| Ticket | Estado | Resultado |
 |---|---|---|
-| F9 · panel de capas + paleta fría + barra del cursor + atajos | 🟡 implementación recuperada de Claude; revisión y QA en curso | Capas fuera del canvas; comprobar lectura, atajos y opacidades durante cargas |
-| F10 · pestañas + "Funciones en riesgo" + tabla accesible | 🟡 implementación recuperada de Claude; revisión y QA en curso | Botones nativos en las filas; etapas del job sin progreso ficticio |
+| F9 · capas + paleta fría + cursor + atajos | ✅ | Capas fuera del canvas, opacidad estable durante cargas, lectura de cursor, atajos y fondo transparente en «Todas» |
+| F10 · pestañas + funciones en riesgo + tabla accesible | ✅ | Pestañas y filas con teclado, severidad por dominio, tablas sin desborde y etapas sin progreso ficticio |
 
-**Continuación con Codex, a petición del usuario:** trabajar y subir exclusivamente a **`feature/ux-ui`**;
-no integrar a `main` durante esta tarea. CP-025 respalda la implementación heredada y las primeras correcciones.
-El respaldo anterior de Claude sigue en `wip/ux-14`.
+**QA final (CP-027):** `CERBERUS_UI=http://localhost:5180 npm run verify` terminó con exit 0 el
+2026-10-29 a las 17:43:15 UTC: **33/33 checks**, **14 auditorías axe sin violaciones automáticas** y
+**27 capturas**. Revisadas capturas a 1440×900 y 1280×800, incluida la tabla de 005/t0 y el fondo del atlas.
+Ruff, formato y pyright correctos; **425 tests rápidos pasaron, 5 slow excluidos**; frontend build correcto.
+Informe completo y límites: [`QA_UX_UI.md`](QA_UX_UI.md).
 
-**Verificación hasta CP-025:** frontend build correcto; ruff y formato correctos; pyright sin errores;
-pytest rápido: **425 passed, 5 deselected**. El QA antiguo falla porque intenta desmarcar un checkbox que ahora
-es un botón `aria-pressed`. Se está actualizando `tools/e2e/verify.mjs` con Playwright y axe, fallos con exit 1,
-capturas a 1440×900 y 1280×800, teclado, riesgos y jobs simulados sin ejecutar MONAI/ANTs.
+**Estado durable:** implementación, fixes, runner y documentación en **`feature/ux-ui`**. CP-025 (`fad8562`)
+recuperó el trabajo de Claude; `af22c29` corrigió lectura/teclado/contraste; CP-026 (`d406354`) respaldó el QA,
+el fondo del atlas y las tablas. CP-027 registra la verificación final. No hay implementación pendiente de
+F9/F10 ni trabajo necesario que dependa de notas temporales o de la memoria de los agentes.
 
-**Revisión posterior de F9/F10:** sin bloqueantes en la revisión independiente. Corregidos: opacidades elegidas
-durante descarga, lecturas parciales/obsoletas al cargar, texto GTV con contraste 6.45:1 y atajos mientras el
-foco está en la subida. Tabla con botones nativos y encabezados de columna. Etapas del job sin estimación
-ficticia: la API no informa etapa activa. Build repetido correcto. Suite visual completa aún en ejecución;
-si se retoma antes de CP-027, ejecutar el QA y revisar sus capturas antes de marcar F9/F10 terminados.
+**Límites:** 12 auditorías conservan resultados incompletos de axe; no se certifica WCAG completa ni se hizo
+prueba con lector de pantalla. Sin línea base de capturas, la regresión visual automática es inconclusa.
+Los jobs del QA son simulados y no ejecutan ANTs/MONAI ni subidas reales. Capturas/reportes locales se
+regeneran con [`tools/e2e/README.md`](../tools/e2e/README.md); verificar siempre su fecha.
 
-**CP-026 (QA aún en curso):** la revisión de capturas encontró un fondo azul y un cubo opaco en el modo
-«Todas». El shader de Niivue mezclaba la etiqueta 1 con el fondo; se añadieron dos guardas transparentes al
-LUT y se preservó la indexación real de nombres. También se detectaron 6 px de desborde en la tabla de 005/t0;
-se ajustaron columnas, encabezados y envoltura. Los fixes compilan, pero falta la verificación posterior.
-El QA nuevo queda respaldado en esta rama: `tools/e2e/verify.mjs`, `verify-background.mjs` y su README.
-Ejecutar primero la suite principal y luego, si se necesita aislar el fondo, el segundo script, nunca dos
-Chrome simultáneos. Los reportes/capturas en `tools/e2e/shots/` pueden corresponder a una pasada anterior;
-verificar `startedAt`/`finishedAt` y no asumir éxito sin revisar el contenido.
+### Cómo retomar con Claude u otra herramienta
 
-**Trabajo repartido (solo contexto de esta sesión):** `viewer_f9` revisa el visor y sus componentes;
-`sidepanel_f10` revisa los paneles; `qa` actualiza `tools/e2e/`; el orquestador integra, documenta y sube.
-Notas temporales de recuperación en `/private/tmp/cerberus-{viewer-f9,sidepanel-f10,qa}.md`, si existen;
-el estado durable es esta rama y estos documentos.
-
-### Cómo terminar §14 si retomas tú
 1. `git fetch && git checkout feature/ux-ui && git pull --ff-only` (si no existe localmente:
    `git checkout -b feature/ux-ui origin/feature/ux-ui`).
-2. `cd frontend && npm install && npm run build`. Corrige los errores respetando la propiedad de archivos de
-   la tabla de arriba.
-3. Cumple los criterios de §14 en `PLAN_MVP.md`. Lo crítico:
-   - Las áreas **nunca** usan rojo, naranja ni amarillo (los hues de 0–60° y 330–360° quedan reservados para el tumor).
-   - "Funciones en riesgo": 🔴 un área elocuente se solapa con el GTV · 🟠 se solapa sin ser elocuente, o es elocuente a ≤ 5 mm ·
-     🟡 está a ≤ 10 mm. La severidad se marca con icono y texto, no con los colores del tumor.
-   - Accesible por teclado (pestañas con flechas, filas con Enter), `aria-pressed` en los toggles y contraste AA.
-4. Verifica con `tools/e2e` en 1440×900 y 1280×800 y **revisa las capturas**.
-5. Termina los fixes de F9/F10, corre el QA actualizado y revisa las PNG. Registra resultados y limitaciones
-   en `PROGRESS.md` y este archivo. Haz commit y push a `feature/ux-ui`; el merge a `main` queda pendiente.
+2. Leer este archivo, `PROGRESS.md`, `QA_UX_UI.md` y `PLAN_MVP.md` §14. **No volver a implementar F9/F10.**
+3. Si hay cambios nuevos, correr los checks obligatorios y el QA. Para el QA hacen falta los datos y
+   resultados de 001/t0 y 005/t0; los modelos/registros no forman parte de esa prueba.
+4. Revisar el PR de `feature/ux-ui`. La integración a `main` queda pendiente: esta tarea solo pidió subir la
+   rama. Después de un eventual merge, actualizar el tablero y registrar el siguiente checkpoint.
+5. Las propuestas de la sección 4 siguen sin aprobarse; no empezarlas como continuación automática de §14.
 
 ## 3. Lecciones aprendidas (léelas, ahorran horas)
 - **Niivue `scene.crosshairPos` es una fracción 0–1, no mm.** Para centrar: vóxel (orden del archivo) → mm con
@@ -96,6 +80,9 @@ el estado durable es esta rama y estos documentos.
 - ANTs no es 100 % determinista con varios hilos: los vóxeles por área varían ±3 % entre corridas.
 - Atlas Talairach `ba`: etiqueta corteza gris y núcleos, no sustancia blanca. "% del área" = fracción de esa corteza
   etiquetada dentro del GTV.
+- **Fondo de atlas en Niivue:** el shader fuerza la coordenada del LUT a `2/256`; con mínimo 0 puede mezclar
+  la etiqueta 1 con el fondo. Conservar las guardas transparentes -2/-1/0 y los nombres indexados por valor real.
+- Ejecutar un solo Chrome/SwiftShader de QA a la vez: instancias simultáneas pueden saturar la GPU y caer.
 - Un subagente o IA puede reportar éxito sin haberlo logrado (pasó en F8). Verifica siempre con capturas.
 
 ## 4. Siguiente después de §14 (propuesto, sin aprobar)
