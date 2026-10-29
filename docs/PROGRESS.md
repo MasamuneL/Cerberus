@@ -38,8 +38,8 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 | D2a · backend en Docker (§15) | ✅ | feat/D2-docker-compose | eb081f4 | 2026-10-29 | Vikingo / Claude Code (subagente) | |
 | D2b · frontend en Docker (§15) | ✅ | feat/D2-docker-compose | 1331265 | 2026-10-29 | Vikingo / Claude Code (subagente) | |
 | D2c · docs Docker (§15) | ✅ | feat/D2-docker-compose | 5a4b229 | 2026-10-29 | Vikingo / Claude Code (orquestador) | |
-| D2e-back · autoajuste + caché HTTP (§16) | ✅ | feat/D2e-autotune | e74d08a | 2026-10-29 | Vikingo / Claude Code (subagente) | rama sin merge aún |
-| D2e-front · indicador de recursos + 304 (§16) | 🟡 | feat/D2e-autotune | | 2026-10-29 | Vikingo / Claude Code (subagente) | |
+| D2e-back · autoajuste + caché HTTP (§16) | ✅ | feat/D2e-autotune | e74d08a | 2026-10-29 | Vikingo / Claude Code (subagente) | |
+| D2e-front · indicador de recursos + 304 (§16) | ✅ | feat/D2e-autotune | b4ef422 | 2026-10-29 | Vikingo / Claude Code (subagente) | |
 
 ## Bitácora de checkpoints
 
@@ -467,3 +467,14 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
   liberó los 14 CPU para la detección.
 - **Verificado por el orquestador a través de nginx:** `/api/system` desde el worker y `If-None-Match` → **304, 0 B**.
 - **Siguiente paso:** D2e-front (en curso) → validación → merge → CP-034.
+
+### CP-034 · 2026-10-29 · D2e-front + merge de §16 · `b4ef422`
+- **Hecho:** `SystemBadge` + `useSystemInfo` (un solo fetch, se refresca al volver a la ventana) en las pestañas
+  Segmentación y Áreas: "Cálculo: CPU · 8 hilos (auto) · 6 GB · Docker" + avisos. Estimaciones: segmentación GPU
+  ≈ 20 s; CPU ≈ 130 s × 4/hilos (60–400 s); áreas ~30 s–80 s × 4/hilos. Niivue carga con un `fetch` normal, así que el
+  navegador puede revalidar. `verify-docker.mjs` 15/15 con chequeo del indicador y 304 vía CDP.
+- **304 en el navegador:** gtv, monai_seg y brodmann vuelven 304 al regresar al estudio. `t1gd` (75 MB) vuelve 200
+  en Chrome headless: probablemente supera el tamaño máximo de entrada de su caché HTTP. Con curl a través de nginx
+  sí da 304. No es un fallo del servidor.
+- **Validado por el orquestador:** captura del indicador revisada; stack Docker *healthy*.
+- §16 mergeado a `main`.
