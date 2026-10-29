@@ -28,7 +28,7 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 | B9 · atlas + registro (§13) | 🟡 | feat/B9-atlas-registration | | 2026-10-29 | Vikingo / Claude Code (subagente) | |
 | B10 · base de funciones (§13) | 🟡 | feat/B10-area-kb | | 2026-10-29 | Vikingo / Claude Code (subagente) | |
 | B11 · reporte + job + API (§13) | ⬜ | | | | | depende de B9, B10 |
-| F7 · panel de áreas + overlay (§13) | 🟡 | feat/F7-areas-ui | | 2026-10-29 | Vikingo / Claude Code (subagente) | contra contrato §13 |
+| F7 · panel de áreas + overlay (§13) | ✅ | feat/F7-areas-ui | b325bf5 | 2026-10-29 | Vikingo / Claude Code (subagente) | falta prueba con backend real |
 | E2E · áreas (§13) | ⬜ | | | | | al final |
 
 ## Bitácora de checkpoints
@@ -225,3 +225,15 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
   uploads por el campo nuevo.
 - **Checks:** ruff ✅ · pyright 0 ✅ · pytest 240 passed ✅ · `npm run build` ✅.
 - **Siguiente paso:** ola A en paralelo con subagentes: B9, B10 y F7. Después, B11.
+
+### CP-016 · 2026-10-29 · F7 · `b325bf5`
+- **Hecho:** `AreasPanel.tsx` (job de mapeo, tablas "Afectadas por el GTV" y "Cercanas (≤ margen)", chips de funciones,
+  badge Elocuente, clic → enfocar área, aviso educativo siempre visible), `areaColors.ts` (paleta determinista; el
+  mismo tono para izquierdo y derecho con distinta luminosidad), overlay `brodmann` en `Viewer.tsx` (cargado al final
+  para no mover los índices del GTV y la segmentación; opacidad propia 0.35; modos "Solo afectadas" / "Todas" con las
+  no reportadas atenuadas; foco), y estado `areas` / `areasVersion` / `focusedLabel` en `App.tsx`.
+- **Niivue verificado en el código fuente:** el LUT de etiquetas se indexa por el valor del vóxel (`I`), los
+  valores ausentes quedan transparentes, `A` se respeta tal cual (el 0 se agrega explícitamente con alpha 0), y
+  `labels` se alinea por posición con `I`, empezando en 0 para que la lectura del cursor coincida.
+- **Contrato implícito:** `overlap_gtv_pct` y `overlap_wt_pct` van en **0–100** (B11 debe respetarlo).
+- **Checks:** `npm run build` ✅. Pendiente: prueba con el backend real (B9–B11).
