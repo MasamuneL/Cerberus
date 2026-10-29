@@ -97,6 +97,9 @@ services:
     build:
       context: .
       dockerfile: docker/frontend.Dockerfile
+    environment:
+      # Mantiene el límite de subida de nginx alineado con el de la API
+      CERBERUS_MAX_UPLOAD_MB: "${CERBERUS_MAX_UPLOAD_MB:-2048}"
     ports:
       - "127.0.0.1:${CERBERUS_HTTP_PORT:-8080}:8080"
     restart: unless-stopped

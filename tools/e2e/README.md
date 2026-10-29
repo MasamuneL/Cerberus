@@ -36,3 +36,50 @@ de los modos «Todas» y «Solo afectadas», además de `shots/background-report
 incluye las mismas comprobaciones del LUT y verifica la opacidad final tras cambiarla durante una
 descarga interceptada. Las interacciones extendidas del visor y los jobs se ejecutan en 1440×900;
 ambos tamaños cubren pestañas, tablas, datos reales, estudio distinto, aviso de subida y axe.
+
+## Smoke de Docker y frontend de producción
+
+Con Docker Compose levantado y la muestra `Data/001` descargada mediante Git LFS:
+
+```bash
+cd tools/e2e
+npm ci
+CERBERUS_UI=http://localhost:8080 node verify-docker.mjs
+```
+
+El puerto predeterminado es `8080`; `CERBERUS_TIMEOUT` conserva el límite de 180000 ms para Niivue.
+Se usa Chrome headless con SwiftShader. Ejecuta un solo navegador de QA a la vez.
+
+Este runner funciona con los archivos compilados servidos por Nginx: no importa módulos de `/src` ni
+consulta el objeto privado de Niivue. Comprueba HTML compilado, fallback SPA, proxy `/api`, salud,
+catálogo dinámico, volumetría de 001/t0 (33.14 ± 0.01 cm³), cabeceras y descargas NIfTI completas,
+canvas visible, carga terminada y lectura del cursor con intensidades y estado del GTV. También prueba
+pestañas por teclado, atajos, opacidad, ocultar/mostrar el GTV y el formulario de subida sin enviarlo.
+Solo requiere la muestra 001/t0: no exige ocho estudios ni resultados previos de MONAI o ANTs.
+
+Guarda `shots/docker/report.json` y capturas a 1440×900 y 1280×800, ignorados por Git. Las aserciones
+fallidas producen exit 1 y el navegador se cierra en `finally`. Cualquier mutación solicitada se bloquea
+y hace fallar el smoke; los únicos 404 permitidos corresponden a resultados ausentes según el catálogo.
+Revisa las capturas manualmente: el smoke no certifica accesibilidad ni sustituye `verify.mjs`.
+
+### Solo la imagen del frontend contra la API de desarrollo
+
+Nginx resuelve `api` en cada petición con el DNS de Docker (`127.0.0.11`), así sobrevive a que Compose
+recree la API. Por eso `--add-host` no basta: hace falta una red de usuario y un relé con alias `api` hacia
+la API del host (`uvicorn` en `:8000`):
+
+```bash
+docker build -f docker/frontend.Dockerfile -t cerberus-frontend:local .
+docker network create cerberus-fe-test
+printf 'pid /tmp/nginx.pid;\nevents {}\nstream { server { listen 8000; proxy_pass host.docker.internal:8000; } }\n' > /tmp/relay.conf
+docker run -d --name cerberus-fe-relay --network cerberus-fe-test --network-alias api \
+  -v /tmp/relay.conf:/etc/nginx/nginx.conf:ro nginx:1.28.3-alpine nginx -g 'daemon off;'
+docker run -d --name cerberus-fe-test --network cerberus-fe-test --read-only --tmpfs /tmp --cap-drop ALL \
+  -p 127.0.0.1:8081:8080 cerberus-frontend:local
+(cd tools/e2e && CERBERUS_UI=http://localhost:8081 node verify-docker.mjs)
+docker rm -f cerberus-fe-test cerberus-fe-relay && docker network rm cerberus-fe-test
+```
+
+`docker exec <contenedor> nginx -T` muestra `client_max_body_size`: se genera al arrancar como
+`CERBERUS_MAX_UPLOAD_MB` + 64 MiB (2112m por defecto) para el margen del multipart; la API aplica el
+límite exacto.
