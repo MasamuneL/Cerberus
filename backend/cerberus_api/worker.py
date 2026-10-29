@@ -13,6 +13,7 @@ from typing import Any
 from arq.connections import RedisSettings
 
 from cerberus_api import catalog
+from cerberus_api.areas import run_area_mapping
 from cerberus_api.config import get_settings
 from cerberus_api.dicom import convert_series, group_series, safe_extract, suggest_sequence
 from cerberus_api.nifti import load_nifti
@@ -44,6 +45,30 @@ async def segment_study(ctx: dict[str, Any], patient: str, timepoint: str) -> di
 
     out_dir = settings.results_dir / patient / timepoint
     result = await asyncio.to_thread(run_segmentation, study_files, out_dir, settings.models_dir)
+    return result.model_dump(mode="json")
+
+
+async def map_areas(ctx: dict[str, Any], patient: str, timepoint: str) -> dict[str, Any]:
+    """Mapea las áreas de Brodmann (§13, ticket B11) y devuelve el `AreasResult` serializado a JSON.
+
+    Escribe `storage/results/<patient>/<timepoint>/brodmann.{nii.gz,json}` (+ `mni/` con las transformaciones).
+    Lanza `ValueError` si los IDs son inválidos, el estudio no existe, no tiene GTV o no tiene T1.
+    """
+    settings = get_settings()
+    validate_patient(patient)
+    validate_timepoint(timepoint)
+    study = catalog.get_study(settings.data_dir, settings.results_dir, patient, timepoint)
+    if study is None:
+        raise ValueError(f"Estudio no encontrado: {patient}/{timepoint}")
+
+    study_files: dict[str, Path] = {}
+    for seq in study.sequences:
+        path = catalog.sequence_path(settings.data_dir, patient, timepoint, seq)
+        if path is not None:
+            study_files[seq] = path
+
+    out_dir = settings.results_dir / patient / timepoint
+    result = await asyncio.to_thread(run_area_mapping, study_files, out_dir, settings.models_dir)
     return result.model_dump(mode="json")
 
 
@@ -147,7 +172,7 @@ async def ingest_dicom(ctx: dict[str, Any], upload_id: str, zip_path: str) -> di
 class WorkerSettings:
     """Configuración del worker que lee `arq` (atributos de clase)."""
 
-    functions = [segment_study, ingest_dicom]
+    functions = [segment_study, ingest_dicom, map_areas]
     redis_settings = RedisSettings.from_dsn(get_settings().redis_url)
     job_timeout = 1800
     # Un solo job a la vez: un modelo en GPU/MPS

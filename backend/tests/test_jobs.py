@@ -249,6 +249,6 @@ def test_worker_ingest_dicom_invalid_upload_id() -> None:
 
 
 def test_worker_settings() -> None:
-    assert worker.WorkerSettings.functions == [worker.segment_study, worker.ingest_dicom]
+    assert worker.WorkerSettings.functions == [worker.segment_study, worker.ingest_dicom, worker.map_areas]
     assert worker.WorkerSettings.job_timeout == 1800
     assert worker.WorkerSettings.max_jobs == 1

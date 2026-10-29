@@ -1,4 +1,4 @@
-"""Endpoints de estudios (docs/PLAN_MVP.md §7): lectura (ticket B4) y segmentación MONAI (ticket B6).
+"""Endpoints de estudios (docs/PLAN_MVP.md §7): lectura (B4), segmentación MONAI (B6) y áreas de Brodmann (§13, B11).
 
 Todo identificador que llega en la URL se valida con `cerberus_api.sequences` (directamente o a través de
 `catalog`) **antes** de construir un `Path` (AGENTS.md, regla 9).
@@ -12,9 +12,12 @@ from pydantic import ValidationError
 from redis.exceptions import RedisError
 
 from cerberus_api import catalog
+from cerberus_api.areas import AREAS_JSON
+from cerberus_api.atlas import MOVING_PRIORITY
 from cerberus_api.config import Settings
 from cerberus_api.deps import REDIS_UNAVAILABLE, RedisDep, SettingsDep
 from cerberus_api.schemas import (
+    AreasResult,
     JobCreated,
     LongitudinalPoint,
     SegmentationResult,
@@ -142,3 +145,44 @@ def get_segmentation(patient: str, timepoint: str, settings: SettingsDep) -> Seg
         return SegmentationResult.model_validate_json(path.read_text(encoding="utf-8"))
     except ValidationError as exc:
         raise HTTPException(status_code=500, detail="monai_seg.json corrupto") from exc
+
+
+# --- §13 · Áreas de Brodmann (ticket B11) ---------------------------------------------------------------
+
+
+@router.post("/studies/{patient}/{timepoint}/areas", status_code=202)
+async def start_area_mapping(patient: str, timepoint: str, settings: SettingsDep, redis: RedisDep) -> JobCreated:
+    """Encola `map_areas` en el worker; 404 si no existe el estudio, 422 sin GTV o sin secuencia T1."""
+    study = catalog.get_study(settings.data_dir, settings.results_dir, patient, timepoint)
+    if study is None:
+        raise HTTPException(status_code=404, detail="Estudio no encontrado")
+    if not study.has_gtv:
+        raise HTTPException(status_code=422, detail="El estudio no tiene GTV: no se pueden reportar áreas afectadas")
+    if not set(MOVING_PRIORITY).intersection(study.sequences):
+        raise HTTPException(
+            status_code=422, detail="El estudio no tiene secuencia T1 (t1gd/t1eg/t1tse) para registrar al MNI"
+        )
+    try:
+        job = await redis.enqueue_job("map_areas", patient, timepoint)
+    except (RedisError, OSError) as exc:
+        raise HTTPException(status_code=503, detail=REDIS_UNAVAILABLE) from exc
+    if job is None:
+        raise HTTPException(status_code=409, detail="El mapeo de áreas ya está en cola")
+    return JobCreated(job_id=job.job_id)
+
+
+@router.get("/studies/{patient}/{timepoint}/areas")
+def get_areas(patient: str, timepoint: str, settings: SettingsDep) -> AreasResult:
+    """Último reporte de áreas (`brodmann.json`); 404 si no hay o los IDs son inválidos, 500 si está corrupto."""
+    try:
+        validate_patient(patient)
+        validate_timepoint(timepoint)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail="Reporte de áreas no encontrado") from exc
+    path = settings.results_dir / patient / timepoint / AREAS_JSON
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail="Reporte de áreas no encontrado")
+    try:
+        return AreasResult.model_validate_json(path.read_text(encoding="utf-8"))
+    except ValidationError as exc:
+        raise HTTPException(status_code=500, detail="brodmann.json corrupto") from exc
