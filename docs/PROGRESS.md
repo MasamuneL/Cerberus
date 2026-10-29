@@ -25,6 +25,11 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 | F6 · UploadPanel | ✅ | feat/F6-upload-panel | b4c25e3 | 2026-10-27 | Vikingo / Claude Code (subagente) | flujo DICOM se valida en E2E con B8 |
 | D1 · README | ✅ | docs/D1-readme | 656b2b1 | 2026-10-27 | Vikingo / Claude Code (subagente) | |
 | E2E · Verificación §10 | ✅ | main | 656b2b1 | 2026-10-27 | Vikingo / Claude Code (orquestador) | API/flujo ✅; falta revisión visual WebGL por una persona |
+| B9 · atlas + registro (§13) | 🟡 | feat/B9-atlas-registration | | 2026-10-29 | Vikingo / Claude Code (subagente) | |
+| B10 · base de funciones (§13) | 🟡 | feat/B10-area-kb | | 2026-10-29 | Vikingo / Claude Code (subagente) | |
+| B11 · reporte + job + API (§13) | ⬜ | | | | | depende de B9, B10 |
+| F7 · panel de áreas + overlay (§13) | 🟡 | feat/F7-areas-ui | | 2026-10-29 | Vikingo / Claude Code (subagente) | contra contrato §13 |
+| E2E · áreas (§13) | ⬜ | | | | | al final |
 
 ## Bitácora de checkpoints
 
@@ -209,3 +214,14 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 - **Pendiente humano:** revisión visual en el navegador (render de Niivue, colores del GTV y de las etiquetas,
   panel de segmentación y modal de subida). En esta máquina no hubo navegador automatizable.
 - **Siguiente paso:** MVP completo a nivel de API y flujo. Queda la revisión visual y luego la fase 2 (§1 "No incluye").
+
+### CP-015 · 2026-10-29 · arranque de la fase 2: áreas de Brodmann (§13)
+- **Contexto:** el usuario preguntó por las áreas de Brodmann (idea de `cerberus_eda.py:1048`), que se había omitido
+  del MVP sin dejarla anotada. Decisión: atlas Talairach-Brodmann (nilearn), implementarlo ya como fase 2.
+- **Hecho (orquestador):** dependencias `antspyx` 0.5.3 y `nilearn` 0.14.1. Se verificó el atlas: 71 regiones
+  (BA1–47 + subcorticales), 141×172×110 a 1 mm en MNI. Contrato §13: `Study.has_areas`, `AreaLabel` /
+  `AffectedArea` / `AreasResult` en `schemas.py` y `types.ts`, `brodmann` como archivo derivado servible (el resolver
+  ahora es genérico para `SERVABLE_DERIVED`), `startAreaMapping` y `getAreas` en `client.ts`. Se ajustó un test de
+  uploads por el campo nuevo.
+- **Checks:** ruff ✅ · pyright 0 ✅ · pytest 240 passed ✅ · `npm run build` ✅.
+- **Siguiente paso:** ola A en paralelo con subagentes: B9, B10 y F7. Después, B11.

@@ -21,6 +21,7 @@ class Study(BaseModel):
     has_gtv: bool
     has_brain_mask: bool
     has_segmentation: bool
+    has_areas: bool = False  # existe brodmann.nii.gz (§13)
 
 
 class VolumeInfo(BaseModel):
@@ -121,3 +122,41 @@ class ConfirmUpload(BaseModel):
     patient: str
     timepoint: str
     mapping: dict[str, str]  # índice de serie (como texto) → secuencia
+
+
+# --- §13 · Áreas de Brodmann y estructuras afectadas -------------------------------------------------
+
+Hemisphere = Literal["izquierdo", "derecho"]
+AreaKind = Literal["cortical", "subcortical"]
+
+
+class AreaLabel(BaseModel):
+    """Entrada del LUT de `brodmann.nii.gz`: valor = índice del atlas (+100 si es hemisferio derecho)."""
+
+    label: int
+    name: str  # nombre original del atlas, ej. "Brodmann area 44"
+    name_es: str
+    hemisphere: Hemisphere
+    kind: AreaKind
+
+
+class AffectedArea(AreaLabel):
+    area_cm3: float  # volumen del área en el espacio del paciente
+    overlap_gtv_cm3: float
+    overlap_gtv_pct: float  # % del área dentro del GTV
+    overlap_wt_cm3: float | None  # None si no hay segmentación MONAI
+    overlap_wt_pct: float | None
+    distance_mm: float  # distancia mínima del GTV al área; 0.0 si se solapan
+    functions: list[str]  # funciones asociadas (español), de la base curada
+    eloquent: bool  # corteza/estructura elocuente (lesión → déficit evidente)
+
+
+class AreasResult(BaseModel):
+    atlas: str
+    registration: str
+    reference_sequence: str
+    margin_mm: float  # áreas a <= margin_mm del GTV se reportan aunque no se solapen
+    created_at: datetime
+    areas: list[AffectedArea]  # solapadas primero (overlap desc), luego por distancia asc
+    lut: list[AreaLabel]  # todas las etiquetas presentes en brodmann.nii.gz
+    warnings: list[str]

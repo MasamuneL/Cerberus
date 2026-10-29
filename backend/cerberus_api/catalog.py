@@ -26,6 +26,7 @@ FILE_RE = re.compile(r"(\d+)_(t\d+)_(.+)\.nii\.gz", re.ASCII)
 
 # Segmentación MONAI ya calculada: storage/results/<patient>/<timepoint>/monai_seg.nii.gz
 SEGMENTATION_FILE = "monai_seg.nii.gz"
+AREAS_FILE = "brodmann.nii.gz"  # §13
 
 
 def _parse_file(path: Path) -> str | None:
@@ -74,6 +75,7 @@ def _make_study(patient: str, timepoint: str, files: dict[str, Path], results_di
         has_gtv="gtv" in files,
         has_brain_mask="brain_mask" in files,
         has_segmentation=(results_dir / patient / timepoint / SEGMENTATION_FILE).is_file(),
+        has_areas=(results_dir / patient / timepoint / AREAS_FILE).is_file(),
     )
 
 

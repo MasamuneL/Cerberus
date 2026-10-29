@@ -5,6 +5,7 @@ import type {
   JobStatus,
   LongitudinalPoint,
   SegmentationResult,
+  AreasResult,
   Study,
   StudyDetail,
   UploadCreated,
@@ -66,6 +67,12 @@ export const startSegmentation = (p: string, t: string): Promise<JobCreated> =>
 
 export const getSegmentation = (p: string, t: string): Promise<SegmentationResult> =>
   request(`/studies/${enc(p)}/${enc(t)}/segmentation`);
+
+export const startAreaMapping = (p: string, t: string): Promise<JobCreated> =>
+  request(`/studies/${enc(p)}/${enc(t)}/areas`, { method: "POST" });
+
+export const getAreas = (p: string, t: string): Promise<AreasResult> =>
+  request(`/studies/${enc(p)}/${enc(t)}/areas`);
 
 export const getJob = (id: string): Promise<JobStatus> => request(`/jobs/${enc(id)}`);
 

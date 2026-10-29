@@ -23,7 +23,7 @@ from cerberus_api.schemas import (
     Volumetry,
 )
 from cerberus_api.segmentation import CHANNEL_MAP
-from cerberus_api.sequences import validate_file_name, validate_patient, validate_timepoint
+from cerberus_api.sequences import SERVABLE_DERIVED, validate_file_name, validate_patient, validate_timepoint
 from cerberus_api.volumetry import gtv_volumetry, longitudinal
 
 router = APIRouter(tags=["studies"])
@@ -52,8 +52,8 @@ def _resolve_file(settings: Settings, patient: str, timepoint: str, name: str) -
         validate_timepoint(timepoint)
     except ValueError:
         return None
-    if name == "monai_seg":
-        path = settings.results_dir / patient / timepoint / catalog.SEGMENTATION_FILE
+    if name in SERVABLE_DERIVED:
+        path = settings.results_dir / patient / timepoint / f"{name}.nii.gz"
         return path if path.is_file() else None
     return catalog.sequence_path(settings.data_dir, patient, timepoint, name)
 

@@ -23,7 +23,7 @@ SEQ_INFO: dict[str, str] = {
 MRI_SEQS: list[str] = ["t1gd", "t1eg", "t1tse", "t2tse", "t2star", "flair", "adc"]
 
 # Archivos derivados que la API también sirve (storage/results/<patient>/<timepoint>/)
-SERVABLE_DERIVED: tuple[str, ...] = ("monai_seg",)
+SERVABLE_DERIVED: tuple[str, ...] = ("monai_seg", "brodmann")
 
 # re.ASCII: `\d` solo acepta 0-9 (sin dígitos Unicode como "٠٠١")
 PATIENT_RE = re.compile(r"^\d{3}$", re.ASCII)

@@ -13,6 +13,7 @@ export interface Study {
   has_gtv: boolean;
   has_brain_mask: boolean;
   has_segmentation: boolean;
+  has_areas: boolean; // existe brodmann.nii.gz (§13)
 }
 
 export interface VolumeInfo {
@@ -111,4 +112,40 @@ export interface ConfirmUpload {
   patient: string;
   timepoint: string;
   mapping: Record<string, string>; // índice de serie (texto) → secuencia
+}
+
+// --- §13 · Áreas de Brodmann y estructuras afectadas ---
+
+export type Hemisphere = "izquierdo" | "derecho";
+export type AreaKind = "cortical" | "subcortical";
+
+/** Entrada del LUT de brodmann.nii.gz: valor = índice del atlas (+100 si es hemisferio derecho). */
+export interface AreaLabel {
+  label: number;
+  name: string;
+  name_es: string;
+  hemisphere: Hemisphere;
+  kind: AreaKind;
+}
+
+export interface AffectedArea extends AreaLabel {
+  area_cm3: number;
+  overlap_gtv_cm3: number;
+  overlap_gtv_pct: number;
+  overlap_wt_cm3: number | null;
+  overlap_wt_pct: number | null;
+  distance_mm: number; // 0 si se solapa con el GTV
+  functions: string[];
+  eloquent: boolean;
+}
+
+export interface AreasResult {
+  atlas: string;
+  registration: string;
+  reference_sequence: string;
+  margin_mm: number;
+  created_at: string; // ISO-8601
+  areas: AffectedArea[];
+  lut: AreaLabel[];
+  warnings: string[];
 }

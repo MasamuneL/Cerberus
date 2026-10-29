@@ -28,7 +28,7 @@ y httpx como dependencias de desarrollo.
 - Subida de un `.zip` DICOM: detectar series, convertir a NIfTI, sugerir la secuencia, el usuario confirma
   y se guarda en `Data/`.
 
-**No incluye** (fase 2): auth/usuarios, base de datos, Otsu/K-Means en la app, edema FLAIR, skull-stripping
+**No incluye** (fase 2; ver §13 para áreas de Brodmann, que ya se agregó): auth/usuarios, base de datos, Otsu/K-Means en la app, edema FLAIR, skull-stripping
 automático, registro entre series, RTSTRUCT (rt-utils), exportar DICOM SEG, despliegue/Docker, Mayavi.
 
 ## 2. Decisiones fijas (no reabrir sin hablar con el equipo)
@@ -439,3 +439,79 @@ El estado del desarrollo vive en el repo, no en la memoria de una persona ni de 
   se corrige en este plan en el mismo commit.
 - Si un ticket se bloquea, márcalo ⛔ con el motivo y haz push. El siguiente en tomarlo empieza por ahí.
 - Fechas en formato ISO `YYYY-MM-DD`. Hashes de commit cortos (7 caracteres).
+
+## 13. Fase 2 · Áreas de Brodmann y funciones afectadas
+
+**Origen:** `cerberus_eda.py:1048` ("Registro a MNI + atlas … para reportar áreas de Brodmann afectadas"). Quedó
+fuera del MVP por omisión y se recupera aquí (decisión del 2026-10-29).
+
+**Objetivo:** para un estudio con GTV, estimar qué áreas de Brodmann y estructuras subcorticales toca o rodea el
+tumor, qué funciones se asocian a ellas y mostrarlas en el visor como overlay con opacidad ajustable.
+
+**Decisiones fijas**
+
+| Tema | Decisión |
+|---|---|
+| Atlas | Talairach, nivel `ba`, vía `nilearn.datasets.fetch_atlas_talairach("ba", data_dir=models_dir/"atlas")`: 71 regiones (BA1–47 + estructuras subcorticales), 1 mm, espacio MNI |
+| Plantilla | `nilearn.datasets.load_mni152_template(resolution=1)` (+ `load_mni152_brain_mask`) |
+| Registro | ANTsPy (`antspyx`): paciente → MNI con `type_of_transform="SyN"`; GTV dilatado 5 mm excluido del costo (`moving_mask`); el atlas vuelve al paciente con `invtransforms` + `interpolator="genericLabel"` |
+| Hemisferio | Se separa en MNI por la coordenada x del mundo (RAS: x<0 izquierdo). Valor en `brodmann.nii.gz` = índice del atlas (izquierdo) o índice+100 (derecho); 0 = fondo; uint8 |
+| Grid de salida | El de la secuencia de referencia del visor (t1gd si existe), para que el overlay coincida con el GTV nativo |
+| Funciones | Base curada `backend/cerberus_api/data/area_functions.json` (español, con fuentes), con funciones distintas por hemisferio cuando aplica (ej. BA44 izq. = Broca) |
+| Margen | Se reportan las áreas solapadas con el GTV y las que estén a ≤ 10 mm |
+| Aviso | Siempre visible en la UI: estimación educativa basada en atlas; no sustituye fMRI, tractografía ni mapeo cortical intraoperatorio; con tumores grandes el registro pierde precisión |
+
+**Contrato (ya en el código, commit del CP-015):** `Study.has_areas`; `AreaLabel`, `AffectedArea`, `AreasResult` en
+`schemas.py` / `types.ts`; `SERVABLE_DERIVED` incluye `brodmann`; `client.ts` tiene `startAreaMapping` y `getAreas`.
+
+```
+storage/results/<p>/<t>/brodmann.nii.gz   # mapa de etiquetas en el grid de la referencia
+storage/results/<p>/<t>/brodmann.json     # AreasResult
+storage/results/<p>/<t>/mni/              # transformaciones ANTs en caché
+```
+
+| Método y ruta | Respuesta |
+|---|---|
+| `POST /api/studies/{p}/{t}/areas` | 202 `JobCreated` · 404 sin estudio · 422 sin GTV o sin secuencia T1 · 503 sin Redis |
+| `GET /api/studies/{p}/{t}/areas` | `AreasResult` · 404 |
+| `GET /api/studies/{p}/{t}/files/brodmann.nii.gz` | mapa de etiquetas |
+
+### Tickets
+
+**B9 · atlas + registro** — `backend/cerberus_api/atlas.py`
+- `fetch_atlas(models_dir) -> (Nifti1Image, list[str])` y `fetch_template(models_dir)`, con caché en `models/atlas` (la red
+  solo se usa la primera vez).
+- `map_atlas(study_files, out_dir, models_dir) -> AtlasMapping` (dataclass: `label_path`, `entries:
+  list[tuple[int, str, Hemisphere]]`, `reference_sequence`, `registration` (texto), `warnings`). La imagen móvil es la T1
+  sin contraste (t1eg → t1tse → t1gd), enmascarada con `brain_mask` si existe. La transformación se guarda en
+  `out_dir/mni/` y se reutiliza. Al final se verifica que el affine de salida sea igual al de la referencia.
+- Warnings en español: sin `brain_mask`, solo T1 con contraste, GTV grande (> 10 % del cerebro).
+- Tests rápidos sin red ni ANTs (codificación de hemisferios con un atlas sintético) + 1 `slow` real sobre 001/t0.
+
+**B10 · base de funciones** — `backend/cerberus_api/data/area_functions.json` + `area_kb.py`
+- Una entrada por cada uno de los 71 nombres del atlas: `name_es`, `kind`, `functions` y, opcionalmente,
+  `functions_left` / `functions_right`, `eloquent`, `sources`.
+- `load_area_kb()` (cacheado, vía `importlib.resources`) y `functions_for(name, hemisphere)`.
+- Tests: cubre los 71 nombres (lista fija en el test); campos válidos; BA44/45 izquierda contiene el lenguaje.
+
+**B11 · reporte + job + API** — `backend/cerberus_api/areas.py`, `worker.map_areas`, rutas en `studies.py`
+- `compute_area_report(...)`: solapamiento con el GTV (y con el WT de `monai_seg` si existe, remuestreado con
+  orden 0), % del área, cm³ y distancia mínima con EDT en mm. Orden: primero las solapadas y luego las cercanas.
+- `run_area_mapping(study_files, out_dir, models_dir) -> AreasResult` escribe `brodmann.json`.
+- Tests rápidos con `map_atlas` falso; 1 `slow` real.
+
+**F7 · panel de áreas + overlay** — `components/AreasPanel.tsx`, `Viewer.tsx`, `App.tsx`
+- Botón "Mapear áreas afectadas" → job (`useJob`) → tabla: área, hemisferio, % del área en el GTV, cm³,
+  distancia, funciones (chips) y badge "Elocuente". Secciones "Afectadas" y "Cercanas (≤ 10 mm)", más warnings y
+  el aviso obligatorio.
+- Viewer: toggle "Áreas de Brodmann" (si `has_areas`), slider de opacidad propio (0.35 por defecto), modo "Solo
+  afectadas / Todas" (alpha 0 para las etiquetas no reportadas) y LUT de etiquetas con nombres (`ColorMap.labels`).
+  Al hacer clic en una fila de la tabla se enfoca esa área en el visor.
+
+### Orden
+
+| Ola | Tickets |
+|---|---|
+| A | B9, B10, F7 (F7 contra el contrato) |
+| B | B11 |
+| C | E2E: 001/t0 real (áreas coherentes con la localización del GTV) + revisión visual |

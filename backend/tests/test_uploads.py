@@ -86,6 +86,7 @@ def test_upload_nii_gz(upload: Upload, client: TestClient, settings: Settings, n
         "has_gtv": False,
         "has_brain_mask": False,
         "has_segmentation": False,
+        "has_areas": False,
     }
     assert (settings.data_dir / "001" / "t0" / "1_t0_flair.nii.gz").is_file()
     studies = client.get("/api/studies").json()
