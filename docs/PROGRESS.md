@@ -31,7 +31,7 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 | F7 · panel de áreas + overlay (§13) | ✅ | feat/F7-areas-ui | b325bf5 | 2026-10-29 | Vikingo / Claude Code (subagente) | falta prueba con backend real |
 | E2E · áreas (§13) | ✅ | main | cbca8ad | 2026-10-29 | Vikingo / Claude Code (orquestador) | API/flujo ✅ + visual con Playwright ✅ |
 | F8 · ajustes visuales (Playwright) | ✅ | fix/F8-viewer-centering | cbca8ad | 2026-10-29 | Vikingo / Claude Code (subagente + orquestador) | |
-| B12 · dominios funcionales (§14) | 🟡 | feat/B12-domains | | 2026-10-29 | Vikingo / Claude Code (subagente) | |
+| B12 · dominios funcionales (§14) | ✅ | feat/B12-domains | 1088611 | 2026-10-29 | Vikingo / Claude Code (subagente) | |
 | F9 · capas + paleta + cursor (§14) | 🟡 | feat/F9-viewer-layers | | 2026-10-29 | Vikingo / Claude Code (subagente) | |
 | F10 · pestañas + funciones en riesgo (§14) | 🟡 | feat/F10-side-tabs | | 2026-10-29 | Vikingo / Claude Code (subagente) | |
 | F11 · tipografía + accesibilidad + lista (§14) | 🟡 | feat/F11-type-a11y | | 2026-10-29 | Vikingo / Claude Code (subagente) | |
@@ -316,3 +316,14 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
   plan con las reglas del sistema visual (rojo, naranja y amarillo solo para el tumor; áreas en tonos fríos; Plex;
   CSS por componente; AA) y el semáforo de "Funciones en riesgo".
 - **Siguiente paso:** B12, F9, F10 y F11 en paralelo → Playwright → CP-022.
+
+### CP-022 · 2026-10-29 · B12 · `1088611`
+- **Hecho:** `domains`, `domains_left` y `domains_right` en las 71 entradas de `area_functions.json`; `domains_for()` en
+  `area_kb.py`; `areas.py` llena `AffectedArea.domains`. Se regeneró `brodmann.json` de 001/t0 (23 áreas) y 005/t0
+  (58 áreas). Lenguaje solo aparece por lateralidad izquierda (BA21, 22, 37, 39, 40, 44, 45, 47). Atención espacial,
+  integración multimodal y olfato → "otro". 425 tests.
+- **Ejemplo 001/t0:** BA40 izq. [lenguaje, sensitivo], BA39 izq. [lenguaje, otro], BA7 izq. [vision, motor].
+- **Incidente de entorno:** la API corría sin `--reload` desde antes del cambio de contrato y su `response_model`
+  viejo descartaba `domains`. Se reiniciaron la API (ahora con `--reload --reload-dir backend`) y el worker.
+  **Regla:** después de cambiar `schemas.py`, reinicia la API y el worker.
+- **Checks:** ruff ✅ · pyright 0 ✅ · pytest 425 passed ✅.
