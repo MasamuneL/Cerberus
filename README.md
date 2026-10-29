@@ -83,7 +83,40 @@ La primera ejecución de la celda MONAI descarga el bundle `brats_mri_segmentati
 
 ## App web
 
-### Requisitos
+### Opción rápida: Docker Desktop (recomendada para usarla)
+
+Requisitos: [Docker Desktop](https://www.docker.com/products/docker-desktop/) con **≥ 8 GB de RAM** asignados
+(Settings → Resources) y la muestra `Data/001` descargada con Git LFS. En Mac con Apple Silicon activa
+*Use Rosetta for x86_64/amd64 emulation* (Settings → General): el backend es `linux/amd64` porque ANTs no publica
+wheel ARM para Linux.
+
+```bash
+docker compose up -d --build      # primer build: varios minutos (torch CPU + ANTs)
+docker compose ps                 # redis, api, worker y frontend deben estar "healthy"
+open http://localhost:8080        # la app
+docker compose logs -f worker     # ver jobs de segmentación / áreas
+docker compose down               # parar (añade -v para borrar también la cola de Redis)
+```
+
+En Docker Desktop aparece el proyecto **cerberus** con 4 contenedores. Solo se publica `127.0.0.1:8080` (nginx):
+`/api` se reenvía a la API y Redis queda en la red interna. `Data/`, `storage/` y `models/` se montan desde el repo,
+así que los resultados se comparten con el modo de desarrollo.
+
+| Variable (opcional) | Default | Para qué |
+|---|---|---|
+| `CERBERUS_HTTP_PORT` | 8080 | puerto local de la app |
+| `CERBERUS_CPU_THREADS` | 4 | hilos de MONAI/ANTs; con ≥ 12 CPU usa 8 (~35 % más rápido, misma RAM) |
+| `CERBERUS_WORKER_MEM_LIMIT` / `CERBERUS_API_MEM_LIMIT` | 6g / 2g | límites de memoria |
+| `CERBERUS_STORAGE_PATH` | `./storage` | separar los resultados de Docker de los de desarrollo |
+| `CERBERUS_UID` / `CERBERUS_GID` | 1000 | solo en Linux: `$(id -u)` / `$(id -g)` |
+
+**Rendimiento** (Mac de 14 CPU, Docker con CPU bajo Rosetta, 4 hilos): segmentación MONAI ~2 min (92 s con 8 hilos;
+en desarrollo con MPS ~18 s), mapeo de áreas ~1.5 min en frío y ~30 s con el registro en caché. Pico del worker
+~4.2 GiB. Los resultados son idénticos a los de desarrollo (001/t0: Dice TC 0.857).
+
+Smoke test de la versión Docker: `cd tools/e2e && npm ci && CERBERUS_UI=http://localhost:8080 node verify-docker.mjs`.
+
+### Modo desarrollo: requisitos
 
 - Python 3.11 + [uv](https://docs.astral.sh/uv/)
 - Node 20+ y npm
