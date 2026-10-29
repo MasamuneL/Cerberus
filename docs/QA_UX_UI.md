@@ -1,6 +1,7 @@
 # QA de UX/UI — F9 y F10
 
-Fecha: 2026-10-29. Rama: `feature/ux-ui`. Alcance: §14 de `PLAN_MVP.md`.
+Fecha: 2026-10-29. Rama de implementación: `feature/ux-ui`. Alcance: §14 de `PLAN_MVP.md`.
+Integrado en `main` por el PR #1, merge `bcef409` (CP-028); árbol idéntico al validado en CP-027.
 
 **Resultado funcional: APROBADO, CP-027.** La pasada final terminó con exit 0, del
 2026-10-29 17:37:35 al 17:43:15 UTC. El orquestador verificó el JSON y revisó las capturas finales.

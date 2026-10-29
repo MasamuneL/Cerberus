@@ -32,8 +32,8 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 | E2E · áreas (§13) | ✅ | main | cbca8ad | 2026-10-29 | Vikingo / Claude Code (orquestador) | API/flujo ✅ + visual con Playwright ✅ |
 | F8 · ajustes visuales (Playwright) | ✅ | fix/F8-viewer-centering | cbca8ad | 2026-10-29 | Vikingo / Claude Code (subagente + orquestador) | |
 | B12 · dominios funcionales (§14) | ✅ | feat/B12-domains | 1088611 | 2026-10-29 | Vikingo / Claude Code (subagente) | |
-| F9 · capas + paleta + cursor (§14) | ✅ | feature/ux-ui | fad8562, af22c29, d406354 | 2026-10-29 | Vikingo / Claude Code + Codex | QA CP-027; merge a main pendiente |
-| F10 · pestañas + funciones en riesgo (§14) | ✅ | feature/ux-ui | fad8562, d406354 | 2026-10-29 | Vikingo / Claude Code + Codex | QA CP-027; merge a main pendiente |
+| F9 · capas + paleta + cursor (§14) | ✅ | feature/ux-ui | fad8562, af22c29, d406354 | 2026-10-29 | Vikingo / Claude Code + Codex | Integrado en main: PR #1, bcef409; CP-028 |
+| F10 · pestañas + funciones en riesgo (§14) | ✅ | feature/ux-ui | fad8562, d406354 | 2026-10-29 | Vikingo / Claude Code + Codex | Integrado en main: PR #1, bcef409; CP-028 |
 | F11 · tipografía + accesibilidad + lista (§14) | ✅ | feat/F11-type-a11y | 5b7b024 | 2026-10-29 | Vikingo / Claude Code (subagente) | |
 
 ## Bitácora de checkpoints
@@ -394,3 +394,15 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
   Evidencia, comandos y hallazgos en `docs/QA_UX_UI.md`; runner en `tools/e2e/`.
 - **Siguiente paso:** revisión del PR e integración posterior de `feature/ux-ui`. `main` no se modificó.
   El handoff identifica la rama y el estado final para retomar con Claude sin repetir la implementación.
+
+### CP-028 · 2026-10-29 · integración de UX/UI a main · `bcef409`
+- **Pedido del usuario:** realizar el merge del PR #1.
+- **Hecho:** PR #1 fusionado mediante merge commit `bcef409` a las 17:49:18 UTC. `main` local actualizado
+  con fast-forward; rama `feature/ux-ui` conservada. F9/F10 y el QA ya están integrados en `main`.
+- **Verificación previa:** PR mergeable y limpio; sin checks de CI configurados. Ruff y formato correctos,
+  pyright 0 errores, pytest **425 passed, 5 deselected** y frontend build correcto. Se comprobó que el árbol
+  fusionado es idéntico al commit validado `06ba62a`; se conserva la evidencia visual de CP-027.
+- **Verificación posterior:** pytest en `main`: **425 passed, 5 deselected**. Sin cambios de código después
+  de la integración; este checkpoint solo actualiza documentación.
+- **Checkpoint:** tablero y sección 2 de `HANDOFF.md` actualizados para retomar desde `main`. No quedan tareas
+  de implementación, QA o merge pendientes de §14. Las propuestas posteriores siguen sin aprobarse.

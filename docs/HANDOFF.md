@@ -4,12 +4,12 @@
 > checkpoint. El historial completo está en [`PROGRESS.md`](PROGRESS.md) y el alcance y los contratos en
 > [`PLAN_MVP.md`](PLAN_MVP.md). Las reglas de trabajo están en [`../AGENTS.md`](../AGENTS.md).
 
-**Última actualización:** 2026-10-29 · último checkpoint: CP-027 · rama de trabajo: `feature/ux-ui`
+**Última actualización:** 2026-10-29 · último checkpoint: CP-028 · rama base: `main`
 
 ## 1. Arranque rápido
 
 ```bash
-git checkout feature/ux-ui && git pull --ff-only && git lfs pull
+git checkout main && git pull --ff-only && git lfs pull
 uv sync && (cd frontend && npm install)
 redis-server                                                    # terminal 1
 uv run arq cerberus_api.worker.WorkerSettings                   # terminal 2
@@ -33,9 +33,10 @@ Abre las PNG y revísalas: **no te fíes solo de los ✅**. Leer píxeles del ca
 ## 2. Estado actual
 
 **Terminado y en `main`:** el MVP completo (B0–B8, F0–F6, D1, E2E), las áreas de Brodmann (§13: B9–B11, F7, F8) y
-B12 (dominios funcionales, §14) y F11 (tipografía, tokens AA y lista de estudios, §14).
+B12 (dominios funcionales, §14) y F9–F11 (UX/UI, tipografía y accesibilidad, §14).
 
-**Terminados en `feature/ux-ui`, pendientes de integración a `main`: §14 · F9 y F10.**
+**§14 completo e integrado en `main`.** El [PR #1](https://github.com/MasamuneL/Cerberus/pull/1)
+se fusionó el 2026-10-29 a las 17:49:18 UTC: merge `bcef409`.
 
 | Ticket | Estado | Resultado |
 |---|---|---|
@@ -48,9 +49,11 @@ B12 (dominios funcionales, §14) y F11 (tipografía, tokens AA y lista de estudi
 Ruff, formato y pyright correctos; **425 tests rápidos pasaron, 5 slow excluidos**; frontend build correcto.
 Informe completo y límites: [`QA_UX_UI.md`](QA_UX_UI.md).
 
-**Estado durable:** implementación, fixes, runner y documentación en **`feature/ux-ui`**. CP-025 (`fad8562`)
+**Estado durable:** implementación, fixes, runner y documentación en **`main`**; rama de origen
+`feature/ux-ui` conservada. CP-025 (`fad8562`)
 recuperó el trabajo de Claude; `af22c29` corrigió lectura/teclado/contraste; CP-026 (`d406354`) respaldó el QA,
-el fondo del atlas y las tablas. CP-027 registra la verificación final. No hay implementación pendiente de
+el fondo del atlas y las tablas. CP-027 registra el QA final; CP-028 registra la integración. El árbol de
+`bcef409` es idéntico al de `06ba62a`, que pasó los checks. No hay implementación pendiente de
 F9/F10 ni trabajo necesario que dependa de notas temporales o de la memoria de los agentes.
 
 **Límites:** 12 auditorías conservan resultados incompletos de axe; no se certifica WCAG completa ni se hizo
@@ -60,13 +63,12 @@ regeneran con [`tools/e2e/README.md`](../tools/e2e/README.md); verificar siempre
 
 ### Cómo retomar con Claude u otra herramienta
 
-1. `git fetch && git checkout feature/ux-ui && git pull --ff-only` (si no existe localmente:
-   `git checkout -b feature/ux-ui origin/feature/ux-ui`).
+1. `git checkout main && git pull --ff-only`.
 2. Leer este archivo, `PROGRESS.md`, `QA_UX_UI.md` y `PLAN_MVP.md` §14. **No volver a implementar F9/F10.**
 3. Si hay cambios nuevos, correr los checks obligatorios y el QA. Para el QA hacen falta los datos y
    resultados de 001/t0 y 005/t0; los modelos/registros no forman parte de esa prueba.
-4. Revisar el PR de `feature/ux-ui`. La integración a `main` queda pendiente: esta tarea solo pidió subir la
-   rama. Después de un eventual merge, actualizar el tablero y registrar el siguiente checkpoint.
+4. El PR #1 ya está fusionado y el tablero actualizado. No repetir el merge; continuar únicamente con el
+   siguiente trabajo acordado con el usuario.
 5. Las propuestas de la sección 4 siguen sin aprobarse; no empezarlas como continuación automática de §14.
 
 ## 3. Lecciones aprendidas (léelas, ahorran horas)
