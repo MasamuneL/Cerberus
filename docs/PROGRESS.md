@@ -27,9 +27,9 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 | E2E · Verificación §10 | ✅ | main | 656b2b1 | 2026-10-27 | Vikingo / Claude Code (orquestador) | API/flujo ✅; falta revisión visual WebGL por una persona |
 | B9 · atlas + registro (§13) | ✅ | feat/B9-atlas-registration | 409bf37 | 2026-10-29 | Vikingo / Claude Code (subagente) | |
 | B10 · base de funciones (§13) | ✅ | feat/B10-area-kb | dcd2344 | 2026-10-29 | Vikingo / Claude Code (subagente) | |
-| B11 · reporte + job + API (§13) | 🟡 | feat/B11-areas-report | | 2026-10-29 | Vikingo / Claude Code (subagente) | |
+| B11 · reporte + job + API (§13) | ✅ | feat/B11-areas-report | a7371bd | 2026-10-29 | Vikingo / Claude Code (subagente) | |
 | F7 · panel de áreas + overlay (§13) | ✅ | feat/F7-areas-ui | b325bf5 | 2026-10-29 | Vikingo / Claude Code (subagente) | falta prueba con backend real |
-| E2E · áreas (§13) | ⬜ | | | | | al final |
+| E2E · áreas (§13) | ✅ | main | a7371bd | 2026-10-29 | Vikingo / Claude Code (orquestador) | API/flujo ✅; falta revisión visual por una persona |
 
 ## Bitácora de checkpoints
 
@@ -266,3 +266,22 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
   14576 vóxeles).
 - **Checks:** ruff ✅ · pyright 0 ✅ · pytest 331 passed ✅ · slow ✅.
 - **Siguiente paso:** B11 (reporte, job y API) y luego el E2E de áreas.
+
+### CP-019 · 2026-10-29 · B11 + E2E de áreas · `a7371bd`
+- **Hecho (B11):** `areas.py` (`compute_area_report` con `bincount` + EDT recortada, `run_area_mapping` escribe
+  `brodmann.json`), `worker.map_areas` y `POST/GET /api/studies/{p}/{t}/areas` (404/422/503/409/500). 20 tests
+  rápidos + 1 slow.
+- **001/t0 (slow, solo GTV):** afectadas BA40 izq. 63.0 % (elocuente), BA7 izq. 25.9 %, BA39 izq. 57.6 % (elocuente),
+  BA19, ínsula, BA2, BA22, BA5. Cercanas: cuerpo calloso 1.5 mm, BA1 1.7 mm, BA41 2.0 mm, BA4 3.7 mm,
+  hipocampo 3.9 mm. Con MONAI, BA40 izq. tumor+edema = 4.25 cm³ / 70.3 %.
+- **E2E de la pila completa (Redis + worker + API + Vite :5180, por el proxy):** 005/t0 job completo en 23 s, sin
+  warnings, 142 etiquetas. Tumor temporal/insular profundo derecho: BA20 der. 81 %, putamen 37 %, BA21 39 %, cuerpo
+  calloso, ínsula, globo pálido lateral, pulvinar (elocuente), BA36, BA41 (elocuente, auditiva primaria). Coherente con
+  el GTV de 76 cm³. `has_areas` = true en 001/t0 y 005/t0.
+- **Desviaciones:** `run_area_mapping` lee el WT de `out_dir` (3 argumentos, como §13). Los solapamientos < 0.005 cm³
+  guardan 4 decimales para que no aparezcan como "0" en la sección de afectadas. Hay 409 si arq no devuelve un job.
+- **Nota de interpretación:** el nivel `ba` del atlas Talairach etiqueta corteza gris (y núcleos), no sustancia blanca;
+  "% del área" es la fracción de esa corteza etiquetada dentro del GTV. El MONAI WT no es un superconjunto del GTV, así
+  que su solapamiento puede ser menor.
+- **Checks:** ruff ✅ · pyright 0 ✅ · pytest 351 passed ✅ · slow ✅ · `npm run build` ✅.
+- **Pendiente:** revisión visual (overlay de áreas, modos, foco, colores y nombres en la lectura del cursor).
