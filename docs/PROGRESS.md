@@ -26,7 +26,7 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 | D1 · README | ✅ | docs/D1-readme | 656b2b1 | 2026-10-27 | Vikingo / Claude Code (subagente) | |
 | E2E · Verificación §10 | ✅ | main | 656b2b1 | 2026-10-27 | Vikingo / Claude Code (orquestador) | API/flujo ✅; falta revisión visual WebGL por una persona |
 | B9 · atlas + registro (§13) | 🟡 | feat/B9-atlas-registration | | 2026-10-29 | Vikingo / Claude Code (subagente) | |
-| B10 · base de funciones (§13) | 🟡 | feat/B10-area-kb | | 2026-10-29 | Vikingo / Claude Code (subagente) | |
+| B10 · base de funciones (§13) | ✅ | feat/B10-area-kb | dcd2344 | 2026-10-29 | Vikingo / Claude Code (subagente) | |
 | B11 · reporte + job + API (§13) | ⬜ | | | | | depende de B9, B10 |
 | F7 · panel de áreas + overlay (§13) | ✅ | feat/F7-areas-ui | b325bf5 | 2026-10-29 | Vikingo / Claude Code (subagente) | falta prueba con backend real |
 | E2E · áreas (§13) | ⬜ | | | | | al final |
@@ -237,3 +237,16 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
   `labels` se alinea por posición con `I`, empezando en 0 para que la lectura del cursor coincida.
 - **Contrato implícito:** `overlap_gtv_pct` y `overlap_wt_pct` van en **0–100** (B11 debe respetarlo).
 - **Checks:** `npm run build` ✅. Pendiente: prueba con el backend real (B9–B11).
+
+### CP-017 · 2026-10-29 · B10 · `dcd2344`
+- **Hecho:** `data/area_functions.json` (71 regiones: 42 BA + 29 subcorticales) y `area_kb.py` (`load_area_kb`,
+  `area_info`, `functions_for(name, hemisferio)`). 78 tests.
+- **Criterios de contenido:** funciones de libro de texto (Kandel 2021, Purves 2018, Strotzer 2009, Haines 2018). El
+  flag elocuente sigue a Spetzler-Martin / Sawaya 1998: 13 áreas corticales (1, 2, 3, 4, 6, 17, 22, 39, 40, 41, 42, 44, 45)
+  y 20 subcorticales (núcleos talámicos, hipotálamo, subtálamo, núcleo rojo, sustancia negra, dentado, tracto
+  óptico, hipocampo). Funciones por hemisferio en BA22, 37, 39, 40, 44, 45 e hipocampo. El orquestador revisó una
+  muestra (BA4, 6, 17, 44, 10, 24, 13, hipocampo, amígdala, VPL, BA33).
+- **Decisiones discutibles:** BA22 completa es elocuente (el atlas no separa su parte posterior); BA39/40 son
+  elocuentes en ambos hemisferios (el flag es por área).
+- **Checks:** pyright 0 en sus archivos ✅ · 78 passed ✅. El JSON entra en el wheel sin cambiar pyproject.
+- **Siguiente paso:** cerrar B9 (en curso) → B11.
