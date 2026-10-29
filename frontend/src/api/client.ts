@@ -6,6 +6,7 @@ import type {
   LongitudinalPoint,
   SegmentationResult,
   AreasResult,
+  SystemInfo,
   Study,
   StudyDetail,
   UploadCreated,
@@ -73,6 +74,8 @@ export const startAreaMapping = (p: string, t: string): Promise<JobCreated> =>
 
 export const getAreas = (p: string, t: string): Promise<AreasResult> =>
   request(`/studies/${enc(p)}/${enc(t)}/areas`);
+
+export const getSystem = (): Promise<SystemInfo> => request("/system");
 
 export const getJob = (id: string): Promise<JobStatus> => request(`/jobs/${enc(id)}`);
 

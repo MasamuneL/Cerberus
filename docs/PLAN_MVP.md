@@ -582,3 +582,31 @@ Volúmenes bind: `./Data`, `./storage`, `./models` (pesos MONAI y atlas en cach�
   ≥ `CERBERUS_MAX_UPLOAD_MB`), fallback SPA, cabeceras, `tools/e2e/verify-docker.mjs` en verde y capturas revisadas.
 - **D2c · documentación:** README (sección Docker: requisitos de Docker Desktop, RAM recomendada, primer build,
   `docker compose up -d --build`, logs, parar y limpiar), HANDOFF y PROGRESS.
+
+## 16. D2d/D2e · Caché de volúmenes y autoajuste de recursos
+
+**Origen:** preguntas del usuario (2026-10-29): ¿la caché cerca del front? y ¿detectar la configuración óptima de cada
+computadora?
+
+**Decisiones**
+- **Redis sigue siendo solo la cola de jobs** (no es caché). La caché útil está en el **navegador**: los NIfTI
+  (~75 MB) se revalidan con `ETag` / `Last-Modified` → **304**, con `Cache-Control: no-cache` (siempre revalida, nunca
+  sirve una versión vieja). Los derivados ya llevan `?v=`. **No** se usa `proxy_cache` en nginx: para un solo usuario
+  local no aporta y ocuparía RAM (tmpfs de `/tmp` en un rootfs de solo lectura).
+- **Autoajuste:** `CERBERUS_CPU_THREADS=auto` (default). El worker detecta al arrancar, **antes de importar torch y
+  ANTs**:
+  - CPUs = cuota cgroup v2 (`/sys/fs/cgroup/cpu.max`) → `os.sched_getaffinity` → `os.cpu_count()`;
+  - memoria = `memory.max` del cgroup → `/proc/meminfo` → `sysctl hw.memsize` en macOS;
+  - dispositivo = cuda → mps → cpu.
+  - **hilos = max(1, min(CPUs − 1, 8))**; un valor numérico en la variable manda. Se aplica a `OMP_NUM_THREADS`,
+    `MKL_NUM_THREADS`, `ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS` y `torch.set_num_threads`.
+  - Warning si la memoria es < 5 GB (pico medido del worker: 4.2 GiB) o si la plataforma es x86_64 emulada.
+- El worker publica su `SystemInfo` en Redis (`cerberus:system:worker`) al arrancar; `GET /api/system` lo devuelve
+  o, si no hay, calcula el de la API con `source="api"` y un warning.
+
+**Contrato (orquestador, CP-032):** `SystemInfo` en `schemas.py` / `types.ts`; `getSystem()` en `client.ts`.
+
+| Ticket | Qué | Archivos |
+|---|---|---|
+| D2e-back | `runtime.py` (detección + aplicación), hook de arranque del worker, `GET /api/system`, `CERBERUS_CPU_THREADS=auto` en compose; 304 condicional (`If-None-Match` / `If-Modified-Since`) + `Cache-Control: no-cache` en `/files/*.nii.gz`; tests con cgroup simulado; prueba en Docker con `--cpus 2 --memory 4g` | `backend/cerberus_api/{runtime.py,worker.py,routers/system.py,routers/studies.py,main.py}`, `compose.yaml`, tests |
+| D2e-front | Indicador de recursos en la UI (panel de Segmentación y de Áreas: "CPU · 8 hilos · 6 GB", warnings), tiempo estimado ajustado al dispositivo; verificar en Docker que una segunda carga del estudio da 304 (nginx deja pasar `If-None-Match`/`ETag`) | `frontend/src/components/*`, `docker/nginx.conf` (solo si hace falta), `tools/e2e/*` |

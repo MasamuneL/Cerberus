@@ -165,3 +165,21 @@ class AreasResult(BaseModel):
     areas: list[AffectedArea]  # solapadas primero (overlap desc), luego por distancia asc
     lut: list[AreaLabel]  # todas las etiquetas presentes en brodmann.nii.gz
     warnings: list[str]
+
+
+# --- §16 · Autoajuste de recursos ----------------------------------------------------------------
+
+
+class SystemInfo(BaseModel):
+    """Recursos detectados por el proceso que calcula (worker); `source="api"` si el worker no reportó."""
+
+    source: Literal["worker", "api"]
+    reported_at: datetime
+    in_container: bool
+    platform: str  # ej. "linux/x86_64 (emulado en arm64)" o "darwin/arm64"
+    cpus_available: float  # cuota cgroup o afinidad, no los núcleos físicos
+    threads: int  # hilos aplicados a torch / OpenMP / ITK
+    threads_source: Literal["auto", "env"]
+    memory_gb: float | None  # límite cgroup o RAM del host
+    device: Literal["cuda", "mps", "cpu"]
+    warnings: list[str]

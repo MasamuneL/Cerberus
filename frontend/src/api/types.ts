@@ -162,3 +162,19 @@ export interface AreasResult {
   lut: AreaLabel[];
   warnings: string[];
 }
+
+// --- §16 · Autoajuste de recursos ---
+
+/** Recursos detectados por el worker (source="api" si el worker no reportó). */
+export interface SystemInfo {
+  source: "worker" | "api";
+  reported_at: string; // ISO-8601
+  in_container: boolean;
+  platform: string;
+  cpus_available: number;
+  threads: number;
+  threads_source: "auto" | "env";
+  memory_gb: number | null;
+  device: "cuda" | "mps" | "cpu";
+  warnings: string[];
+}

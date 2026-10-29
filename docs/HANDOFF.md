@@ -4,7 +4,7 @@
 > checkpoint. El historial completo está en [`PROGRESS.md`](PROGRESS.md) y el alcance y los contratos en
 > [`PLAN_MVP.md`](PLAN_MVP.md). Las reglas de trabajo están en [`../AGENTS.md`](../AGENTS.md).
 
-**Última actualización:** 2026-10-29 · último checkpoint: CP-031 · rama base: `main`
+**Última actualización:** 2026-10-29 · último checkpoint: CP-032 · rama base: `main`
 
 ## 1. Arranque rápido
 
@@ -109,3 +109,5 @@ Retoma desde esa rama, no desde `wip/d2-docker`.
 
 **Actualización CP-031:** D2 (Docker Compose) **terminado y mergeado a `main`**. `docker compose up -d --build` → http://localhost:8080.
 Pendientes propuestos: D2d (caché HTTP de NIfTI con ETag/304 + `proxy_cache`) y decidir `CERBERUS_CPU_THREADS` por defecto.
+
+**En curso CP-032:** §16 (autoajuste de hilos/memoria + caché HTTP de NIfTI) en la rama `feat/D2e-autotune`. Spec en `PLAN_MVP.md` §16.

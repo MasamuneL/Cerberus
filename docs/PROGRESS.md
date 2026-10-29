@@ -38,6 +38,8 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 | D2a · backend en Docker (§15) | ✅ | feat/D2-docker-compose | eb081f4 | 2026-10-29 | Vikingo / Claude Code (subagente) | |
 | D2b · frontend en Docker (§15) | ✅ | feat/D2-docker-compose | 1331265 | 2026-10-29 | Vikingo / Claude Code (subagente) | |
 | D2c · docs Docker (§15) | ✅ | feat/D2-docker-compose | 5a4b229 | 2026-10-29 | Vikingo / Claude Code (orquestador) | |
+| D2e-back · autoajuste + caché HTTP (§16) | 🟡 | feat/D2e-autotune | | 2026-10-29 | Vikingo / Claude Code (subagente) | |
+| D2e-front · indicador de recursos + 304 (§16) | 🟡 | feat/D2e-autotune | | 2026-10-29 | Vikingo / Claude Code (subagente) | |
 
 ## Bitácora de checkpoints
 
@@ -446,3 +448,10 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
   nginx en 89 s (79 áreas: putamen, pulvinar y caudado derechos; warning "solo T1 con contraste").
 - **Pendiente de decidir:** hilos por defecto (4 vs 8). Propuesta abierta: caché HTTP de NIfTI (ETag/304 en el
   backend + `proxy_cache` en nginx), ticket D2d.
+
+### CP-032 · 2026-10-29 · arranque de §16 (caché de volúmenes + autoajuste)
+- **Decisiones del orquestador** ("como creas coherente"): Redis sigue solo como cola; la caché va en el navegador
+  (ETag/304 + `no-cache`); sin `proxy_cache` en nginx. Autoajuste `auto` = min(CPUs−1, 8) leyendo cgroup, y warning
+  con < 5 GB.
+- **Contrato:** `SystemInfo` + `getSystem()`. Starlette 1.9 envía ETag pero no responde 304 → se implementa en el backend.
+- **Siguiente paso:** D2e-back y D2e-front en paralelo → validación en Docker (incluido `--cpus 2 --memory 4g`) → CP-033.
