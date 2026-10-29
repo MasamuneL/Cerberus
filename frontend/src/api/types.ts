@@ -118,6 +118,18 @@ export interface ConfirmUpload {
 
 export type Hemisphere = "izquierdo" | "derecho";
 export type AreaKind = "cortical" | "subcortical";
+/** Dominios funcionales para el resumen "Funciones en riesgo" (§14). */
+export type Domain =
+  | "lenguaje"
+  | "motor"
+  | "sensitivo"
+  | "vision"
+  | "audicion"
+  | "memoria"
+  | "ejecutivo"
+  | "emocional"
+  | "autonomico"
+  | "otro";
 
 /** Entrada del LUT de brodmann.nii.gz: valor = índice del atlas (+100 si es hemisferio derecho). */
 export interface AreaLabel {
@@ -137,6 +149,7 @@ export interface AffectedArea extends AreaLabel {
   distance_mm: number; // 0 si se solapa con el GTV
   functions: string[];
   eloquent: boolean;
+  domains: Domain[]; // según hemisferio (§14)
 }
 
 export interface AreasResult {

@@ -128,6 +128,10 @@ class ConfirmUpload(BaseModel):
 
 Hemisphere = Literal["izquierdo", "derecho"]
 AreaKind = Literal["cortical", "subcortical"]
+# Dominios funcionales para el resumen "Funciones en riesgo" (§14)
+Domain = Literal[
+    "lenguaje", "motor", "sensitivo", "vision", "audicion", "memoria", "ejecutivo", "emocional", "autonomico", "otro"
+]
 
 
 class AreaLabel(BaseModel):
@@ -149,6 +153,7 @@ class AffectedArea(AreaLabel):
     distance_mm: float  # distancia mínima del GTV al área; 0.0 si se solapan
     functions: list[str]  # funciones asociadas (español), de la base curada
     eloquent: bool  # corteza/estructura elocuente (lesión → déficit evidente)
+    domains: list[Domain] = []  # dominios funcionales según hemisferio (§14)
 
 
 class AreasResult(BaseModel):

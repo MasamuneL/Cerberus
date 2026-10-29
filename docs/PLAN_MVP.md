@@ -515,3 +515,39 @@ storage/results/<p>/<t>/mni/              # transformaciones ANTs en caché
 | A | B9, B10, F7 (F7 contra el contrato) |
 | B | B11 |
 | C | E2E: 001/t0 real (áreas coherentes con la localización del GTV) + revisión visual |
+
+## 14. Fase 2b · Mejoras de UX/UI
+
+**Origen:** revisión visual con Playwright (CP-020) + guía de diseño frontend. Decisión del usuario 2026-10-29:
+mejoras 1–5 + tipografía + accesibilidad.
+
+**Dirección visual:** "estación de radiología": oscura, densa y precisa; la imagen manda. El usuario debe ver de un
+vistazo **dónde está el tumor y qué funciones pone en riesgo**.
+
+**Reglas fijas del sistema visual**
+- **Rojo, naranja y amarillo son exclusivos del tumor** (GTV, realce, núcleo, edema). Las áreas usan solo tonos fríos
+  (azul, cian, verde, violeta, magenta frío); nunca hues de 0–60° ni de 330–360°.
+- Tipografía: IBM Plex Sans (UI) + IBM Plex Mono (todas las cifras, `font-variant-numeric: tabular-nums`), vía
+  `@fontsource` (sin CDN).
+- Tokens en `:root` de `styles.css`; cada componente nuevo tiene su propio CSS (`viewer.css`, `sidepanel.css`) para
+  que los tickets no se pisen.
+- Accesibilidad AA: contraste ≥ 4.5:1 en texto, toda acción usable con teclado (`tabIndex`, Enter/Espacio),
+  `aria-pressed` en los toggles, leyendas con texto además del color y `prefers-reduced-motion`.
+
+**Contrato (orquestador, CP-021):** `Domain` y `AffectedArea.domains: Domain[]` en `schemas.py` y `types.ts`.
+
+**Semáforo de "Funciones en riesgo"** (por dominio, calculado en el frontend):
+- 🔴 **Afectado:** alguna área del dominio se solapa con el GTV y es elocuente.
+- 🟠 **Comprometido:** se solapa pero no es elocuente, o es elocuente a ≤ 5 mm.
+- 🟡 **En vigilancia:** a ≤ margen (10 mm) sin cumplir lo anterior.
+Cada dominio lista sus áreas (nombre corto + hemisferio + % o distancia) y el aviso educativo va debajo.
+
+### Tickets
+| ID | Qué | Archivos |
+|---|---|---|
+| B12 | `domains` / `domains_left` / `domains_right` en `area_functions.json` (71 entradas) + `domains_for(name, hemi)` en `area_kb.py`; `areas.py` llena `AffectedArea.domains`; regenerar `brodmann.json` de 001/t0 y 005/t0 | `backend/cerberus_api/{data/area_functions.json,area_kb.py,areas.py}`, tests |
+| F9 | Paleta fría para las áreas; **panel de capas** (ojo, muestra de color, opacidad, modo de áreas) que sustituye los checkboxes; **barra de lectura del cursor** (mm, área bajo el cursor, dentro/fuera del GTV) con `onLocationChange`; atajos `1–5`, `G`, `S`, `A`, `?`; aria en los toggles | `components/Viewer.tsx`, `components/areaColors.ts`, `components/viewer.css` |
+| F10 | **Pestañas** en la columna derecha (Volumetría · Segmentación · Áreas · Longitudinal; Áreas por defecto si hay mapa); tarjeta **Funciones en riesgo** arriba de Áreas; filas de la tabla accesibles con teclado; pasos del job (Registro → Atlas → Reporte) | `App.tsx`, `components/{SidePanel,RiskSummary,AreasPanel,VolumetryPanel}.tsx`, `components/sidepanel.css` |
+| F11 | Tipografía Plex vía `@fontsource`, tokens y contraste AA en `styles.css`, `StudyList` (GTV cm³ por tiempo, badge "Áreas", navegable con teclado), skeletons de carga | `main.tsx`, `styles.css`, `components/StudyList.tsx`, `package.json` |
+
+Ola única en paralelo (B12, F9, F10, F11) → verificación con Playwright (capturas a 1440×900 y 1280×800) → CP.

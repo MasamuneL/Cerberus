@@ -31,6 +31,10 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 | F7 · panel de áreas + overlay (§13) | ✅ | feat/F7-areas-ui | b325bf5 | 2026-10-29 | Vikingo / Claude Code (subagente) | falta prueba con backend real |
 | E2E · áreas (§13) | ✅ | main | cbca8ad | 2026-10-29 | Vikingo / Claude Code (orquestador) | API/flujo ✅ + visual con Playwright ✅ |
 | F8 · ajustes visuales (Playwright) | ✅ | fix/F8-viewer-centering | cbca8ad | 2026-10-29 | Vikingo / Claude Code (subagente + orquestador) | |
+| B12 · dominios funcionales (§14) | 🟡 | feat/B12-domains | | 2026-10-29 | Vikingo / Claude Code (subagente) | |
+| F9 · capas + paleta + cursor (§14) | 🟡 | feat/F9-viewer-layers | | 2026-10-29 | Vikingo / Claude Code (subagente) | |
+| F10 · pestañas + funciones en riesgo (§14) | 🟡 | feat/F10-side-tabs | | 2026-10-29 | Vikingo / Claude Code (subagente) | |
+| F11 · tipografía + accesibilidad + lista (§14) | 🟡 | feat/F11-type-a11y | | 2026-10-29 | Vikingo / Claude Code (subagente) | |
 
 ## Bitácora de checkpoints
 
@@ -305,3 +309,10 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
   BA40 deja solo BA40 en 3D; las funciones van como chips en una fila propia; botón "Centrar en GTV". La consola solo
   muestra un 404 esperado.
 - **Checks:** `npm run build` ✅.
+
+### CP-021 · 2026-10-29 · arranque de §14 (UX/UI)
+- **Decisión:** el usuario aprobó las mejoras 1–5 + tipografía + accesibilidad, con dirección "estación de radiología".
+- **Hecho (orquestador):** contrato `Domain` + `AffectedArea.domains` (default `[]`, compatible hacia atrás), §14 del
+  plan con las reglas del sistema visual (rojo, naranja y amarillo solo para el tumor; áreas en tonos fríos; Plex;
+  CSS por componente; AA) y el semáforo de "Funciones en riesgo".
+- **Siguiente paso:** B12, F9, F10 y F11 en paralelo → Playwright → CP-022.
