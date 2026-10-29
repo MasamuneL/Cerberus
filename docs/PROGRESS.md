@@ -35,9 +35,9 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 | F9 · capas + paleta + cursor (§14) | ✅ | feature/ux-ui | fad8562, af22c29, d406354 | 2026-10-29 | Vikingo / Claude Code + Codex | Integrado en main: PR #1, bcef409; CP-028 |
 | F10 · pestañas + funciones en riesgo (§14) | ✅ | feature/ux-ui | fad8562, d406354 | 2026-10-29 | Vikingo / Claude Code + Codex | Integrado en main: PR #1, bcef409; CP-028 |
 | F11 · tipografía + accesibilidad + lista (§14) | ✅ | feat/F11-type-a11y | 5b7b024 | 2026-10-29 | Vikingo / Claude Code (subagente) | |
-| D2a · backend en Docker (§15) | ✅ | feat/D2-docker-compose | eb081f4 | 2026-10-29 | Vikingo / Claude Code (subagente) | rama aún sin merge a main |
-| D2b · frontend en Docker (§15) | 🟡 | feat/D2-docker-compose | | 2026-10-29 | Vikingo / Claude Code (subagente) | |
-| D2c · docs Docker (§15) | ⬜ | | | | | al final |
+| D2a · backend en Docker (§15) | ✅ | feat/D2-docker-compose | eb081f4 | 2026-10-29 | Vikingo / Claude Code (subagente) | |
+| D2b · frontend en Docker (§15) | ✅ | feat/D2-docker-compose | 1331265 | 2026-10-29 | Vikingo / Claude Code (subagente) | |
+| D2c · docs Docker (§15) | ✅ | feat/D2-docker-compose | 5a4b229 | 2026-10-29 | Vikingo / Claude Code (orquestador) | |
 
 ## Bitácora de checkpoints
 
@@ -431,3 +431,18 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 - **Pendiente de decidir:** `CERBERUS_CPU_THREADS` por defecto 4 (seguro) vs 8 (~35 % más rápido en 14 CPU).
 - **Siguiente paso:** D2b (frontend/nginx + smoke) en curso → validación final en Docker Desktop → D2c (docs) →
   merge a main.
+
+### CP-031 · 2026-10-29 · D2b + D2c + validación en Docker Desktop · `1331265`, `5a4b229`
+- **Hecho (D2b):** imagen frontend nginx arm64 (64.7 MB), rootfs de solo lectura, usuario nginx, :8080. SPA
+  fallback; proxy `/api` en streaming (timeouts de 1800 s, Range/HEAD, `client_max_body_size` = límite + 64 MB);
+  assets con hash inmutables, `index.html` no-cache; cabeceras de seguridad + CSP compatible con Niivue (wasm vía
+  `data:`); resolución DNS dinámica de `api`. Fixes en `verify-docker.mjs`. Compose pasa `CERBERUS_MAX_UPLOAD_MB` al
+  frontend.
+- **Hecho (D2c):** sección "Opción rápida: Docker Desktop" en el README (requisitos, comandos, variables,
+  rendimiento medido).
+- **Validación del orquestador desde cero** (`docker compose down` + `docker compose up -d --build`): el proyecto
+  **cerberus** queda `running(4)` y los 4 *healthy* en 20 s (con caché); `verify-docker.mjs` 13/13 contra :8080 con
+  capturas revisadas (la UI de producción se ve igual que en desarrollo); job real de áreas en 003/t0 a través de
+  nginx en 89 s (79 áreas: putamen, pulvinar y caudado derechos; warning "solo T1 con contraste").
+- **Pendiente de decidir:** hilos por defecto (4 vs 8). Propuesta abierta: caché HTTP de NIfTI (ETag/304 en el
+  backend + `proxy_cache` en nginx), ticket D2d.

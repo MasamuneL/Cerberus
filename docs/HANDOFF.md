@@ -4,7 +4,7 @@
 > checkpoint. El historial completo está en [`PROGRESS.md`](PROGRESS.md) y el alcance y los contratos en
 > [`PLAN_MVP.md`](PLAN_MVP.md). Las reglas de trabajo están en [`../AGENTS.md`](../AGENTS.md).
 
-**Última actualización:** 2026-10-29 · último checkpoint: CP-030 · rama base: `main`
+**Última actualización:** 2026-10-29 · último checkpoint: CP-031 · rama base: `main`
 
 ## 1. Arranque rápido
 
@@ -106,3 +106,6 @@ Ojo: el backend es amd64 (Rosetta) por ANTs; el primer build tarda.
 
 **Actualización CP-030:** D2a está hecho en la rama **`feat/D2-docker-compose`** (pusheada); D2b (nginx + smoke) sigue en curso.
 Retoma desde esa rama, no desde `wip/d2-docker`.
+
+**Actualización CP-031:** D2 (Docker Compose) **terminado y mergeado a `main`**. `docker compose up -d --build` → http://localhost:8080.
+Pendientes propuestos: D2d (caché HTTP de NIfTI con ETag/304 + `proxy_cache`) y decidir `CERBERUS_CPU_THREADS` por defecto.
