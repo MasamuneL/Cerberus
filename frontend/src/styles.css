@@ -94,7 +94,11 @@ body {
 .note { margin: 0.5rem 0 0; font-size: 0.8rem; color: var(--text-muted); }
 
 /* Columna derecha: volumetría + segmentación */
-.side-panels { display: flex; flex-direction: column; gap: 1rem; flex-shrink: 0; }
+.side-panels {
+  display: flex; flex-direction: column; gap: 1rem; flex-shrink: 0;
+  /* Con el panel de áreas la columna crece: se desplaza sola sin mover el visor. */
+  max-height: calc(100vh - 130px); overflow-y: auto; padding-right: 2px;
+}
 
 /* SegmentationPanel */
 .btn-primary {
@@ -155,3 +159,24 @@ body {
 .upload-series tr.muted td { color: var(--text-muted); }
 .upload-actions { display: flex; gap: 0.5rem; margin-top: 0.75rem; }
 .upload-success { color: #5fd38d; }
+
+/* F7 · AreasPanel */
+.areas-table { font-size: 0.8rem; }
+.areas-table thead th { color: var(--text-muted); font-weight: 600; font-size: 0.75rem; }
+.areas-table td, .areas-table th { vertical-align: top; }
+.area-row { cursor: pointer; }
+.area-row:hover { background: rgba(77, 163, 255, 0.08); }
+.area-row.focused { background: rgba(77, 163, 255, 0.18); outline: 1px solid var(--accent); }
+.area-row th[scope="row"] { color: var(--text); }
+.area-name { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; }
+.area-name .swatch { flex-shrink: 0; border: 1px solid rgba(255, 255, 255, 0.25); }
+.badge-eloquent { background: #7c3aed; color: #fff; }
+.chips { display: flex; flex-wrap: wrap; gap: 0.2rem; margin-top: 0.25rem; }
+.chip {
+  font-size: 0.68rem; padding: 0.05rem 0.35rem; border-radius: 999px;
+  background: rgba(139, 149, 163, 0.15); color: var(--text-muted); border: 1px solid var(--border);
+}
+.disclaimer {
+  margin: 0.75rem 0 0; padding: 0.5rem 0.6rem; font-size: 0.75rem; line-height: 1.35;
+  color: var(--text-muted); border: 1px dashed var(--border); border-radius: 4px;
+}

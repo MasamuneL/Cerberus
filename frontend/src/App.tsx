@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError, getStudy, listStudies } from "./api/client";
-import type { Study, StudyDetail } from "./api/types";
+import type { AreasResult, Study, StudyDetail } from "./api/types";
+import AreasPanel from "./components/AreasPanel";
 import SegmentationPanel from "./components/SegmentationPanel";
 import UploadPanel from "./components/UploadPanel";
 import StudyList, { type StudyKey } from "./components/StudyList";
@@ -21,6 +22,11 @@ export default function App() {
   // No se reinicia al cambiar de estudio para que nunca se repita una URL ya cacheada.
   const [segVersion, setSegVersion] = useState(0);
   const [showUpload, setShowUpload] = useState(false);
+  // Áreas de Brodmann (§13): resultado del estudio abierto, versión monótona (cache-busting de
+  // brodmann.nii.gz, igual que segVersion) y etiqueta enfocada desde la tabla.
+  const [areas, setAreas] = useState<AreasResult | null>(null);
+  const [areasVersion, setAreasVersion] = useState(0);
+  const [focusedLabel, setFocusedLabel] = useState<number | null>(null);
   const selectedRef = useRef<StudyKey | null>(null);
   selectedRef.current = selected;
 
@@ -44,6 +50,8 @@ export default function App() {
   useEffect(() => {
     setDetail(null);
     setDetailError(null);
+    setAreas(null);
+    setFocusedLabel(null);
     if (!selected) return;
     let cancelled = false;
     getStudy(selected.patient, selected.timepoint)
@@ -76,6 +84,33 @@ export default function App() {
     },
     [refreshStudies],
   );
+
+  // Mapeo de áreas terminado: refresca catálogo y detalle (has_areas) y recarga el overlay.
+  const onAreasCompleted = useCallback(
+    async (patient: string, timepoint: string, result: AreasResult) => {
+      void refreshStudies();
+      let fresh: StudyDetail | null = null;
+      try {
+        fresh = await getStudy(patient, timepoint);
+      } catch {
+        // si falla, se conserva el detalle actual
+      }
+      const cur = selectedRef.current;
+      if (!cur || cur.patient !== patient || cur.timepoint !== timepoint) return;
+      if (fresh) setDetail(fresh);
+      setAreas(result);
+      setFocusedLabel(null);
+      setAreasVersion((v) => v + 1);
+    },
+    [refreshStudies],
+  );
+
+  // Resultado previo leído por AreasPanel al abrir el estudio.
+  const onAreasLoaded = useCallback((patient: string, timepoint: string, result: AreasResult | null) => {
+    const cur = selectedRef.current;
+    if (!cur || cur.patient !== patient || cur.timepoint !== timepoint) return;
+    setAreas(result);
+  }, []);
 
   // Subida terminada: refresca el catálogo, abre el estudio y cierra el panel.
   const onUploaded = useCallback(
@@ -135,12 +170,22 @@ export default function App() {
                   study={detail}
                   showSegmentation={detail.has_segmentation}
                   segmentationVersion={segVersion}
+                  areas={areas}
+                  areasVersion={areasVersion}
+                  focusedLabel={focusedLabel}
                 />
                 <div className="side-panels">
                   <VolumetryPanel patient={detail.patient} timepoint={detail.timepoint} />
                   <SegmentationPanel
                     study={detail}
                     onCompleted={() => void onSegmentationCompleted(detail.patient, detail.timepoint)}
+                  />
+                  <AreasPanel
+                    study={detail}
+                    onCompleted={(r) => void onAreasCompleted(detail.patient, detail.timepoint, r)}
+                    onLoaded={(r) => onAreasLoaded(detail.patient, detail.timepoint, r)}
+                    onFocusLabel={setFocusedLabel}
+                    focusedLabel={focusedLabel}
                   />
                 </div>
               </div>
