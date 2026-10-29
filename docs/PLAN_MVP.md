@@ -433,6 +433,9 @@ El estado del desarrollo vive en el repo, no en la memoria de una persona ni de 
    a la bitácora con: qué se hizo, archivos principales, desviaciones del plan, pendientes y siguiente paso.
 4. Commit con mensaje `chore(progress): CP-NNN <ticket>` y push.
 
+**Handoff:** `docs/HANDOFF.md` guarda el estado vivo (trabajo en curso, ramas `wip/`, lecciones aprendidas y
+arranque rápido) para que otra herramienta (Codex, etc.) continúe sin contexto previo. Se actualiza en cada checkpoint.
+
 **Reglas:**
 - La bitácora solo crece hacia abajo. No se reescriben checkpoints viejos; si algo cambió, se escribe uno nuevo.
 - Una desviación del plan (firma distinta, archivo extra, contrato ajustado) se anota en el checkpoint **y**

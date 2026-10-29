@@ -31,14 +31,17 @@ Tests lentos (modelo real y dcm2niix real): `uv run pytest -m slow`.
 
 ## Flujo de trabajo
 
-0. **Antes de nada:** `git pull` y lee [`docs/PROGRESS.md`](docs/PROGRESS.md) (tablero + último checkpoint).
+0. **Antes de nada:** `git pull` y lee [`docs/HANDOFF.md`](docs/HANDOFF.md) (estado vivo y trabajo a medias) y
+   [`docs/PROGRESS.md`](docs/PROGRESS.md) (tablero + último checkpoint).
    Protocolo completo en `docs/PLAN_MVP.md` §12.
 1. Elige **un** ticket de `docs/PLAN_MVP.md` §8 cuyas dependencias ya estén en `main` (ver §9).
 2. Crea la rama `feat/<ID>-<slug>` (ej. `feat/B3-volumetry`).
 3. Implementa **solo** ese ticket. Si ves algo fuera de alcance, anótalo en el PR; no lo hagas.
 4. Corre los checks de arriba hasta que pasen.
 5. Abre un PR pequeño con el ID del ticket en el título y lista los criterios de aceptación cumplidos.
-6. **Checkpoint:** tras el merge, actualiza `docs/PROGRESS.md` (ticket ✅ + entrada `CP-NNN`) y haz push.
+6. **Checkpoint:** tras el merge, actualiza `docs/PROGRESS.md` (ticket ✅ + entrada `CP-NNN`) **y** la sección 2 de
+   `docs/HANDOFF.md`, y haz push. Si dejas trabajo a medias, súbelo a una rama `wip/<tema>` y anótalo en el handoff.
+7. **Verificación visual:** `cd tools/e2e && npm install && node verify.mjs` y revisa las capturas.
 
 ## Reglas
 

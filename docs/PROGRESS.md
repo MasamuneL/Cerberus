@@ -327,3 +327,12 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
   viejo descartaba `domains`. Se reiniciaron la API (ahora con `--reload --reload-dir backend`) y el worker.
   **Regla:** después de cambiar `schemas.py`, reinicia la API y el worker.
 - **Checks:** ruff ✅ · pyright 0 ✅ · pytest 425 passed ✅.
+
+### CP-023 · 2026-10-29 · handoff entre herramientas
+- **Pedido del usuario:** dejar checkpoints y handoffs para poder pasar a Codex si se acaba el uso.
+- **Hecho:** `docs/HANDOFF.md` (arranque rápido, estado vivo de §14, cómo terminar F9–F11, lecciones aprendidas y
+  protocolo); el script de Playwright pasó al repo en `tools/e2e/` (`playwright-core` 1.64.1 fijado, con su propio
+  `package.json`; URL configurable con `CERBERUS_UI`); `AGENTS.md` (paso 0 lee HANDOFF, paso 6 lo actualiza, paso 7
+  verificación visual) y §12 del plan.
+- **Trabajo en curso respaldado:** foto del árbol de F9–F11 en la rama `wip/ux-14` (sin tocar el árbol de trabajo).
+- **Siguiente paso:** integrar F9, F10 y F11 cuando terminen → Playwright → CP-024 + actualizar HANDOFF.
