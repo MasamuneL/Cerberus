@@ -13,7 +13,7 @@
   --vw-accent-soft: var(--accent-soft, rgba(88, 166, 255, 0.14));
   --vw-focus: var(--focus, #7cc4ff);
   --vw-mono: var(--font-mono, "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace);
-  --vw-gtv: var(--tumor-gtv, #e5484d);
+  --vw-gtv-text: #ff7075;
   gap: 0.5rem;
 }
 
@@ -277,7 +277,7 @@ button.vw-chip:hover:not(:disabled) { background: var(--vw-surface-2); border-co
 .vw-readout-area .vw-v { overflow: hidden; text-overflow: ellipsis; }
 .vw-k { color: var(--vw-muted); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; }
 .vw-pre { white-space: pre; }
-.vw-v.is-in-gtv { color: var(--vw-gtv); font-weight: 600; }
+.vw-v.is-in-gtv { color: var(--vw-gtv-text); font-weight: 600; }
 
 @media (prefers-reduced-motion: reduce) {
   .vw-root *,

@@ -9,7 +9,7 @@
 ## 1. Arranque rápido
 
 ```bash
-git checkout main && git pull && git lfs pull
+git checkout feature/ux-ui && git pull --ff-only && git lfs pull
 uv sync && (cd frontend && npm install)
 redis-server                                                    # terminal 1
 uv run arq cerberus_api.worker.WorkerSettings                   # terminal 2
@@ -50,6 +50,12 @@ El respaldo anterior de Claude sigue en `wip/ux-14`.
 pytest rápido: **425 passed, 5 deselected**. El QA antiguo falla porque intenta desmarcar un checkbox que ahora
 es un botón `aria-pressed`. Se está actualizando `tools/e2e/verify.mjs` con Playwright y axe, fallos con exit 1,
 capturas a 1440×900 y 1280×800, teclado, riesgos y jobs simulados sin ejecutar MONAI/ANTs.
+
+**Revisión posterior de F9/F10:** sin bloqueantes en la revisión independiente. Corregidos: opacidades elegidas
+durante descarga, lecturas parciales/obsoletas al cargar, texto GTV con contraste 6.45:1 y atajos mientras el
+foco está en la subida. Tabla con botones nativos y encabezados de columna. Etapas del job sin estimación
+ficticia: la API no informa etapa activa. Build repetido correcto. Suite visual completa aún en ejecución;
+si se retoma antes de CP-026, ejecutar el QA y revisar sus capturas antes de marcar F9/F10 terminados.
 
 **Trabajo repartido (solo contexto de esta sesión):** `viewer_f9` revisa el visor y sus componentes;
 `sidepanel_f10` revisa los paneles; `qa` actualiza `tools/e2e/`; el orquestador integra, documenta y sube.

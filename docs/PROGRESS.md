@@ -48,6 +48,9 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
   pytest rápido **425 passed, 5 deselected**. Aún no hay aprobación del QA visual actualizado.
 - **Hallazgo:** el QA anterior usa checkbox para MONAI y falla con los nuevos botones. Sus chequeos de píxeles
   WebGL tampoco son válidos con `preserveDrawingBuffer=false`; reemplazarlos por asserts y capturas revisadas.
+- **Revisión posterior:** se corrigieron opacidades durante cargas, lecturas parciales y atajos con foco en la
+  subida. Texto GTV: contraste de 4.42:1 a 6.45:1. Revisión independiente sin bloqueantes; build repetido correcto.
+  El QA completo sigue en ejecución y no debe contarse como aprobado todavía.
 - **Siguiente paso:** terminar revisión F9/F10 y QA a 1440×900 y 1280×800, revisar capturas, corregir los fallos,
   repetir checks afectados y registrar CP-026 antes del push final a esta rama.
 

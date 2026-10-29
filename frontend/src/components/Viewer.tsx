@@ -195,6 +195,7 @@ export default function Viewer({
   const viewRef = useRef(view);
   viewRef.current = view;
   const [loading, setLoading] = useState(false);
+  const loadingRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
 
   const [areasOn, setAreasOn] = useState(true);
@@ -280,6 +281,7 @@ export default function Viewer({
     // Clic/arrastre de la mira y teclas H/J/K/L: Niivue llama a onLocationChange con un NiiVueLocation
     // (mm, vox, frac, values[i] por volumen en orden de carga, string). Ver createOnLocationChange.
     nv.onLocationChange = (loc: unknown) => {
+      if (loadingRef.current) return;
       const l = loc as NiiVueLocation;
       if (!l?.mm || !Array.isArray(l.values)) return;
       const r = makeReadoutRef.current(
@@ -307,7 +309,7 @@ export default function Viewer({
   // posición del puntero con canvasPos2frac (píxeles CSS × dpr, como hace su mouseMoveListener).
   const onCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const nv = nvRef.current;
-    if (!nv || nv.volumes.length === 0) return;
+    if (!nv || loadingRef.current || nv.volumes.length === 0) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const dpr = nv.uiData.dpr ?? 1;
     const frac = nv.canvasPos2frac([(e.clientX - rect.left) * dpr, (e.clientY - rect.top) * dpr]);
@@ -376,6 +378,7 @@ export default function Viewer({
     pushReadout(null);
     setGtvLoaded(false);
     setAreasLoaded(false);
+    loadingRef.current = true;
     setLoading(true);
     setError(null);
     // Las cargas se encadenan: loadVolumes vacía nv.volumes y luego agrega los nuevos de forma
@@ -426,13 +429,17 @@ export default function Viewer({
         } else {
           setGtvLoaded(false);
         }
+        loadingRef.current = false;
         readCrosshair();
       } catch (e) {
         if (!cancelled) {
           setError(`No se pudieron cargar los volúmenes: ${e instanceof Error ? e.message : String(e)}`);
         }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          loadingRef.current = false;
+          setLoading(false);
+        }
       }
     })();
     loadChainRef.current = run;
@@ -499,6 +506,10 @@ export default function Viewer({
       if (e.key === "Escape") {
         setHelpOpen(false);
         return;
+      }
+      if (e.target instanceof Element) {
+        const dialog = e.target.closest('[role="dialog"], .upload-overlay');
+        if (dialog && !dialog.classList.contains("vw-help")) return;
       }
       if (isTypingTarget(e.target)) return;
       const v = VIEWS.find((x) => x.key === e.key);
