@@ -11,13 +11,36 @@ interface Props {
   focusedLabel: number | null;
   /** Resultado previo leído al abrir el estudio (null si no hay o falló). */
   onLoaded?: (r: AreasResult | null) => void;
+  /** Avisa cuando un mapeo empieza o termina (indicador en la pestaña). */
+  onBusyChange?: (busy: boolean) => void;
 }
 
 const TERMINAL = new Set(["complete", "failed", "not_found"]);
 
-const DISCLAIMER =
-  "Estimación educativa basada en un atlas (Talairach-Brodmann) registrado al paciente. No sustituye fMRI, " +
-  "tractografía ni mapeo cortical intraoperatorio; con tumores grandes el registro pierde precisión.";
+// La API no informa la etapa actual ni dónde falló el job.
+const JOB_STEPS = ["Registro a MNI", "Proyección del atlas", "Reporte"];
+
+function JobSteps({ status }: { status: JobStatus | null }) {
+  const complete = status?.status === "complete";
+  return (
+    <div className="job-steps-wrap">
+      <ol className="job-steps" aria-label="Etapas del mapeo">
+        {JOB_STEPS.map((label, i) => {
+          return (
+            <li key={label} className={`job-step${complete ? " done" : ""}`}>
+              <span className="job-step-icon" aria-hidden="true">
+                {complete ? "✓" : i + 1}
+              </span>
+              <span className="job-step-label">{label}</span>
+              {complete && <span className="sr-only"> (completado)</span>}
+            </li>
+          );
+        })}
+      </ol>
+      {!complete && <p className="note job-steps-note">La etapa actual no está disponible.</p>}
+    </div>
+  );
+}
 
 function errMsg(e: unknown): string {
   if (e instanceof ApiError) return e.detail;
@@ -61,7 +84,8 @@ function AreasTable({ rows, showWt, focusedLabel, onFocusLabel }: TableProps) {
     <table className="data-table areas-table">
       <thead>
         <tr>
-          <th colSpan={showWt ? 6 : 5}>Área · Hemisferio · % GTV · cm³ · mm {showWt && "· % WT"}</th>
+          <th scope="col">Área</th><th scope="col"><abbr title="Hemisferio">Hem.</abbr></th><th scope="col">% GTV</th>
+          <th scope="col">cm³</th><th scope="col">mm</th>{showWt && <th scope="col">% WT</th>}
         </tr>
       </thead>
       <tbody>
@@ -73,12 +97,16 @@ function AreasTable({ rows, showWt, focusedLabel, onFocusLabel }: TableProps) {
               <tr
                 className={`area-row${focused ? " focused" : ""}`}
                 onClick={toggleFocus}
-                title={focused ? "Clic para quitar el enfoque" : "Clic para enfocar en el visor"}
+                title={focused ? "Clic o Enter para quitar el enfoque" : "Clic o Enter para enfocar en el visor"}
               >
                 <th scope="row" className="area-name-cell">
                   <div className="area-name">
                     <i className="swatch" style={{ background: areaColorCss(a.label) }} />
-                    <span>{a.name_es}</span>
+                    <button type="button" className="area-focus" aria-pressed={focused}
+                      aria-label={`${focused ? "Quitar enfoque de" : "Enfocar"} ${a.name_es}, hemisferio ${a.hemisphere}`}
+                      onClick={(event) => { event.stopPropagation(); toggleFocus(); }}>
+                      {a.name_es}
+                    </button>
                     {a.eloquent && <span className="badge badge-eloquent">Elocuente</span>}
                   </div>
                 </th>
@@ -109,7 +137,7 @@ function AreasTable({ rows, showWt, focusedLabel, onFocusLabel }: TableProps) {
   );
 }
 
-export default function AreasPanel({ study, onCompleted, onFocusLabel, focusedLabel, onLoaded }: Props) {
+export default function AreasPanel({ study, onCompleted, onFocusLabel, focusedLabel, onLoaded, onBusyChange }: Props) {
   const { patient, timepoint } = study;
   const [result, setResult] = useState<AreasResult | null>(null);
   const [loading, setLoading] = useState(true);
@@ -124,6 +152,8 @@ export default function AreasPanel({ study, onCompleted, onFocusLabel, focusedLa
   onCompletedRef.current = onCompleted;
   const onLoadedRef = useRef(onLoaded);
   onLoadedRef.current = onLoaded;
+  const onBusyChangeRef = useRef(onBusyChange);
+  onBusyChangeRef.current = onBusyChange;
 
   const { status, error: pollError } = useJob(jobId);
   const running = jobId !== null && !pollError && (!status || !TERMINAL.has(status.status));
@@ -203,6 +233,9 @@ export default function AreasPanel({ study, onCompleted, onFocusLabel, focusedLa
   };
 
   const busy = starting || running;
+  useEffect(() => {
+    onBusyChangeRef.current?.(busy);
+  }, [busy]);
   const statusClass =
     status?.status === "failed" || status?.status === "not_found"
       ? "error"
@@ -233,13 +266,18 @@ export default function AreasPanel({ study, onCompleted, onFocusLabel, focusedLa
           {startError}
         </div>
       )}
-      {jobId && !pollError && <p className={`job-status ${statusClass}`}>{statusText(status, elapsed)}</p>}
+      {jobId && !pollError && (
+        <p className={`job-status ${statusClass}`}>
+          {statusText(status, elapsed)}
+        </p>
+      )}
+      {jobId && !pollError && <JobSteps status={status} />}
       {pollError && (
         <div className="alert" role="alert">
           No se pudo consultar el job: {pollError}
         </div>
       )}
-      {running && <p className="note">El registro a MNI tarda 1–3 min.</p>}
+      {running && <p className="note">El registro a MNI suele tardar 1–3 min.</p>}
 
       {loading && <p className="placeholder">Buscando mapa de áreas previo…</p>}
       {loadError && <p className="error">{loadError}</p>}
@@ -255,7 +293,7 @@ export default function AreasPanel({ study, onCompleted, onFocusLabel, focusedLa
           <h3>Cercanas (≤ {result.margin_mm} mm)</h3>
           <AreasTable rows={nearby} showWt={showWt} focusedLabel={focusedLabel} onFocusLabel={onFocusLabel} />
 
-          <p className="note">Clic en una fila para enfocar esa área en el visor.</p>
+          <p className="note">Selecciona el nombre de un área para enfocar o quitar el enfoque en el visor.</p>
 
           {result.warnings.length > 0 && (
             <ul className="warnings">
@@ -274,8 +312,6 @@ export default function AreasPanel({ study, onCompleted, onFocusLabel, focusedLa
           </p>
         </>
       )}
-
-      <p className="disclaimer">{DISCLAIMER}</p>
     </section>
   );
 }

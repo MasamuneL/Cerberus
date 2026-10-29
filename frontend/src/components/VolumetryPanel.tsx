@@ -25,8 +25,6 @@ function errMsg(e: unknown): string {
 export default function VolumetryPanel({ patient, timepoint }: Props) {
   const [vol, setVol] = useState<Volumetry | null>(null);
   const [volError, setVolError] = useState<string | null>(null);
-  const [long, setLong] = useState<LongitudinalPoint[]>([]);
-  const [longError, setLongError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -54,24 +52,6 @@ export default function VolumetryPanel({ patient, timepoint }: Props) {
     };
   }, [patient, timepoint]);
 
-  useEffect(() => {
-    let cancelled = false;
-    setLong([]);
-    setLongError(null);
-    getLongitudinal(patient)
-      .then((l) => {
-        if (!cancelled) setLong(l);
-      })
-      .catch((e) => {
-        if (cancelled) return;
-        if (e instanceof ApiError && e.status === 404) return;
-        setLongError(`No se pudo cargar la evolución: ${errMsg(e)}`);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [patient]);
-
   return (
     <section className="panel volumetry">
       <h2>Volumetría</h2>
@@ -94,18 +74,60 @@ export default function VolumetryPanel({ patient, timepoint }: Props) {
           </tbody>
         </table>
       )}
+      {vol && <p className="note">Volúmenes del GTV de radioterapia (excluye edema).</p>}
+    </section>
+  );
+}
 
+/** Evolución longitudinal del GTV del paciente (pestaña propia desde F10). */
+export function LongitudinalPanel({ patient, timepoint }: Props) {
+  const [long, setLong] = useState<LongitudinalPoint[]>([]);
+  const [longError, setLongError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLong([]);
+    setLongError(null);
+    setLoading(true);
+    getLongitudinal(patient)
+      .then((l) => {
+        if (!cancelled) setLong(l);
+      })
+      .catch((e) => {
+        if (cancelled) return;
+        if (e instanceof ApiError && e.status === 404) return;
+        setLongError(`No se pudo cargar la evolución: ${errMsg(e)}`);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [patient]);
+
+  return (
+    <section className="panel longitudinal">
+      <h2>Evolución longitudinal</h2>
+      {loading && <p className="placeholder">Cargando…</p>}
       {longError && <p className="error">{longError}</p>}
+      {!loading && !longError && long.length < 2 && (
+        <p className="placeholder">Se necesitan al menos dos tiempos con GTV para ver la evolución.</p>
+      )}
       {long.length >= 2 && (
         <>
-          <h3>Evolución longitudinal</h3>
           <table className="data-table">
             <thead>
               <tr><th>Tiempo</th><th>GTV cm³</th><th>Δ vs t0 %</th><th>RANO</th></tr>
             </thead>
             <tbody>
               {long.map((pt) => (
-                <tr key={pt.timepoint} className={pt.timepoint === timepoint ? "current" : ""}>
+                <tr
+                  key={pt.timepoint}
+                  className={pt.timepoint === timepoint ? "current" : ""}
+                  aria-current={pt.timepoint === timepoint ? "true" : undefined}
+                >
                   <td>{pt.timepoint}</td>
                   <td>{fmt(pt.gtv_cm3, 2)}</td>
                   <td>
@@ -119,9 +141,9 @@ export default function VolumetryPanel({ patient, timepoint }: Props) {
               ))}
             </tbody>
           </table>
+          <p className="note">Volúmenes del GTV de radioterapia (excluye edema). RANO volumétrico frente a t0.</p>
         </>
       )}
-      {(vol || long.length >= 2) && <p className="note">Volúmenes del GTV de radioterapia (excluye edema).</p>}
     </section>
   );
 }

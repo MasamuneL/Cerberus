@@ -1,0 +1,186 @@
+/* F10 · Columna derecha con pestañas y "Funciones en riesgo" (docs/PLAN_MVP.md §14).
+   Usa los tokens de styles.css con fallback. Rojo/naranja/amarillo son del tumor: la gravedad del semáforo se
+   codifica con forma del icono (● ◐ ○), texto y grosor/estilo del borde en tonos neutros y de acento frío. */
+
+.sidepanel {
+  width: 380px; flex-shrink: 0;
+  display: flex; flex-direction: column;
+  max-height: calc(100vh - 130px); min-height: 0;
+  background: var(--surface, #151b23);
+  border: 1px solid var(--border, #2d3640);
+  border-radius: var(--radius, 4px);
+}
+
+.sidepanel .sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+/* --- Pestañas --- */
+.sidepanel-tabs {
+  display: flex; flex-shrink: 0;
+  border-bottom: 1px solid var(--border, #2d3640);
+  background: var(--surface-2, #1d242e);
+  border-radius: var(--radius, 4px) var(--radius, 4px) 0 0;
+}
+.sidepanel-tab {
+  flex: 1 1 auto; min-width: 0;
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--space-1, 0.25rem);
+  padding: var(--space-2, 0.5rem) var(--space-1, 0.25rem);
+  background: transparent; color: var(--text-muted, #9ba7b4);
+  border: none; border-bottom: 2px solid transparent; margin-bottom: -1px;
+  font: inherit; font-size: 0.82rem; font-weight: 500; cursor: pointer;
+  transition: color var(--transition, 120ms ease-out), border-color var(--transition, 120ms ease-out);
+}
+.sidepanel-tab:hover { color: var(--text, #e6edf3); }
+.sidepanel-tab.active {
+  color: var(--accent, #58a6ff); font-weight: 600;
+  border-bottom-color: var(--accent, #58a6ff);
+  background: var(--surface, #151b23);
+}
+.sidepanel-tab:focus-visible {
+  outline: 2px solid var(--focus, #7cc4ff); outline-offset: -2px;
+}
+.sidepanel-busy { display: inline-flex; }
+.sidepanel-busy-dot {
+  width: 0.45rem; height: 0.45rem; border-radius: 50%;
+  border: 1.5px solid var(--accent, #58a6ff); border-top-color: transparent;
+  animation: sidepanel-spin 0.9s linear infinite;
+}
+@keyframes sidepanel-spin { to { transform: rotate(360deg); } }
+
+/* --- Paneles --- */
+.sidepanel-panel {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto;
+  display: flex; flex-direction: column; gap: var(--space-3, 0.75rem);
+  padding: var(--space-3, 0.75rem) var(--space-4, 1rem) var(--space-4, 1rem);
+}
+.sidepanel-panel[hidden] { display: none; }
+.sidepanel-panel:focus-visible { outline: 2px solid var(--focus, #7cc4ff); outline-offset: -2px; }
+/* Dentro de la columna los paneles ya no son tarjetas propias: la columna es la tarjeta. */
+.sidepanel .panel { width: auto; padding: 0; border: none; background: transparent; }
+
+/* --- Filas de la tabla de áreas: foco de teclado visible --- */
+.sidepanel .areas-table {
+  table-layout: fixed;
+}
+.sidepanel .areas-table th,
+.sidepanel .areas-table td {
+  padding-left: 0.2rem; padding-right: 0.2rem; overflow-wrap: anywhere;
+}
+.sidepanel .areas-table th:first-child { width: 32%; }
+.sidepanel .area-name { min-width: 0; }
+.sidepanel .area-focus {
+  padding: 0; border: 0; background: transparent; color: inherit;
+  min-width: 0; max-width: 100%; overflow-wrap: anywhere;
+  font: inherit; text-align: left; text-decoration: underline; text-underline-offset: 2px; cursor: pointer;
+}
+.sidepanel .area-focus:focus-visible {
+  outline: 2px solid var(--focus, #7cc4ff); outline-offset: -2px;
+  background: var(--accent-soft, rgba(88, 166, 255, 0.14));
+}
+
+/* --- Pasos del job de áreas --- */
+.job-steps {
+  list-style: none; margin: var(--space-2, 0.5rem) 0 0; padding: 0;
+  display: flex; gap: var(--space-1, 0.25rem);
+}
+.job-step {
+  flex: 1 1 0; min-width: 0;
+  display: flex; align-items: center; gap: 0.3rem;
+  padding: 0.3rem 0.4rem; font-size: 0.72rem; line-height: 1.2;
+  color: var(--text-muted, #9ba7b4);
+  border: 1px dashed var(--border-strong, #3d4854); border-radius: var(--radius, 4px);
+}
+.job-step-icon {
+  flex-shrink: 0; width: 1.1rem; height: 1.1rem;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 50%; border: 1px solid currentColor;
+  font-family: var(--font-mono, ui-monospace, monospace); font-size: 0.65rem;
+}
+.job-step.active {
+  color: var(--text, #e6edf3); border: 1px solid var(--accent, #58a6ff);
+  background: var(--accent-soft, rgba(88, 166, 255, 0.14));
+}
+.job-step.active .job-step-icon { border-color: var(--accent, #58a6ff); animation: sidepanel-pulse 1.4s ease-in-out infinite; }
+.job-step.done { color: var(--text, #e6edf3); border-style: solid; border-color: var(--border-strong, #3d4854); }
+.job-step.done .job-step-icon { background: var(--accent, #58a6ff); border-color: var(--accent, #58a6ff); color: var(--text-on-accent, #0b1220); }
+.job-step.failed { color: var(--danger, #ff7b72); border-style: solid; border-color: var(--danger, #ff7b72); }
+.job-steps-note { margin-top: var(--space-1, 0.25rem); }
+@keyframes sidepanel-pulse { 50% { box-shadow: 0 0 0 3px var(--accent-soft, rgba(88, 166, 255, 0.14)); } }
+
+/* --- Funciones en riesgo --- */
+.risk-wrap { display: flex; flex-direction: column; gap: var(--space-2, 0.5rem); }
+.risk-wrap .disclaimer { margin: 0; }
+.risk-summary {
+  padding: var(--space-3, 0.75rem);
+  background: var(--surface-2, #1d242e);
+  border: 1px solid var(--border-strong, #3d4854); border-radius: var(--radius-lg, 8px);
+}
+.risk-head {
+  display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between;
+  gap: var(--space-1, 0.25rem) var(--space-3, 0.75rem); margin-bottom: var(--space-2, 0.5rem);
+}
+.risk-head h3 { margin: 0; font-size: 0.95rem; font-weight: 600; }
+.risk-legend {
+  list-style: none; margin: 0; padding: 0; display: flex; gap: var(--space-2, 0.5rem);
+  font-size: 0.7rem; color: var(--text-muted, #9ba7b4);
+}
+.risk-legend li { display: inline-flex; align-items: center; gap: 0.2rem; }
+.risk-empty { margin: 0; }
+
+.risk-icon { display: inline-block; width: 1em; text-align: center; line-height: 1; }
+.sev-3 .risk-icon, .sev-3 > .risk-domain-head .risk-icon { color: var(--text, #e6edf3); }
+.sev-2 .risk-icon { color: var(--accent, #58a6ff); }
+.sev-1 .risk-icon { color: var(--text-muted, #9ba7b4); }
+
+.risk-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2, 0.5rem); }
+.risk-domain {
+  padding: var(--space-2, 0.5rem) var(--space-2, 0.5rem) var(--space-2, 0.5rem) var(--space-3, 0.75rem);
+  background: var(--surface, #151b23);
+  border: 1px solid var(--border, #2d3640); border-radius: var(--radius, 4px);
+}
+/* Gravedad = grosor/estilo del borde izquierdo + icono + texto */
+.risk-domain.sev-3 { border-left: 4px solid var(--text, #e6edf3); }
+.risk-domain.sev-2 { border-left: 3px solid var(--accent, #58a6ff); }
+.risk-domain.sev-1 { border-left: 2px dashed var(--text-muted, #9ba7b4); }
+
+.risk-domain-head { display: flex; align-items: center; gap: var(--space-2, 0.5rem); margin-bottom: 0.35rem; }
+.risk-domain-name { font-weight: 600; font-size: 0.88rem; }
+.risk-level {
+  margin-left: auto; padding: 0.05rem 0.4rem; font-size: 0.68rem; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.04em; border-radius: var(--radius-sm, 3px);
+}
+.sev-3 .risk-level { background: var(--text, #e6edf3); color: var(--bg, #0d1117); }
+.sev-2 .risk-level { color: var(--accent, #58a6ff); border: 1px solid var(--accent, #58a6ff); }
+.sev-1 .risk-level { color: var(--text-muted, #9ba7b4); border: 1px dashed var(--text-muted, #9ba7b4); }
+
+.risk-chips { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+.risk-chip {
+  padding: 0.1rem 0.45rem; border-radius: 999px; cursor: pointer;
+  font-family: var(--font-mono, ui-monospace, monospace); font-size: 0.72rem;
+  font-variant-numeric: tabular-nums; max-width: 100%; text-align: left; overflow-wrap: anywhere;
+  background: transparent; color: var(--text, #e6edf3);
+  border: 1px solid var(--border-strong, #3d4854);
+  transition: background var(--transition, 120ms ease-out), border-color var(--transition, 120ms ease-out);
+}
+.risk-chip.sev-3 { border-width: 2px; border-color: var(--text-muted, #9ba7b4); font-weight: 600; }
+.risk-chip.sev-1 { border-style: dashed; color: var(--text-muted, #9ba7b4); }
+.risk-chip:hover { border-color: var(--accent, #58a6ff); }
+.risk-chip.focused, .risk-chip[aria-pressed="true"] {
+  background: var(--accent-strong, rgba(88, 166, 255, 0.24)); border-color: var(--accent, #58a6ff); color: var(--text, #e6edf3);
+}
+.risk-chip:focus-visible { outline: 2px solid var(--focus, #7cc4ff); outline-offset: 1px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .sidepanel-busy-dot, .job-step.active .job-step-icon { animation: none; }
+  .sidepanel-tab, .risk-chip { transition: none; }
+}
+
+.risk-more {
+  padding: 0.1rem 0.45rem; border-radius: 999px; cursor: pointer;
+  font: inherit; font-size: 0.72rem; color: var(--accent, #58a6ff);
+  background: transparent; border: 1px solid transparent; text-decoration: underline; text-underline-offset: 2px;
+}
+.risk-more:hover { border-color: var(--accent, #58a6ff); }
+.risk-more:focus-visible { outline: 2px solid var(--focus, #7cc4ff); outline-offset: 1px; }

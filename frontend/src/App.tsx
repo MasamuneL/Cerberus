@@ -1,15 +1,24 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError, getStudy, listStudies } from "./api/client";
 import type { AreasResult, Study, StudyDetail } from "./api/types";
-import AreasPanel from "./components/AreasPanel";
-import SegmentationPanel from "./components/SegmentationPanel";
+import SidePanel, { SIDE_TABS, type SideTab } from "./components/SidePanel";
 import UploadPanel from "./components/UploadPanel";
 import StudyList, { type StudyKey } from "./components/StudyList";
 import Viewer from "./components/Viewer";
-import VolumetryPanel from "./components/VolumetryPanel";
 
 const errText = (e: unknown) =>
   e instanceof ApiError ? e.detail : e instanceof Error ? e.message : String(e);
+
+// Última pestaña elegida por el usuario en esta sesión del navegador (F10).
+const TAB_KEY = "cerberus.sideTab";
+function readSavedTab(): SideTab | null {
+  try {
+    const v = sessionStorage.getItem(TAB_KEY);
+    return SIDE_TABS.some((t) => t.id === v) ? (v as SideTab) : null;
+  } catch {
+    return null;
+  }
+}
 
 export default function App() {
   const [studies, setStudies] = useState<Study[]>([]);
@@ -27,6 +36,17 @@ export default function App() {
   const [areas, setAreas] = useState<AreasResult | null>(null);
   const [areasVersion, setAreasVersion] = useState(0);
   const [focusedLabel, setFocusedLabel] = useState<number | null>(null);
+  // Pestaña de la columna derecha: la elegida por el usuario o, si aún no eligió ninguna,
+  // "Áreas" cuando el estudio ya tiene mapa y "Volumetría" en otro caso.
+  const [chosenTab, setChosenTab] = useState<SideTab | null>(readSavedTab);
+  const chooseTab = useCallback((t: SideTab) => {
+    setChosenTab(t);
+    try {
+      sessionStorage.setItem(TAB_KEY, t);
+    } catch {
+      // sin sessionStorage (modo privado): basta con el estado en memoria
+    }
+  }, []);
   const selectedRef = useRef<StudyKey | null>(null);
   selectedRef.current = selected;
 
@@ -174,20 +194,17 @@ export default function App() {
                   areasVersion={areasVersion}
                   focusedLabel={focusedLabel}
                 />
-                <div className="side-panels">
-                  <VolumetryPanel patient={detail.patient} timepoint={detail.timepoint} />
-                  <SegmentationPanel
-                    study={detail}
-                    onCompleted={() => void onSegmentationCompleted(detail.patient, detail.timepoint)}
-                  />
-                  <AreasPanel
-                    study={detail}
-                    onCompleted={(r) => void onAreasCompleted(detail.patient, detail.timepoint, r)}
-                    onLoaded={(r) => onAreasLoaded(detail.patient, detail.timepoint, r)}
-                    onFocusLabel={setFocusedLabel}
-                    focusedLabel={focusedLabel}
-                  />
-                </div>
+                <SidePanel
+                  study={detail}
+                  tab={chosenTab ?? (detail.has_areas ? "areas" : "volumetria")}
+                  onTabChange={chooseTab}
+                  areas={areas}
+                  focusedLabel={focusedLabel}
+                  onFocusLabel={setFocusedLabel}
+                  onSegmentationCompleted={() => void onSegmentationCompleted(detail.patient, detail.timepoint)}
+                  onAreasCompleted={(r) => void onAreasCompleted(detail.patient, detail.timepoint, r)}
+                  onAreasLoaded={(r) => onAreasLoaded(detail.patient, detail.timepoint, r)}
+                />
               </div>
             </div>
           )}

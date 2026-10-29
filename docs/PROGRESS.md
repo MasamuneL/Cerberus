@@ -32,8 +32,8 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 | E2E · áreas (§13) | ✅ | main | cbca8ad | 2026-10-29 | Vikingo / Claude Code (orquestador) | API/flujo ✅ + visual con Playwright ✅ |
 | F8 · ajustes visuales (Playwright) | ✅ | fix/F8-viewer-centering | cbca8ad | 2026-10-29 | Vikingo / Claude Code (subagente + orquestador) | |
 | B12 · dominios funcionales (§14) | ✅ | feat/B12-domains | 1088611 | 2026-10-29 | Vikingo / Claude Code (subagente) | |
-| F9 · capas + paleta + cursor (§14) | 🟡 | feat/F9-viewer-layers | | 2026-10-29 | Vikingo / Claude Code (subagente) | |
-| F10 · pestañas + funciones en riesgo (§14) | 🟡 | feat/F10-side-tabs | | 2026-10-29 | Vikingo / Claude Code (subagente) | |
+| F9 · capas + paleta + cursor (§14) | ✅ | feature/ux-ui | fad8562, af22c29, d406354 | 2026-10-29 | Vikingo / Claude Code + Codex | QA CP-027; merge a main pendiente |
+| F10 · pestañas + funciones en riesgo (§14) | ✅ | feature/ux-ui | fad8562, d406354 | 2026-10-29 | Vikingo / Claude Code + Codex | QA CP-027; merge a main pendiente |
 | F11 · tipografía + accesibilidad + lista (§14) | ✅ | feat/F11-type-a11y | 5b7b024 | 2026-10-29 | Vikingo / Claude Code (subagente) | |
 
 ## Bitácora de checkpoints
@@ -349,3 +349,48 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
   sin tocar el árbol de trabajo, donde siguen F9 y F10.
 - **Feedback a F9 (en curso):** el panel de capas flotaba sobre el tile coronal y lo tapaba, y "Áreas…" se truncaba
   a 1280 px. Se le pidió que lo saque del canvas o lo haga colapsable.
+
+### CP-025 · 2026-10-29 · recuperación del handoff UX/UI (en curso)
+- **Pedido del usuario:** continuar el handoff de Claude, ejecutar o crear QA y subir a `feature/ux-ui`;
+  coordinar subagentes y dejar un estado recuperable. No hacer merge a `main`.
+- **Hecho:** `git pull` al día; rama creada conservando el árbol de F9/F10. Capas fuera del canvas, paleta fría,
+  lectura de cursor, atajos, pestañas y resumen de riesgos recuperados. Revisión paralela de visor y paneles;
+  QA separado en `tools/e2e` con `@axe-core/playwright` fijado y lockfile.
+- **Checks de entrada:** frontend build correcto; ruff y formato correctos; pyright 0 errores;
+  pytest rápido **425 passed, 5 deselected**. Aún no hay aprobación del QA visual actualizado.
+- **Hallazgo:** el QA anterior usa checkbox para MONAI y falla con los nuevos botones. Sus chequeos de píxeles
+  WebGL tampoco son válidos con `preserveDrawingBuffer=false`; reemplazarlos por asserts y capturas revisadas.
+- **Revisión posterior:** se corrigieron opacidades durante cargas, lecturas parciales y atajos con foco en la
+  subida. Texto GTV: contraste de 4.42:1 a 6.45:1. Revisión independiente sin bloqueantes; build repetido correcto.
+  El QA completo sigue en ejecución y no debe contarse como aprobado todavía.
+- **Siguiente paso:** terminar revisión F9/F10 y QA a 1440×900 y 1280×800, revisar capturas, corregir los fallos,
+  repetir checks afectados y registrar CP-026 antes del push final a esta rama.
+
+### CP-026 · 2026-10-29 · QA UX/UI y correcciones (en curso)
+- **Hecho:** QA reproducible con asserts, exit 1 al fallar, cierre del navegador, dos tamaños de ventana,
+  axe, pruebas de teclado, funciones en riesgo, paleta, cambios de opacidad durante descarga y jobs simulados.
+  Reportes y capturas ignorados por Git; instrucciones en `tools/e2e/README.md`.
+- **Hallazgos reales:** modo «Todas» pintaba el fondo azul y un cubo opaco en 3D (mezcla del shader Niivue
+  con la primera etiqueta); la tabla de 005/t0 desbordaba 6 px. Corregidos con guardas transparentes en el LUT,
+  nombres alineados por etiqueta real y columnas/envoltura de tabla ajustadas.
+- **Verificación parcial:** capturas de 1440×900 y 1280×800 revisadas; teclado y auditorías axe sin hallazgos
+  en las pantallas comprobadas. La suite completa detectó el desborde antes del fix. **No está aprobada aún.**
+- **Siguiente paso:** comprobar ambas correcciones en Chrome, obtener una pasada final de QA, revisar las
+  capturas nuevas y registrar CP-027. Mantener los cambios en `feature/ux-ui`, sin merge a `main`.
+
+### CP-027 · 2026-10-29 · F9/F10 y QA final completados
+- **Hecho:** F9 y F10 terminados en `feature/ux-ui`; capas fuera del lienzo, paleta fría, cursor, atajos,
+  pestañas, funciones en riesgo y tabla accesible. Corregidos los hallazgos del QA y verificados otra vez.
+  El orquestador integró el trabajo de Terra/high (F9/F10), Sol/high (QA) y Astra/high (revisión independiente).
+- **QA final:** `CERBERUS_UI=http://localhost:5180 npm run verify`, exit 0, **33/33 checks**, **14 auditorías
+  axe con 0 violaciones automáticas**, **27 capturas**. Inicio 17:37:35 UTC, fin 17:43:15 UTC. Sin errores
+  HTTP inesperados ni mutaciones reales; cuatro 404 previstos de resultados ausentes.
+- **Revisión visual:** capturas a 1440×900 y 1280×800 revisadas por el agente QA y el orquestador. Confirmados
+  coronal libre, fondo negro en «Todas» sin cubo azul 3D y tabla de 005/t0 legible sin desborde horizontal.
+- **Checks obligatorios:** ruff y formato correctos; pyright 0 errores; pytest **425 passed, 5 deselected**;
+  frontend build correcto. Se conserva el aviso conocido de bundles mayores de 500 kB.
+- **Límites:** 12 auditorías axe conservan resultados incompletos; no se hizo prueba con lector de pantalla.
+  Regresión visual automática inconclusa por falta de baseline. Jobs simulados, sin ANTs/MONAI ni subidas.
+  Evidencia, comandos y hallazgos en `docs/QA_UX_UI.md`; runner en `tools/e2e/`.
+- **Siguiente paso:** revisión del PR e integración posterior de `feature/ux-ui`. `main` no se modificó.
+  El handoff identifica la rama y el estado final para retomar con Claude sin repetir la implementación.
