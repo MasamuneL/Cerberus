@@ -1,0 +1,1116 @@
+{
+  "Brodmann area 1": {
+    "name_es": "Área 1 de Brodmann (corteza somatosensorial primaria)",
+    "kind": "cortical",
+    "functions": [
+      "Sensibilidad táctil del lado contrario del cuerpo",
+      "Discriminación de texturas"
+    ],
+    "eloquent": true,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Strotzer M. One century of brain mapping using Brodmann areas. Clin Neuroradiol 2009;19:179–186",
+      "Spetzler RF, Martin NA. A proposed grading system for arteriovenous malformations. J Neurosurg 1986;65:476–483",
+      "Sawaya R et al. Neurosurgical outcomes in a modern series of 400 craniotomies for treatment of parenchymal tumors. Neurosurgery 1998;42:1044–1056"
+    ]
+  },
+  "Brodmann area 2": {
+    "name_es": "Área 2 de Brodmann (corteza somatosensorial primaria)",
+    "kind": "cortical",
+    "functions": [
+      "Propiocepción (posición de las articulaciones)",
+      "Reconocimiento del tamaño y la forma de objetos al tacto"
+    ],
+    "eloquent": true,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Strotzer M. One century of brain mapping using Brodmann areas. Clin Neuroradiol 2009;19:179–186",
+      "Spetzler RF, Martin NA. A proposed grading system for arteriovenous malformations. J Neurosurg 1986;65:476–483",
+      "Sawaya R et al. Neurosurgical outcomes in a modern series of 400 craniotomies for treatment of parenchymal tumors. Neurosurgery 1998;42:1044–1056"
+    ]
+  },
+  "Brodmann area 3": {
+    "name_es": "Área 3 de Brodmann (corteza somatosensorial primaria)",
+    "kind": "cortical",
+    "functions": [
+      "Sensibilidad táctil y propioceptiva del lado contrario del cuerpo",
+      "Mapa somatotópico del cuerpo (homúnculo sensitivo)"
+    ],
+    "eloquent": true,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Strotzer M. One century of brain mapping using Brodmann areas. Clin Neuroradiol 2009;19:179–186",
+      "Spetzler RF, Martin NA. A proposed grading system for arteriovenous malformations. J Neurosurg 1986;65:476–483",
+      "Sawaya R et al. Neurosurgical outcomes in a modern series of 400 craniotomies for treatment of parenchymal tumors. Neurosurgery 1998;42:1044–1056"
+    ]
+  },
+  "Brodmann area 4": {
+    "name_es": "Área 4 de Brodmann (corteza motora primaria)",
+    "kind": "cortical",
+    "functions": [
+      "Movimiento voluntario del lado contrario del cuerpo",
+      "Movimientos finos de mano y dedos",
+      "Mapa somatotópico del cuerpo (homúnculo motor)"
+    ],
+    "eloquent": true,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Strotzer M. One century of brain mapping using Brodmann areas. Clin Neuroradiol 2009;19:179–186",
+      "Spetzler RF, Martin NA. A proposed grading system for arteriovenous malformations. J Neurosurg 1986;65:476–483",
+      "Sawaya R et al. Neurosurgical outcomes in a modern series of 400 craniotomies for treatment of parenchymal tumors. Neurosurgery 1998;42:1044–1056"
+    ]
+  },
+  "Brodmann area 5": {
+    "name_es": "Área 5 de Brodmann (corteza parietal superior somatosensorial de asociación)",
+    "kind": "cortical",
+    "functions": [
+      "Integración de información somatosensorial",
+      "Guía sensorial de los movimientos de brazos y manos"
+    ],
+    "eloquent": false,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Strotzer M. One century of brain mapping using Brodmann areas. Clin Neuroradiol 2009;19:179–186"
+    ]
+  },
+  "Brodmann area 6": {
+    "name_es": "Área 6 de Brodmann (corteza premotora y área motora suplementaria)",
+    "kind": "cortical",
+    "functions": [
+      "Planificación y secuenciación de movimientos",
+      "Iniciación del movimiento voluntario",
+      "Control de la postura y de movimientos bilaterales"
+    ],
+    "eloquent": true,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Strotzer M. One century of brain mapping using Brodmann areas. Clin Neuroradiol 2009;19:179–186",
+      "Spetzler RF, Martin NA. A proposed grading system for arteriovenous malformations. J Neurosurg 1986;65:476–483",
+      "Sawaya R et al. Neurosurgical outcomes in a modern series of 400 craniotomies for treatment of parenchymal tumors. Neurosurgery 1998;42:1044–1056"
+    ]
+  },
+  "Brodmann area 7": {
+    "name_es": "Área 7 de Brodmann (corteza parietal superior)",
+    "kind": "cortical",
+    "functions": [
+      "Integración visuomotora (alcanzar y tomar objetos)",
+      "Localización espacial y atención visuoespacial"
+    ],
+    "eloquent": false,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Strotzer M. One century of brain mapping using Brodmann areas. Clin Neuroradiol 2009;19:179–186"
+    ]
+  },
+  "Brodmann area 8": {
+    "name_es": "Área 8 de Brodmann (campos oculares frontales)",
+    "kind": "cortical",
+    "functions": [
+      "Movimientos oculares voluntarios (sacádicos)",
+      "Atención visual dirigida"
+    ],
+    "eloquent": false,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Strotzer M. One century of brain mapping using Brodmann areas. Clin Neuroradiol 2009;19:179–186"
+    ]
+  },
+  "Brodmann area 9": {
+    "name_es": "Área 9 de Brodmann (corteza prefrontal dorsolateral)",
+    "kind": "cortical",
+    "functions": [
+      "Funciones ejecutivas",
+      "Memoria de trabajo",
+      "Planificación y organización de la conducta"
+    ],
+    "eloquent": false,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Strotzer M. One century of brain mapping using Brodmann areas. Clin Neuroradiol 2009;19:179–186"
+    ]
+  },
+  "Brodmann area 10": {
+    "name_es": "Área 10 de Brodmann (corteza prefrontal anterior (frontopolar))",
+    "kind": "cortical",
+    "functions": [
+      "Planificación compleja y razonamiento",
+      "Coordinación de varias tareas a la vez"
+    ],
+    "eloquent": false,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Strotzer M. One century of brain mapping using Brodmann areas. Clin Neuroradiol 2009;19:179–186"
+    ]
+  },
+  "Brodmann area 11": {
+    "name_es": "Área 11 de Brodmann (corteza orbitofrontal)",
+    "kind": "cortical",
+    "functions": [
+      "Valoración de recompensas y toma de decisiones",
+      "Regulación de la conducta social y emocional"
+    ],
+    "eloquent": false,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Strotzer M. One century of brain mapping using Brodmann areas. Clin Neuroradiol 2009;19:179–186"
+    ]
+  },
+  "Brodmann area 13": {
+    "name_es": "Área 13 de Brodmann (ínsula)",
+    "kind": "cortical",
+    "functions": [
+      "Percepción del estado interno del cuerpo (interocepción)",
+      "Procesamiento del gusto",
+      "Regulación autonómica y visceral",
+      "Procesamiento emocional"
+    ],
+    "eloquent": false,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Strotzer M. One century of brain mapping using Brodmann areas. Clin Neuroradiol 2009;19:179–186"
+    ]
+  },
+  "Brodmann area 17": {
+    "name_es": "Área 17 de Brodmann (corteza visual primaria)",
+    "kind": "cortical",
+    "functions": [
+      "Percepción visual del hemicampo contrario",
+      "Procesamiento visual básico (orientación, contraste)"
+    ],
+    "eloquent": true,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Strotzer M. One century of brain mapping using Brodmann areas. Clin Neuroradiol 2009;19:179–186",
+      "Spetzler RF, Martin NA. A proposed grading system for arteriovenous malformations. J Neurosurg 1986;65:476–483",
+      "Sawaya R et al. Neurosurgical outcomes in a modern series of 400 craniotomies for treatment of parenchymal tumors. Neurosurgery 1998;42:1044–1056"
+    ]
+  },
+  "Brodmann area 18": {
+    "name_es": "Área 18 de Brodmann (corteza visual secundaria)",
+    "kind": "cortical",
+    "functions": [
+      "Procesamiento visual temprano de contornos y formas",
+      "Relevo de información visual hacia áreas de asociación"
+    ],
+    "eloquent": false,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Strotzer M. One century of brain mapping using Brodmann areas. Clin Neuroradiol 2009;19:179–186"
+    ]
+  },
+  "Brodmann area 19": {
+    "name_es": "Área 19 de Brodmann (corteza visual de asociación)",
+    "kind": "cortical",
+    "functions": [
+      "Percepción del color, el movimiento y la profundidad",
+      "Integración de información visual"
+    ],
+    "eloquent": false,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Strotzer M. One century of brain mapping using Brodmann areas. Clin Neuroradiol 2009;19:179–186"
+    ]
+  },
+  "Brodmann area 20": {
+    "name_es": "Área 20 de Brodmann (circunvolución temporal inferior)",
+    "kind": "cortical",
+    "functions": [
+      "Reconocimiento visual de objetos (vía visual ventral)",
+      "Memoria semántica"
+    ],
+    "eloquent": false,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Strotzer M. One century of brain mapping using Brodmann areas. Clin Neuroradiol 2009;19:179–186"
+    ]
+  },
+  "Brodmann area 21": {
+    "name_es": "Área 21 de Brodmann (circunvolución temporal media)",
+    "kind": "cortical",
+    "functions": [
+      "Procesamiento del significado de las palabras (semántica)",
+      "Procesamiento auditivo de asociación"
+    ],
+    "eloquent": false,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Strotzer M. One century of brain mapping using Brodmann areas. Clin Neuroradiol 2009;19:179–186"
+    ]
+  },
+  "Brodmann area 22": {
+    "name_es": "Área 22 de Brodmann (circunvolución temporal superior)",
+    "kind": "cortical",
+    "functions": [
+      "Procesamiento auditivo de asociación"
+    ],
+    "functions_left": [
+      "Comprensión del lenguaje hablado (área de Wernicke, porción posterior)"
+    ],
+    "functions_right": [
+      "Percepción de la prosodia y la entonación del habla",
+      "Percepción de la música (melodía)"
+    ],
+    "eloquent": true,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Strotzer M. One century of brain mapping using Brodmann areas. Clin Neuroradiol 2009;19:179–186",
+      "Spetzler RF, Martin NA. A proposed grading system for arteriovenous malformations. J Neurosurg 1986;65:476–483",
+      "Sawaya R et al. Neurosurgical outcomes in a modern series of 400 craniotomies for treatment of parenchymal tumors. Neurosurgery 1998;42:1044–1056"
+    ]
+  },
+  "Brodmann area 23": {
+    "name_es": "Área 23 de Brodmann (corteza cingulada posterior ventral)",
+    "kind": "cortical",
+    "functions": [
+      "Memoria episódica y autobiográfica",
+      "Pensamiento autorreferencial (red neuronal por defecto)"
+    ],
+    "eloquent": false,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Strotzer M. One century of brain mapping using Brodmann areas. Clin Neuroradiol 2009;19:179–186"
+    ]
+  },
+  "Brodmann area 24": {
+    "name_es": "Área 24 de Brodmann (corteza cingulada anterior ventral)",
+    "kind": "cortical",
+    "functions": [
+      "Procesamiento emocional y motivación",
+      "Componente afectivo del dolor",
+      "Regulación autonómica"
+    ],
+    "eloquent": false,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Strotzer M. One century of brain mapping using Brodmann areas. Clin Neuroradiol 2009;19:179–186"
+    ]
+  },
+  "Brodmann area 25": {
+    "name_es": "Área 25 de Brodmann (corteza cingulada subgenual)",
+    "kind": "cortical",
+    "functions": [
+      "Regulación del estado de ánimo",
+      "Regulación autonómica"
+    ],
+    "eloquent": false,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Strotzer M. One century of brain mapping using Brodmann areas. Clin Neuroradiol 2009;19:179–186"
+    ]
+  },
+  "Brodmann area 27": {
+    "name_es": "Área 27 de Brodmann (presubículo, formación parahipocampal)",
+    "kind": "cortical",
+    "functions": [
+      "Relevo de información hacia y desde el hipocampo",
+      "Memoria y orientación espacial"
+    ],
+    "eloquent": false,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Strotzer M. One century of brain mapping using Brodmann areas. Clin Neuroradiol 2009;19:179–186"
+    ]
+  },
+  "Brodmann area 28": {
+    "name_es": "Área 28 de Brodmann (corteza entorrinal ventral)",
+    "kind": "cortical",
+    "functions": [
+      "Principal vía de entrada de información al hipocampo",
+      "Formación de la memoria",
+      "Navegación espacial"
+    ],
+    "eloquent": false,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Strotzer M. One century of brain mapping using Brodmann areas. Clin Neuroradiol 2009;19:179–186"
+    ]
+  },
+  "Brodmann area 29": {
+    "name_es": "Área 29 de Brodmann (corteza retrosplenial granular)",
+    "kind": "cortical",
+    "functions": [
+      "Memoria episódica",
+      "Navegación y orientación espacial"
+    ],
+    "eloquent": false,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Strotzer M. One century of brain mapping using Brodmann areas. Clin Neuroradiol 2009;19:179–186"
+    ]
+  },
+  "Brodmann area 30": {
+    "name_es": "Área 30 de Brodmann (corteza retrosplenial agranular)",
+    "kind": "cortical",
+    "functions": [
+      "Memoria episódica",
+      "Navegación y orientación espacial"
+    ],
+    "eloquent": false,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Strotzer M. One century of brain mapping using Brodmann areas. Clin Neuroradiol 2009;19:179–186"
+    ]
+  },
+  "Brodmann area 31": {
+    "name_es": "Área 31 de Brodmann (corteza cingulada posterior dorsal)",
+    "kind": "cortical",
+    "functions": [
+      "Integración de información visuoespacial",
+      "Pensamiento autorreferencial (red neuronal por defecto)"
+    ],
+    "eloquent": false,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Strotzer M. One century of brain mapping using Brodmann areas. Clin Neuroradiol 2009;19:179–186"
+    ]
+  },
+  "Brodmann area 32": {
+    "name_es": "Área 32 de Brodmann (corteza cingulada anterior dorsal)",
+    "kind": "cortical",
+    "functions": [
+      "Control cognitivo y detección de errores",
+      "Regulación emocional"
+    ],
+    "eloquent": false,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Strotzer M. One century of brain mapping using Brodmann areas. Clin Neuroradiol 2009;19:179–186"
+    ]
+  },
+  "Brodmann area 33": {
+    "name_es": "Área 33 de Brodmann (corteza cingulada anterior, porción pregenual)",
+    "kind": "cortical",
+    "functions": [
+      "Procesamiento emocional",
+      "Procesamiento del dolor"
+    ],
+    "eloquent": false,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Strotzer M. One century of brain mapping using Brodmann areas. Clin Neuroradiol 2009;19:179–186"
+    ]
+  },
+  "Brodmann area 34": {
+    "name_es": "Área 34 de Brodmann (corteza entorrinal dorsal (uncus))",
+    "kind": "cortical",
+    "functions": [
+      "Procesamiento olfatorio",
+      "Formación de la memoria"
+    ],
+    "eloquent": false,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Strotzer M. One century of brain mapping using Brodmann areas. Clin Neuroradiol 2009;19:179–186"
+    ]
+  },
+  "Brodmann area 35": {
+    "name_es": "Área 35 de Brodmann (corteza perirrinal)",
+    "kind": "cortical",
+    "functions": [
+      "Memoria de reconocimiento (familiaridad)",
+      "Reconocimiento de objetos"
+    ],
+    "eloquent": false,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Strotzer M. One century of brain mapping using Brodmann areas. Clin Neuroradiol 2009;19:179–186"
+    ]
+  },
+  "Brodmann area 36": {
+    "name_es": "Área 36 de Brodmann (corteza parahipocampal / ectorrinal)",
+    "kind": "cortical",
+    "functions": [
+      "Memoria contextual y espacial",
+      "Reconocimiento de escenas y lugares"
+    ],
+    "eloquent": false,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Strotzer M. One century of brain mapping using Brodmann areas. Clin Neuroradiol 2009;19:179–186"
+    ]
+  },
+  "Brodmann area 37": {
+    "name_es": "Área 37 de Brodmann (circunvolución fusiforme / occipitotemporal)",
+    "kind": "cortical",
+    "functions": [
+      "Reconocimiento visual de objetos"
+    ],
+    "functions_left": [
+      "Lectura (reconocimiento visual de palabras)",
+      "Denominación de objetos"
+    ],
+    "functions_right": [
+      "Reconocimiento de rostros"
+    ],
+    "eloquent": false,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Strotzer M. One century of brain mapping using Brodmann areas. Clin Neuroradiol 2009;19:179–186"
+    ]
+  },
+  "Brodmann area 38": {
+    "name_es": "Área 38 de Brodmann (polo temporal)",
+    "kind": "cortical",
+    "functions": [
+      "Memoria semántica",
+      "Procesamiento socioemocional"
+    ],
+    "eloquent": false,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Strotzer M. One century of brain mapping using Brodmann areas. Clin Neuroradiol 2009;19:179–186"
+    ]
+  },
+  "Brodmann area 39": {
+    "name_es": "Área 39 de Brodmann (circunvolución angular)",
+    "kind": "cortical",
+    "functions": [
+      "Integración de información visual, auditiva y somatosensorial"
+    ],
+    "functions_left": [
+      "Lectura y escritura",
+      "Cálculo",
+      "Comprensión del lenguaje (región de Wernicke ampliada)"
+    ],
+    "functions_right": [
+      "Atención espacial (su lesión puede causar negligencia del lado izquierdo)"
+    ],
+    "eloquent": true,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Strotzer M. One century of brain mapping using Brodmann areas. Clin Neuroradiol 2009;19:179–186",
+      "Spetzler RF, Martin NA. A proposed grading system for arteriovenous malformations. J Neurosurg 1986;65:476–483",
+      "Sawaya R et al. Neurosurgical outcomes in a modern series of 400 craniotomies for treatment of parenchymal tumors. Neurosurgery 1998;42:1044–1056"
+    ]
+  },
+  "Brodmann area 40": {
+    "name_es": "Área 40 de Brodmann (circunvolución supramarginal)",
+    "kind": "cortical",
+    "functions": [
+      "Integración somatosensorial de asociación"
+    ],
+    "functions_left": [
+      "Procesamiento fonológico del lenguaje",
+      "Praxis (planificación de gestos aprendidos)",
+      "Comprensión del lenguaje (región de Wernicke ampliada)"
+    ],
+    "functions_right": [
+      "Atención espacial (su lesión puede causar negligencia del lado izquierdo)"
+    ],
+    "eloquent": true,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Strotzer M. One century of brain mapping using Brodmann areas. Clin Neuroradiol 2009;19:179–186",
+      "Spetzler RF, Martin NA. A proposed grading system for arteriovenous malformations. J Neurosurg 1986;65:476–483",
+      "Sawaya R et al. Neurosurgical outcomes in a modern series of 400 craniotomies for treatment of parenchymal tumors. Neurosurgery 1998;42:1044–1056"
+    ]
+  },
+  "Brodmann area 41": {
+    "name_es": "Área 41 de Brodmann (corteza auditiva primaria)",
+    "kind": "cortical",
+    "functions": [
+      "Percepción de sonidos (tono e intensidad)",
+      "Mapa tonotópico de frecuencias"
+    ],
+    "eloquent": true,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Strotzer M. One century of brain mapping using Brodmann areas. Clin Neuroradiol 2009;19:179–186",
+      "Spetzler RF, Martin NA. A proposed grading system for arteriovenous malformations. J Neurosurg 1986;65:476–483",
+      "Sawaya R et al. Neurosurgical outcomes in a modern series of 400 craniotomies for treatment of parenchymal tumors. Neurosurgery 1998;42:1044–1056"
+    ]
+  },
+  "Brodmann area 42": {
+    "name_es": "Área 42 de Brodmann (corteza auditiva secundaria)",
+    "kind": "cortical",
+    "functions": [
+      "Procesamiento auditivo temprano",
+      "Análisis de sonidos complejos"
+    ],
+    "eloquent": true,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Strotzer M. One century of brain mapping using Brodmann areas. Clin Neuroradiol 2009;19:179–186",
+      "Spetzler RF, Martin NA. A proposed grading system for arteriovenous malformations. J Neurosurg 1986;65:476–483",
+      "Sawaya R et al. Neurosurgical outcomes in a modern series of 400 craniotomies for treatment of parenchymal tumors. Neurosurgery 1998;42:1044–1056"
+    ]
+  },
+  "Brodmann area 43": {
+    "name_es": "Área 43 de Brodmann (corteza subcentral / gustativa)",
+    "kind": "cortical",
+    "functions": [
+      "Procesamiento del gusto",
+      "Sensibilidad de la cara y la boca"
+    ],
+    "eloquent": false,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Strotzer M. One century of brain mapping using Brodmann areas. Clin Neuroradiol 2009;19:179–186"
+    ]
+  },
+  "Brodmann area 44": {
+    "name_es": "Área 44 de Brodmann (pars opercularis, circunvolución frontal inferior)",
+    "kind": "cortical",
+    "functions": [
+      "Planificación motora de movimientos orofaciales",
+      "Comprensión e imitación de acciones observadas"
+    ],
+    "functions_left": [
+      "Producción del lenguaje (área de Broca)",
+      "Articulación y fluidez del habla",
+      "Procesamiento gramatical"
+    ],
+    "functions_right": [
+      "Prosodia expresiva del habla",
+      "Inhibición de respuestas"
+    ],
+    "eloquent": true,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Strotzer M. One century of brain mapping using Brodmann areas. Clin Neuroradiol 2009;19:179–186",
+      "Spetzler RF, Martin NA. A proposed grading system for arteriovenous malformations. J Neurosurg 1986;65:476–483",
+      "Sawaya R et al. Neurosurgical outcomes in a modern series of 400 craniotomies for treatment of parenchymal tumors. Neurosurgery 1998;42:1044–1056"
+    ]
+  },
+  "Brodmann area 45": {
+    "name_es": "Área 45 de Brodmann (pars triangularis, circunvolución frontal inferior)",
+    "kind": "cortical",
+    "functions": [
+      "Recuperación y selección controlada de información"
+    ],
+    "functions_left": [
+      "Producción del lenguaje (área de Broca)",
+      "Recuperación del significado de las palabras"
+    ],
+    "functions_right": [
+      "Prosodia expresiva del habla",
+      "Inhibición de respuestas"
+    ],
+    "eloquent": true,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Strotzer M. One century of brain mapping using Brodmann areas. Clin Neuroradiol 2009;19:179–186",
+      "Spetzler RF, Martin NA. A proposed grading system for arteriovenous malformations. J Neurosurg 1986;65:476–483",
+      "Sawaya R et al. Neurosurgical outcomes in a modern series of 400 craniotomies for treatment of parenchymal tumors. Neurosurgery 1998;42:1044–1056"
+    ]
+  },
+  "Brodmann area 46": {
+    "name_es": "Área 46 de Brodmann (corteza prefrontal dorsolateral)",
+    "kind": "cortical",
+    "functions": [
+      "Memoria de trabajo",
+      "Atención sostenida",
+      "Planificación y control ejecutivo"
+    ],
+    "eloquent": false,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Strotzer M. One century of brain mapping using Brodmann areas. Clin Neuroradiol 2009;19:179–186"
+    ]
+  },
+  "Brodmann area 47": {
+    "name_es": "Área 47 de Brodmann (pars orbitalis, circunvolución frontal inferior)",
+    "kind": "cortical",
+    "functions": [
+      "Procesamiento del significado del lenguaje",
+      "Regulación de la conducta"
+    ],
+    "eloquent": false,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Strotzer M. One century of brain mapping using Brodmann areas. Clin Neuroradiol 2009;19:179–186"
+    ]
+  },
+  "Dentate": {
+    "name_es": "Núcleo dentado (cerebelo)",
+    "kind": "subcortical",
+    "functions": [
+      "Planificación y coordinación de movimientos voluntarios",
+      "Sincronización de la actividad motora"
+    ],
+    "eloquent": true,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Haines DE, Mihailoff GA. Fundamental Neuroscience for Basic and Clinical Applications, 5th ed. (2018)",
+      "Spetzler RF, Martin NA. A proposed grading system for arteriovenous malformations. J Neurosurg 1986;65:476–483",
+      "Sawaya R et al. Neurosurgical outcomes in a modern series of 400 craniotomies for treatment of parenchymal tumors. Neurosurgery 1998;42:1044–1056"
+    ]
+  },
+  "Putamen": {
+    "name_es": "Putamen",
+    "kind": "subcortical",
+    "functions": [
+      "Control del movimiento (ganglios basales)",
+      "Aprendizaje de hábitos motores"
+    ],
+    "eloquent": false,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Haines DE, Mihailoff GA. Fundamental Neuroscience for Basic and Clinical Applications, 5th ed. (2018)"
+    ]
+  },
+  "Amygdala": {
+    "name_es": "Amígdala",
+    "kind": "subcortical",
+    "functions": [
+      "Procesamiento emocional (miedo)",
+      "Memoria emocional",
+      "Respuestas autonómicas ante amenazas"
+    ],
+    "eloquent": false,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Haines DE, Mihailoff GA. Fundamental Neuroscience for Basic and Clinical Applications, 5th ed. (2018)"
+    ]
+  },
+  "Pulvinar": {
+    "name_es": "Pulvinar (tálamo)",
+    "kind": "subcortical",
+    "functions": [
+      "Atención visual",
+      "Relevo de información visual hacia áreas de asociación"
+    ],
+    "eloquent": true,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Haines DE, Mihailoff GA. Fundamental Neuroscience for Basic and Clinical Applications, 5th ed. (2018)",
+      "Spetzler RF, Martin NA. A proposed grading system for arteriovenous malformations. J Neurosurg 1986;65:476–483",
+      "Sawaya R et al. Neurosurgical outcomes in a modern series of 400 craniotomies for treatment of parenchymal tumors. Neurosurgery 1998;42:1044–1056"
+    ]
+  },
+  "Hippocampus": {
+    "name_es": "Hipocampo",
+    "kind": "subcortical",
+    "functions": [
+      "Formación de nuevos recuerdos (memoria declarativa)",
+      "Navegación espacial"
+    ],
+    "functions_left": [
+      "Memoria verbal"
+    ],
+    "functions_right": [
+      "Memoria visuoespacial (no verbal)"
+    ],
+    "eloquent": true,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Haines DE, Mihailoff GA. Fundamental Neuroscience for Basic and Clinical Applications, 5th ed. (2018)",
+      "Spetzler RF, Martin NA. A proposed grading system for arteriovenous malformations. J Neurosurg 1986;65:476–483",
+      "Sawaya R et al. Neurosurgical outcomes in a modern series of 400 craniotomies for treatment of parenchymal tumors. Neurosurgery 1998;42:1044–1056"
+    ]
+  },
+  "Optic Tract": {
+    "name_es": "Tracto óptico",
+    "kind": "subcortical",
+    "functions": [
+      "Conducción de la información visual del hemicampo contrario"
+    ],
+    "eloquent": true,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Haines DE, Mihailoff GA. Fundamental Neuroscience for Basic and Clinical Applications, 5th ed. (2018)",
+      "Spetzler RF, Martin NA. A proposed grading system for arteriovenous malformations. J Neurosurg 1986;65:476–483",
+      "Sawaya R et al. Neurosurgical outcomes in a modern series of 400 craniotomies for treatment of parenchymal tumors. Neurosurgery 1998;42:1044–1056"
+    ]
+  },
+  "Red Nucleus": {
+    "name_es": "Núcleo rojo (mesencéfalo)",
+    "kind": "subcortical",
+    "functions": [
+      "Coordinación motora (vía rubroespinal)",
+      "Relevo de circuitos cerebelosos"
+    ],
+    "eloquent": true,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Haines DE, Mihailoff GA. Fundamental Neuroscience for Basic and Clinical Applications, 5th ed. (2018)",
+      "Spetzler RF, Martin NA. A proposed grading system for arteriovenous malformations. J Neurosurg 1986;65:476–483",
+      "Sawaya R et al. Neurosurgical outcomes in a modern series of 400 craniotomies for treatment of parenchymal tumors. Neurosurgery 1998;42:1044–1056"
+    ]
+  },
+  "Caudate Body": {
+    "name_es": "Núcleo caudado (cuerpo)",
+    "kind": "subcortical",
+    "functions": [
+      "Control del movimiento (ganglios basales)",
+      "Aprendizaje basado en recompensas"
+    ],
+    "eloquent": false,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Haines DE, Mihailoff GA. Fundamental Neuroscience for Basic and Clinical Applications, 5th ed. (2018)"
+    ]
+  },
+  "Caudate Head": {
+    "name_es": "Núcleo caudado (cabeza)",
+    "kind": "subcortical",
+    "functions": [
+      "Funciones ejecutivas (circuito frontoestriatal)",
+      "Aprendizaje basado en recompensas",
+      "Control del movimiento (ganglios basales)"
+    ],
+    "eloquent": false,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Haines DE, Mihailoff GA. Fundamental Neuroscience for Basic and Clinical Applications, 5th ed. (2018)"
+    ]
+  },
+  "Caudate Tail": {
+    "name_es": "Núcleo caudado (cola)",
+    "kind": "subcortical",
+    "functions": [
+      "Control del movimiento (ganglios basales)",
+      "Aprendizaje"
+    ],
+    "eloquent": false,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Haines DE, Mihailoff GA. Fundamental Neuroscience for Basic and Clinical Applications, 5th ed. (2018)"
+    ]
+  },
+  "Hypothalamus": {
+    "name_es": "Hipotálamo",
+    "kind": "subcortical",
+    "functions": [
+      "Homeostasis (temperatura, hambre y sed)",
+      "Control hormonal a través de la hipófisis",
+      "Regulación del sistema nervioso autónomo",
+      "Ritmos circadianos"
+    ],
+    "eloquent": true,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Haines DE, Mihailoff GA. Fundamental Neuroscience for Basic and Clinical Applications, 5th ed. (2018)",
+      "Spetzler RF, Martin NA. A proposed grading system for arteriovenous malformations. J Neurosurg 1986;65:476–483",
+      "Sawaya R et al. Neurosurgical outcomes in a modern series of 400 craniotomies for treatment of parenchymal tumors. Neurosurgery 1998;42:1044–1056"
+    ]
+  },
+  "Corpus Callosum": {
+    "name_es": "Cuerpo calloso",
+    "kind": "subcortical",
+    "functions": [
+      "Comunicación entre ambos hemisferios cerebrales"
+    ],
+    "eloquent": false,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Haines DE, Mihailoff GA. Fundamental Neuroscience for Basic and Clinical Applications, 5th ed. (2018)"
+    ]
+  },
+  "Mammillary Body": {
+    "name_es": "Cuerpo mamilar (hipotálamo)",
+    "kind": "subcortical",
+    "functions": [
+      "Memoria (circuito de Papez)"
+    ],
+    "eloquent": true,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Haines DE, Mihailoff GA. Fundamental Neuroscience for Basic and Clinical Applications, 5th ed. (2018)",
+      "Spetzler RF, Martin NA. A proposed grading system for arteriovenous malformations. J Neurosurg 1986;65:476–483",
+      "Sawaya R et al. Neurosurgical outcomes in a modern series of 400 craniotomies for treatment of parenchymal tumors. Neurosurgery 1998;42:1044–1056"
+    ]
+  },
+  "Midline Nucleus": {
+    "name_es": "Núcleos de la línea media (tálamo)",
+    "kind": "subcortical",
+    "functions": [
+      "Alerta y vigilia",
+      "Conexiones con el sistema límbico"
+    ],
+    "eloquent": true,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Haines DE, Mihailoff GA. Fundamental Neuroscience for Basic and Clinical Applications, 5th ed. (2018)",
+      "Spetzler RF, Martin NA. A proposed grading system for arteriovenous malformations. J Neurosurg 1986;65:476–483",
+      "Sawaya R et al. Neurosurgical outcomes in a modern series of 400 craniotomies for treatment of parenchymal tumors. Neurosurgery 1998;42:1044–1056"
+    ]
+  },
+  "Substania Nigra": {
+    "name_es": "Sustancia negra (mesencéfalo)",
+    "kind": "subcortical",
+    "functions": [
+      "Producción de dopamina para el control del movimiento",
+      "Regulación de los ganglios basales"
+    ],
+    "eloquent": true,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Haines DE, Mihailoff GA. Fundamental Neuroscience for Basic and Clinical Applications, 5th ed. (2018)",
+      "Spetzler RF, Martin NA. A proposed grading system for arteriovenous malformations. J Neurosurg 1986;65:476–483",
+      "Sawaya R et al. Neurosurgical outcomes in a modern series of 400 craniotomies for treatment of parenchymal tumors. Neurosurgery 1998;42:1044–1056"
+    ]
+  },
+  "Anterior Nucleus": {
+    "name_es": "Núcleo anterior (tálamo)",
+    "kind": "subcortical",
+    "functions": [
+      "Memoria (circuito de Papez)",
+      "Relevo límbico hacia la corteza cingulada"
+    ],
+    "eloquent": true,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Haines DE, Mihailoff GA. Fundamental Neuroscience for Basic and Clinical Applications, 5th ed. (2018)",
+      "Spetzler RF, Martin NA. A proposed grading system for arteriovenous malformations. J Neurosurg 1986;65:476–483",
+      "Sawaya R et al. Neurosurgical outcomes in a modern series of 400 craniotomies for treatment of parenchymal tumors. Neurosurgery 1998;42:1044–1056"
+    ]
+  },
+  "Anterior Commissure": {
+    "name_es": "Comisura anterior",
+    "kind": "subcortical",
+    "functions": [
+      "Comunicación entre ambos lóbulos temporales",
+      "Conexión de vías olfatorias entre hemisferios"
+    ],
+    "eloquent": false,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Haines DE, Mihailoff GA. Fundamental Neuroscience for Basic and Clinical Applications, 5th ed. (2018)"
+    ]
+  },
+  "Subthalamic Nucleus": {
+    "name_es": "Núcleo subtalámico",
+    "kind": "subcortical",
+    "functions": [
+      "Control del movimiento (ganglios basales)",
+      "Su lesión puede causar movimientos involuntarios del lado contrario (hemibalismo)"
+    ],
+    "eloquent": true,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Haines DE, Mihailoff GA. Fundamental Neuroscience for Basic and Clinical Applications, 5th ed. (2018)",
+      "Spetzler RF, Martin NA. A proposed grading system for arteriovenous malformations. J Neurosurg 1986;65:476–483",
+      "Sawaya R et al. Neurosurgical outcomes in a modern series of 400 craniotomies for treatment of parenchymal tumors. Neurosurgery 1998;42:1044–1056"
+    ]
+  },
+  "Medial Dorsal Nucleus": {
+    "name_es": "Núcleo dorsomedial (tálamo)",
+    "kind": "subcortical",
+    "functions": [
+      "Relevo hacia la corteza prefrontal (funciones ejecutivas)",
+      "Memoria",
+      "Procesamiento emocional"
+    ],
+    "eloquent": true,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Haines DE, Mihailoff GA. Fundamental Neuroscience for Basic and Clinical Applications, 5th ed. (2018)",
+      "Spetzler RF, Martin NA. A proposed grading system for arteriovenous malformations. J Neurosurg 1986;65:476–483",
+      "Sawaya R et al. Neurosurgical outcomes in a modern series of 400 craniotomies for treatment of parenchymal tumors. Neurosurgery 1998;42:1044–1056"
+    ]
+  },
+  "Medial Geniculum Body": {
+    "name_es": "Cuerpo geniculado medial (tálamo)",
+    "kind": "subcortical",
+    "functions": [
+      "Relevo de la información auditiva hacia la corteza auditiva"
+    ],
+    "eloquent": true,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Haines DE, Mihailoff GA. Fundamental Neuroscience for Basic and Clinical Applications, 5th ed. (2018)",
+      "Spetzler RF, Martin NA. A proposed grading system for arteriovenous malformations. J Neurosurg 1986;65:476–483",
+      "Sawaya R et al. Neurosurgical outcomes in a modern series of 400 craniotomies for treatment of parenchymal tumors. Neurosurgery 1998;42:1044–1056"
+    ]
+  },
+  "Lateral Dorsal Nucleus": {
+    "name_es": "Núcleo lateral dorsal (tálamo)",
+    "kind": "subcortical",
+    "functions": [
+      "Relevo límbico hacia la corteza cingulada",
+      "Memoria"
+    ],
+    "eloquent": true,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Haines DE, Mihailoff GA. Fundamental Neuroscience for Basic and Clinical Applications, 5th ed. (2018)",
+      "Spetzler RF, Martin NA. A proposed grading system for arteriovenous malformations. J Neurosurg 1986;65:476–483",
+      "Sawaya R et al. Neurosurgical outcomes in a modern series of 400 craniotomies for treatment of parenchymal tumors. Neurosurgery 1998;42:1044–1056"
+    ]
+  },
+  "Lateral Geniculum Body": {
+    "name_es": "Cuerpo geniculado lateral (tálamo)",
+    "kind": "subcortical",
+    "functions": [
+      "Relevo de la información visual hacia la corteza visual primaria"
+    ],
+    "eloquent": true,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Haines DE, Mihailoff GA. Fundamental Neuroscience for Basic and Clinical Applications, 5th ed. (2018)",
+      "Spetzler RF, Martin NA. A proposed grading system for arteriovenous malformations. J Neurosurg 1986;65:476–483",
+      "Sawaya R et al. Neurosurgical outcomes in a modern series of 400 craniotomies for treatment of parenchymal tumors. Neurosurgery 1998;42:1044–1056"
+    ]
+  },
+  "Medial Globus Pallidus": {
+    "name_es": "Globo pálido medial (interno)",
+    "kind": "subcortical",
+    "functions": [
+      "Principal salida de los ganglios basales",
+      "Control del movimiento"
+    ],
+    "eloquent": false,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Haines DE, Mihailoff GA. Fundamental Neuroscience for Basic and Clinical Applications, 5th ed. (2018)"
+    ]
+  },
+  "Lateral Globus Pallidus": {
+    "name_es": "Globo pálido lateral (externo)",
+    "kind": "subcortical",
+    "functions": [
+      "Regulación del movimiento (vía indirecta de los ganglios basales)"
+    ],
+    "eloquent": false,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Haines DE, Mihailoff GA. Fundamental Neuroscience for Basic and Clinical Applications, 5th ed. (2018)"
+    ]
+  },
+  "Ventral Lateral Nucleus": {
+    "name_es": "Núcleo ventral lateral (tálamo)",
+    "kind": "subcortical",
+    "functions": [
+      "Relevo motor del cerebelo y los ganglios basales hacia la corteza motora",
+      "Coordinación del movimiento"
+    ],
+    "eloquent": true,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Haines DE, Mihailoff GA. Fundamental Neuroscience for Basic and Clinical Applications, 5th ed. (2018)",
+      "Spetzler RF, Martin NA. A proposed grading system for arteriovenous malformations. J Neurosurg 1986;65:476–483",
+      "Sawaya R et al. Neurosurgical outcomes in a modern series of 400 craniotomies for treatment of parenchymal tumors. Neurosurgery 1998;42:1044–1056"
+    ]
+  },
+  "Ventral Anterior Nucleus": {
+    "name_es": "Núcleo ventral anterior (tálamo)",
+    "kind": "subcortical",
+    "functions": [
+      "Relevo de los ganglios basales hacia la corteza premotora",
+      "Planificación del movimiento"
+    ],
+    "eloquent": true,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Haines DE, Mihailoff GA. Fundamental Neuroscience for Basic and Clinical Applications, 5th ed. (2018)",
+      "Spetzler RF, Martin NA. A proposed grading system for arteriovenous malformations. J Neurosurg 1986;65:476–483",
+      "Sawaya R et al. Neurosurgical outcomes in a modern series of 400 craniotomies for treatment of parenchymal tumors. Neurosurgery 1998;42:1044–1056"
+    ]
+  },
+  "Lateral Posterior Nucleus": {
+    "name_es": "Núcleo lateral posterior (tálamo)",
+    "kind": "subcortical",
+    "functions": [
+      "Relevo hacia la corteza parietal de asociación",
+      "Integración sensorial"
+    ],
+    "eloquent": true,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Haines DE, Mihailoff GA. Fundamental Neuroscience for Basic and Clinical Applications, 5th ed. (2018)",
+      "Spetzler RF, Martin NA. A proposed grading system for arteriovenous malformations. J Neurosurg 1986;65:476–483",
+      "Sawaya R et al. Neurosurgical outcomes in a modern series of 400 craniotomies for treatment of parenchymal tumors. Neurosurgery 1998;42:1044–1056"
+    ]
+  },
+  "Ventral Posterior Medial Nucleus": {
+    "name_es": "Núcleo ventral posteromedial (tálamo)",
+    "kind": "subcortical",
+    "functions": [
+      "Relevo de la sensibilidad de la cara",
+      "Relevo de la información del gusto"
+    ],
+    "eloquent": true,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Haines DE, Mihailoff GA. Fundamental Neuroscience for Basic and Clinical Applications, 5th ed. (2018)",
+      "Spetzler RF, Martin NA. A proposed grading system for arteriovenous malformations. J Neurosurg 1986;65:476–483",
+      "Sawaya R et al. Neurosurgical outcomes in a modern series of 400 craniotomies for treatment of parenchymal tumors. Neurosurgery 1998;42:1044–1056"
+    ]
+  },
+  "Ventral Posterior Lateral Nucleus": {
+    "name_es": "Núcleo ventral posterolateral (tálamo)",
+    "kind": "subcortical",
+    "functions": [
+      "Relevo de la sensibilidad del cuerpo (tacto, propiocepción, dolor y temperatura)"
+    ],
+    "eloquent": true,
+    "sources": [
+      "Kandel ER et al. Principles of Neural Science, 6th ed. (2021)",
+      "Purves D et al. Neuroscience, 6th ed. (2018)",
+      "Haines DE, Mihailoff GA. Fundamental Neuroscience for Basic and Clinical Applications, 5th ed. (2018)",
+      "Spetzler RF, Martin NA. A proposed grading system for arteriovenous malformations. J Neurosurg 1986;65:476–483",
+      "Sawaya R et al. Neurosurgical outcomes in a modern series of 400 craniotomies for treatment of parenchymal tumors. Neurosurgery 1998;42:1044–1056"
+    ]
+  }
+}
