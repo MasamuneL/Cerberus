@@ -34,7 +34,7 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 | B12 · dominios funcionales (§14) | ✅ | feat/B12-domains | 1088611 | 2026-10-29 | Vikingo / Claude Code (subagente) | |
 | F9 · capas + paleta + cursor (§14) | 🟡 | feat/F9-viewer-layers | | 2026-10-29 | Vikingo / Claude Code (subagente) | |
 | F10 · pestañas + funciones en riesgo (§14) | 🟡 | feat/F10-side-tabs | | 2026-10-29 | Vikingo / Claude Code (subagente) | |
-| F11 · tipografía + accesibilidad + lista (§14) | 🟡 | feat/F11-type-a11y | | 2026-10-29 | Vikingo / Claude Code (subagente) | |
+| F11 · tipografía + accesibilidad + lista (§14) | ✅ | feat/F11-type-a11y | 5b7b024 | 2026-10-29 | Vikingo / Claude Code (subagente) | |
 
 ## Bitácora de checkpoints
 
@@ -336,3 +336,16 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
   verificación visual) y §12 del plan.
 - **Trabajo en curso respaldado:** foto del árbol de F9–F11 en la rama `wip/ux-14` (sin tocar el árbol de trabajo).
 - **Siguiente paso:** integrar F9, F10 y F11 cuando terminen → Playwright → CP-024 + actualizar HANDOFF.
+
+### CP-024 · 2026-10-29 · F11 · `5b7b024`
+- **Hecho:** IBM Plex Sans/Mono (`@fontsource` 5.3.0) con cifras tabulares; tokens de diseño en `:root` (fondos,
+  texto, acento, foco, estados y colores reservados para el tumor, espaciado, radios); anillo `:focus-visible`
+  global; `.skeleton`; `prefers-reduced-motion`. `StudyList`: volumen del GTV por tiempo, badge "Áreas", tendencia
+  RANO por paciente (↑ +2 % en 003, ↓ −19 % en 005), `aria-current`, flechas/Home/End y skeletons.
+- **Contraste AA calculado:** texto 13–16:1, texto atenuado ≥ 6.4:1, acento ≥ 6.2:1, todos los badges ≥ 4.98:1.
+- **Desviación:** volumen y tendencia salen de `getLongitudinal` por paciente (5 requests, concurrencia 3, caché)
+  en vez de `getVolumetry` por estudio.
+- **Integración:** se verificó que compila **aislado sobre main** (worktree temporal) antes del commit; `main` se movió
+  sin tocar el árbol de trabajo, donde siguen F9 y F10.
+- **Feedback a F9 (en curso):** el panel de capas flotaba sobre el tile coronal y lo tapaba, y "Áreas…" se truncaba
+  a 1280 px. Se le pidió que lo saque del canvas o lo haga colapsable.

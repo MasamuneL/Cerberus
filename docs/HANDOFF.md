@@ -4,7 +4,7 @@
 > checkpoint. El historial completo está en [`PROGRESS.md`](PROGRESS.md) y el alcance y los contratos en
 > [`PLAN_MVP.md`](PLAN_MVP.md). Las reglas de trabajo están en [`../AGENTS.md`](../AGENTS.md).
 
-**Última actualización:** 2026-10-29 · último checkpoint: CP-023 · rama base: `main`
+**Última actualización:** 2026-10-29 · último checkpoint: CP-024 · rama base: `main`
 
 ## 1. Arranque rápido
 
@@ -33,17 +33,16 @@ Abre las PNG y revísalas: **no te fíes solo de los ✅**. Leer píxeles del ca
 ## 2. Estado actual
 
 **Terminado y en `main`:** el MVP completo (B0–B8, F0–F6, D1, E2E), las áreas de Brodmann (§13: B9–B11, F7, F8) y
-B12 (dominios funcionales, §14).
+B12 (dominios funcionales, §14) y F11 (tipografía, tokens AA y lista de estudios, §14).
 
 **En curso: §14 · Mejoras de UX/UI** (ver la spec completa en `PLAN_MVP.md` §14).
 
 | Ticket | Estado | Qué falta |
 |---|---|---|
-| F9 · panel de capas + paleta fría + barra del cursor + atajos | 🟡 lo implementa un subagente | `Viewer.tsx`, `areaColors.ts`, `components/viewer.css` y `components/viewer/` |
+| F9 · panel de capas + paleta fría + barra del cursor + atajos | 🟡 lo implementa un subagente (pendiente: el panel de capas **no debe tapar** el tile coronal; puede ser colapsable o ir fuera del canvas) | `Viewer.tsx`, `areaColors.ts`, `components/viewer.css` y `components/viewer/` |
 | F10 · pestañas + "Funciones en riesgo" + tabla accesible | 🟡 lo implementa un subagente | `App.tsx`, `SidePanel.tsx`, `RiskSummary.tsx`, `AreasPanel.tsx`, `VolumetryPanel.tsx`, `sidepanel.css` |
-| F11 · tipografía Plex + tokens/contraste AA + lista de estudios | 🟡 lo implementa un subagente | `main.tsx`, `styles.css`, `StudyList.tsx`, `package.json` (`@fontsource/*`) |
 
-**Trabajo sin commit:** si el árbol tiene cambios en `frontend/` que no están en `main`, son de F9–F11. Hay una
+**Trabajo sin commit:** si el árbol tiene cambios en `frontend/` que no están en `main`, son de F9 y F10. Hay una
 foto del trabajo en curso en la rama **`wip/ux-14`** (puede no compilar; es solo para no perderlo).
 
 ### Cómo terminar §14 si retomas tú
