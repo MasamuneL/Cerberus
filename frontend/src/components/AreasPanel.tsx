@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { ApiError, getAreas, startAreaMapping } from "../api/client";
 import type { AffectedArea, AreasResult, JobStatus, StudyDetail } from "../api/types";
 import { useJob } from "../hooks/useJob";
@@ -61,46 +61,47 @@ function AreasTable({ rows, showWt, focusedLabel, onFocusLabel }: TableProps) {
     <table className="data-table areas-table">
       <thead>
         <tr>
-          <th>Área</th>
-          <th title="Hemisferio">Hem.</th>
-          <th title="% del área dentro del GTV">% en GTV</th>
-          <th title="cm³ del área solapados con el GTV">cm³</th>
-          <th title="Distancia mínima al GTV (mm)">mm</th>
-          {showWt && <th title="% del área en tumor + edema (segmentación MONAI)">% en tumor+edema (MONAI)</th>}
+          <th colSpan={showWt ? 6 : 5}>Área · Hemisferio · % GTV · cm³ · mm {showWt && "· % WT"}</th>
         </tr>
       </thead>
       <tbody>
         {rows.map((a) => {
           const focused = focusedLabel === a.label;
+          const toggleFocus = () => onFocusLabel(focused ? null : a.label);
           return (
-            <tr
-              key={a.label}
-              className={`area-row${focused ? " focused" : ""}`}
-              onClick={() => onFocusLabel(focused ? null : a.label)}
-              title={focused ? "Clic para quitar el enfoque" : "Clic para enfocar en el visor"}
-            >
-              <th scope="row">
-                <div className="area-name">
-                  <i className="swatch" style={{ background: areaColorCss(a.label) }} />
-                  <span>{a.name_es}</span>
-                  {a.eloquent && <span className="badge badge-eloquent">Elocuente</span>}
-                </div>
-                {a.functions.length > 0 && (
-                  <div className="chips">
-                    {a.functions.map((f) => (
-                      <span key={f} className="chip">
-                        {f}
-                      </span>
-                    ))}
+            <Fragment key={a.label}>
+              <tr
+                className={`area-row${focused ? " focused" : ""}`}
+                onClick={toggleFocus}
+                title={focused ? "Clic para quitar el enfoque" : "Clic para enfocar en el visor"}
+              >
+                <th scope="row" className="area-name-cell">
+                  <div className="area-name">
+                    <i className="swatch" style={{ background: areaColorCss(a.label) }} />
+                    <span>{a.name_es}</span>
+                    {a.eloquent && <span className="badge badge-eloquent">Elocuente</span>}
                   </div>
-                )}
-              </th>
-              <td title={a.hemisphere}>{hemiShort(a.hemisphere)}</td>
-              <td>{a.overlap_gtv_pct.toFixed(1)}</td>
-              <td>{a.overlap_gtv_cm3.toFixed(2)}</td>
-              <td>{a.distance_mm > 0 ? a.distance_mm.toFixed(1) : "—"}</td>
-              {showWt && <td>{a.overlap_wt_pct !== null ? a.overlap_wt_pct.toFixed(1) : "—"}</td>}
-            </tr>
+                </th>
+                <td title={a.hemisphere} className="cell-numeric">{hemiShort(a.hemisphere)}</td>
+                <td className="cell-numeric">{a.overlap_gtv_pct.toFixed(1)}</td>
+                <td className="cell-numeric">{a.overlap_gtv_cm3.toFixed(2)}</td>
+                <td className="cell-numeric">{a.distance_mm > 0 ? a.distance_mm.toFixed(1) : "—"}</td>
+                {showWt && <td className="cell-numeric">{a.overlap_wt_pct !== null ? a.overlap_wt_pct.toFixed(1) : "—"}</td>}
+              </tr>
+              {a.functions.length > 0 && (
+                <tr className={`area-chips-row${focused ? " focused" : ""}`} onClick={toggleFocus}>
+                  <td colSpan={showWt ? 6 : 5}>
+                    <div className="chips">
+                      {a.functions.map((f) => (
+                        <span key={f} className="chip">
+                          {f}
+                        </span>
+                      ))}
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </Fragment>
           );
         })}
       </tbody>

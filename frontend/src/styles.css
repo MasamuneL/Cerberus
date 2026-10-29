@@ -67,6 +67,13 @@ body {
 .view-buttons { display: flex; gap: 0.25rem; }
 .view-buttons button { cursor: pointer; }
 .view-buttons button.active { border-color: var(--accent); color: var(--accent); }
+.btn-center-gtv {
+  background: var(--bg-panel); color: var(--text);
+  border: 1px solid var(--border); border-radius: 4px; padding: 0.25rem 0.5rem; font: inherit;
+  cursor: pointer; font-size: 0.9rem;
+}
+.btn-center-gtv:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.btn-center-gtv:disabled { opacity: 0.5; cursor: not-allowed; }
 .canvas-wrap {
   position: relative; width: 100%; height: calc(100vh - 220px); min-height: 480px;
   background: #000; border: 1px solid var(--border); border-radius: 4px;
@@ -81,7 +88,7 @@ body {
 
 /* Paneles */
 .panel {
-  width: 340px; flex-shrink: 0; padding: 0.75rem 1rem;
+  width: 380px; flex-shrink: 0; padding: 0.75rem 1rem;
   background: var(--bg-panel); border: 1px solid var(--border); border-radius: 4px;
 }
 .panel h2 { margin: 0 0 0.5rem; font-size: 1rem; }
@@ -162,16 +169,21 @@ body {
 
 /* F7 · AreasPanel */
 .areas-table { font-size: 0.8rem; }
-.areas-table thead th { color: var(--text-muted); font-weight: 600; font-size: 0.75rem; }
+.areas-table thead th { color: var(--text-muted); font-weight: 600; font-size: 0.75rem; text-align: left; }
 .areas-table td, .areas-table th { vertical-align: top; }
 .area-row { cursor: pointer; }
 .area-row:hover { background: rgba(77, 163, 255, 0.08); }
 .area-row.focused { background: rgba(77, 163, 255, 0.18); outline: 1px solid var(--accent); }
 .area-row th[scope="row"] { color: var(--text); }
+.area-name-cell { padding-right: 0.6rem; }
 .area-name { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; }
 .area-name .swatch { flex-shrink: 0; border: 1px solid rgba(255, 255, 255, 0.25); }
 .badge-eloquent { background: #7c3aed; color: #fff; }
-.chips { display: flex; flex-wrap: wrap; gap: 0.2rem; margin-top: 0.25rem; }
+.cell-numeric { text-align: right; font-variant-numeric: tabular-nums; }
+.area-chips-row { border-top: none; }
+.area-chips-row.focused { background: rgba(77, 163, 255, 0.18); }
+.area-chips-row td { padding-top: 0; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); }
+.chips { display: flex; flex-wrap: wrap; gap: 0.2rem; }
 .chip {
   font-size: 0.68rem; padding: 0.05rem 0.35rem; border-radius: 999px;
   background: rgba(139, 149, 163, 0.15); color: var(--text-muted); border: 1px solid var(--border);

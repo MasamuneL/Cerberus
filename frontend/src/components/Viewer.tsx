@@ -15,6 +15,47 @@ interface Props {
 
 type AreasMode = "affected" | "all";
 
+/**
+ * Centroide de los vóxeles no cero en mm (mundo, RAS).
+ *
+ * `img` conserva el orden de vóxeles del archivo (no el reorientado `dimsRAS`), así que el centroide se
+ * pasa a mm con el affine NIfTI del header (`hdr.affine`, 4×4 por filas). Después se convierte a la
+ * fracción de escena con `nv.mm2frac`, que es lo que espera `scene.crosshairPos`.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function computeGtvCentroidMM(vol: any): [number, number, number] | null {
+  const data = vol?.img;
+  const dims: number[] | undefined = vol?.hdr?.dims;
+  const aff: number[][] | undefined = vol?.hdr?.affine;
+  if (!data || !dims || !aff) return null;
+  const [nx, ny, nz] = [dims[1], dims[2], dims[3]];
+  let sx = 0,
+    sy = 0,
+    sz = 0,
+    n = 0;
+  for (let i = 0; i < nx * ny * nz; i++) {
+    if (data[i] !== 0) {
+      sx += i % nx;
+      sy += Math.floor(i / nx) % ny;
+      sz += Math.floor(i / (nx * ny));
+      n++;
+    }
+  }
+  if (n === 0) return null;
+  const v = [sx / n, sy / n, sz / n, 1];
+  const mm = [0, 1, 2].map((r) => aff[r][0] * v[0] + aff[r][1] * v[1] + aff[r][2] * v[2] + aff[r][3] * v[3]);
+  return [mm[0], mm[1], mm[2]];
+}
+
+/** Mueve la mira al centroide del GTV; devuelve false si no se pudo calcular. */
+function centerCrosshairOnGtv(nv: Niivue, gtvIdx: number): boolean {
+  const mm = computeGtvCentroidMM(nv.volumes[gtvIdx]);
+  if (!mm) return false;
+  nv.scene.crosshairPos = nv.mm2frac(mm);
+  nv.drawScene();
+  return true;
+}
+
 // Mismo formato que ColorMap de Niivue (nvdocument-*.d.ts).
 interface LabelColorMap {
   R: number[];
@@ -99,6 +140,7 @@ export default function Viewer({
   const readyRef = useRef<Promise<Niivue> | null>(null);
   const gtvIdxRef = useRef<number>(-1);
   const areasIdxRef = useRef<number>(-1);
+  const centeredStudyRef = useRef<string | null>(null); // estudio ya centrado en el GTV
 
   const sequences = visibleSequences(study);
   const studyKey = `${study.patient}/${study.timepoint}`;
@@ -118,6 +160,8 @@ export default function Viewer({
   const [areasOn, setAreasOn] = useState(true);
   const [areasOpacity, setAreasOpacity] = useState(0.35);
   const [areasMode, setAreasMode] = useState<AreasMode>("affected");
+
+  const [gtvLoaded, setGtvLoaded] = useState(false);
 
   const segAvailable = study.has_segmentation || showSegmentation;
   const areasAvailable = study.has_areas && !!areas && areas.lut.length > 0;
@@ -145,6 +189,10 @@ export default function Viewer({
     const nv = new Niivue({ backColor: [0, 0, 0, 1] });
     nvRef.current = nv;
     readyRef.current = nv.attachToCanvas(canvas);
+    // Debug handle en dev para tests de Playwright.
+    if (import.meta.env.DEV) {
+      (window as any).__nv = nv;
+    }
     return () => {
       nv.cleanup();
       nvRef.current = null;
@@ -227,6 +275,18 @@ export default function Viewer({
           }
         }
         nv.setSliceType(view);
+
+        // Centrar en GTV si está disponible y visible.
+        const hasGtv = gtvIdx >= 0 && nv.volumes[gtvIdx];
+        if (hasGtv) {
+          // Solo al cambiar de estudio; los toggles/recargas conservan la posición elegida
+          if (centeredStudyRef.current !== studyKey) {
+            if (centerCrosshairOnGtv(nv, gtvIdx)) centeredStudyRef.current = studyKey;
+          }
+          setGtvLoaded(true); // Marcar como cargado incluso si el centroide no se puede calcular.
+        } else {
+          setGtvLoaded(false);
+        }
       } catch (e) {
         if (!cancelled) {
           setError(`No se pudieron cargar los volúmenes: ${e instanceof Error ? e.message : String(e)}`);
@@ -275,6 +335,13 @@ export default function Viewer({
 
   const focusedArea =
     focusedLabel !== null && areas ? areas.lut.find((l) => l.label === focusedLabel) ?? null : null;
+
+  const centerOnGtv = () => {
+    const nv = nvRef.current;
+    const i = gtvIdxRef.current;
+    if (!nv || i < 0 || !nv.volumes[i]) return;
+    centerCrosshairOnGtv(nv, i);
+  };
 
   return (
     <div className="viewer-panel">
@@ -357,6 +424,17 @@ export default function Viewer({
             </button>
           ))}
         </div>
+        {study.has_gtv && (
+          <button
+            type="button"
+            className="btn-center-gtv"
+            disabled={!gtvLoaded}
+            title={gtvLoaded ? "Centrar la vista en el GTV" : "GTV no cargado"}
+            onClick={() => centerOnGtv()}
+          >
+            Centrar en GTV
+          </button>
+        )}
       </div>
 
       <div className="canvas-wrap">
