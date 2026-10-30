@@ -4,7 +4,7 @@
 > checkpoint. El historial completo está en [`PROGRESS.md`](PROGRESS.md) y el alcance y los contratos en
 > [`PLAN_MVP.md`](PLAN_MVP.md). Las reglas de trabajo están en [`../AGENTS.md`](../AGENTS.md).
 
-**Última actualización:** 2026-10-29 · último checkpoint: CP-034 · rama base: `main`
+**Última actualización:** 2026-10-29 · último checkpoint: CP-035 · rama base: `main`
 
 ## 1. Arranque rápido
 
@@ -113,3 +113,5 @@ Pendientes propuestos: D2d (caché HTTP de NIfTI con ETag/304 + `proxy_cache`) y
 **En curso CP-032:** §16 (autoajuste de hilos/memoria + caché HTTP de NIfTI) en la rama `feat/D2e-autotune`. Spec en `PLAN_MVP.md` §16.
 **CP-033:** D2e-back hecho en `feat/D2e-autotune` (pusheada); falta D2e-front (indicador de recursos y estimaciones en la UI).
 **CP-034:** §16 terminado y en `main` (autoajuste `CERBERUS_CPU_THREADS=auto`, `/api/system`, indicador en la UI, 304 en NIfTI). Sin trabajo a medias.
+
+**CP-035 (QA):** hallazgos de seguridad/datos/código en `docs/QA_2026-10-29.md` con el plan de corrección por olas (sección 6). Empieza por la ola P (fuga de PHI en dcm2niix, CSRF, DNS rebinding, bomba gzip). Nada corregido aún.

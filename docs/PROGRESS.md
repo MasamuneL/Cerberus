@@ -478,3 +478,12 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
   sí da 304. No es un fallo del servidor.
 - **Validado por el orquestador:** captura del indicador revisada; stack Docker *healthy*.
 - §16 mergeado a `main`.
+
+### CP-035 · 2026-10-29 · QA y seguridad (hallazgos)
+- **Pedido del usuario:** QA para buscar fallos y vulnerabilidades de datos, seguridad y código.
+- **Hecho:** 4 subagentes de solo lectura (seguridad, backend, frontend, caja negra) + pip-audit / npm audit (0
+  vulnerabilidades) + escaneo de secretos (ninguno). Hallazgos consolidados en **`docs/QA_2026-10-29.md`**.
+- **Lo más grave:** P1 (dcm2niix copia ImageComments a `aux_file`, reproducido por el orquestador), S1 CSRF, S2 DNS
+  rebinding, S3 bomba gzip NIfTI, B1/B3 errores 500 y `null` en volumetría, B4 jobs que no se cancelan.
+- **QA de caja negra:** se cortó por el límite de uso; se retoma.
+- **Siguiente paso:** terminar caja negra → olas de corrección P, R, F y H (sección 6 del reporte).
