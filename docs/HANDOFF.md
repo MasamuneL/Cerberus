@@ -4,7 +4,7 @@
 > checkpoint. El historial completo está en [`PROGRESS.md`](PROGRESS.md) y el alcance y los contratos en
 > [`PLAN_MVP.md`](PLAN_MVP.md). Las reglas de trabajo están en [`../AGENTS.md`](../AGENTS.md).
 
-**Última actualización:** 2026-10-29 · último checkpoint: CP-035 · rama base: `main`
+**Última actualización:** 2026-10-29 · último checkpoint: CP-036 · rama base: `main`
 
 ## 1. Arranque rápido
 
@@ -115,3 +115,4 @@ Pendientes propuestos: D2d (caché HTTP de NIfTI con ETag/304 + `proxy_cache`) y
 **CP-034:** §16 terminado y en `main` (autoajuste `CERBERUS_CPU_THREADS=auto`, `/api/system`, indicador en la UI, 304 en NIfTI). Sin trabajo a medias.
 
 **CP-035 (QA):** hallazgos de seguridad/datos/código en `docs/QA_2026-10-29.md` con el plan de corrección por olas (sección 6). Empieza por la ola P (fuga de PHI en dcm2niix, CSRF, DNS rebinding, bomba gzip). Nada corregido aún.
+**CP-036:** QA completo (incluye caja negra). Lo más urgente: Q1/S3 (un upload chico tumba la API) y P1 (fuga de PHI). Plan en `QA_2026-10-29.md` §6.

@@ -487,3 +487,9 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
   rebinding, S3 bomba gzip NIfTI, B1/B3 errores 500 y `null` en volumetría, B4 jobs que no se cancelan.
 - **QA de caja negra:** se cortó por el límite de uso; se retoma.
 - **Siguiente paso:** terminar caja negra → olas de corrección P, R, F y H (sección 6 del reporte).
+
+### CP-036 · 2026-10-29 · QA de caja negra completo
+- Resultados en `docs/QA_2026-10-29.md` §5. **Nuevo y alto: Q1**, un `.nii` de 372 B tumba la API (OOM + reinicio).
+  Q2: cabeceras 4D×1 acumulan memoria. Confirmados en vivo: P2, S5, B7, F8. Pasaron la validación de rutas, los ZIP
+  maliciosos, los límites de tamaño y el flujo DICOM sin fugas. Limpieza de 99x verificada.
+- **Siguiente paso:** ola P (P1–P3, P5, S1–S3, Q1–Q4) a la espera del visto bueno del usuario.
