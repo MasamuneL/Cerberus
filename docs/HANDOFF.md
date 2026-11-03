@@ -4,7 +4,7 @@
 > checkpoint. El historial completo está en [`PROGRESS.md`](PROGRESS.md) y el alcance y los contratos en
 > [`PLAN_MVP.md`](PLAN_MVP.md). Las reglas de trabajo están en [`../AGENTS.md`](../AGENTS.md).
 
-**Última actualización:** 2026-10-29 · último checkpoint: CP-036 · rama base: `main`
+**Última actualización:** 2026-11-03 · último checkpoint: CP-037 · rama base: `main`
 
 ## 1. Arranque rápido
 
@@ -32,44 +32,61 @@ Abre las PNG y revísalas: **no te fíes solo de los ✅**. Leer píxeles del ca
 
 ## 2. Estado actual
 
-**Terminado y en `main`:** el MVP completo (B0–B8, F0–F6, D1, E2E), las áreas de Brodmann (§13: B9–B11, F7, F8) y
-B12 (dominios funcionales, §14) y F9–F11 (UX/UI, tipografía y accesibilidad, §14).
+**Implementación integrada en `main`:** MVP completo (B0–B8, F0–F6, D1, E2E), áreas de Brodmann
+(§13: B9–B11, F7, F8), dominios funcionales y UX/UI (§14: B12, F9–F11), Docker Compose (§15: D2a–D2c)
+y autoajuste de recursos y caché HTTP de NIfTI (§16: D2e-back/front).
 
-**§14 completo e integrado en `main`.** El [PR #1](https://github.com/MasamuneL/Cerberus/pull/1)
-se fusionó el 2026-10-29 a las 17:49:18 UTC: merge `bcef409`.
-
-| Ticket | Estado | Resultado |
+| Bloque | Estado | Resultado |
 |---|---|---|
-| F9 · capas + paleta fría + cursor + atajos | ✅ | Capas fuera del canvas, opacidad estable durante cargas, lectura de cursor, atajos y fondo transparente en «Todas» |
-| F10 · pestañas + funciones en riesgo + tabla accesible | ✅ | Pestañas y filas con teclado, severidad por dominio, tablas sin desborde y etapas sin progreso ficticio |
+| §13–§14 · áreas y UX/UI | ✅ integrado | Capas, cursor, atajos, pestañas, funciones en riesgo, IBM Plex y navegación con teclado; PR #1, merge `bcef409` |
+| §15 · Docker Compose | ✅ integrado | Redis, API, worker y frontend/nginx; acceso local en `http://localhost:8080`; CP-031 |
+| §16 · recursos y caché | ✅ integrado | `CERBERUS_CPU_THREADS=auto`, `GET /api/system`, indicador y estimaciones en la UI, revalidación 304; CP-034 |
+| QA de seguridad y robustez | ⬜ correcciones pendientes | Hallazgos y propuesta por olas en [`QA_2026-10-29.md`](QA_2026-10-29.md); CP-035/036 |
 
-**QA final (CP-027):** `CERBERUS_UI=http://localhost:5180 npm run verify` terminó con exit 0 el
+**Trabajo documental (CP-037):** actualización de README, este handoff y navegación del plan en
+`docs/D1-refresh-documentation`; integración a `main` pendiente. No modifica la implementación ni corrige
+los fallos del QA. No hay trabajo de implementación a medias declarado.
+
+**Validación de CP-037 (2026-11-03):** Ruff, formato y pyright correctos; **474 tests rápidos pasaron,
+5 slow excluidos**; frontend build correcto. Comprobados 34 enlaces locales sin errores. No se repitió
+QA visual ni Docker en esta actualización documental; los resultados de esas suites que siguen son históricos.
+
+**Siguiente paso:** revisar e integrar la actualización documental. Después, acordar el inicio de la ola P
+del QA: P1–P3, P5, S1–S3 y Q1–Q4. La solicitud actual autoriza documentación y publicación en Git;
+no incluye implementar esas correcciones.
+
+**QA histórico de UX/UI (CP-027):** `CERBERUS_UI=http://localhost:5180 npm run verify` terminó con exit 0 el
 2026-10-29 a las 17:43:15 UTC: **33/33 checks**, **14 auditorías axe sin violaciones automáticas** y
 **27 capturas**. Revisadas capturas a 1440×900 y 1280×800, incluida la tabla de 005/t0 y el fondo del atlas.
 Ruff, formato y pyright correctos; **425 tests rápidos pasaron, 5 slow excluidos**; frontend build correcto.
 Informe completo y límites: [`QA_UX_UI.md`](QA_UX_UI.md).
 
-**Estado durable:** implementación, fixes, runner y documentación en **`main`**; rama de origen
-`feature/ux-ui` conservada. CP-025 (`fad8562`)
-recuperó el trabajo de Claude; `af22c29` corrigió lectura/teclado/contraste; CP-026 (`d406354`) respaldó el QA,
-el fondo del atlas y las tablas. CP-027 registra el QA final; CP-028 registra la integración. El árbol de
-`bcef409` es idéntico al de `06ba62a`, que pasó los checks. No hay implementación pendiente de
-F9/F10 ni trabajo necesario que dependa de notas temporales o de la memoria de los agentes.
+**QA histórico de Docker y §16 (CP-033/034):** CP-033 registra 474 tests rápidos y comprobaciones de recursos
+en el host y con límites cgroup. CP-034 registra el smoke Docker 15/15 y revisión de captura del indicador;
+GTV, MONAI y Brodmann devolvieron 304 al volver al estudio. T1Gd de 75 MB devolvió 200 en Chrome headless,
+aunque su petición condicional con curl devolvió 304. No se garantiza que el navegador conserve todos los
+volúmenes grandes en su caché. Evidencia y mediciones completas en [`PROGRESS.md`](PROGRESS.md).
+
+**Seguridad y datos:** el QA posterior encontró P1 (metadatos personales en la conversión DICOM), Q1/S3
+(subidas que agotan la memoria), CSRF y DNS rebinding, entre otros fallos. Siguen sin corregirse. No se debe
+presentar la ingesta como anonimización completa ni la limpieza temporal como garantizada ante un crash.
 
 **Límites:** 12 auditorías conservan resultados incompletos de axe; no se certifica WCAG completa ni se hizo
 prueba con lector de pantalla. Sin línea base de capturas, la regresión visual automática es inconclusa.
-Los jobs del QA son simulados y no ejecutan ANTs/MONAI ni subidas reales. Capturas/reportes locales se
+Los jobs del QA de UX/UI son simulados y no ejecutan ANTs/MONAI ni subidas reales. Capturas/reportes locales se
 regeneran con [`tools/e2e/README.md`](../tools/e2e/README.md); verificar siempre su fecha.
 
 ### Cómo retomar con Claude u otra herramienta
 
-1. `git checkout main && git pull --ff-only`.
-2. Leer este archivo, `PROGRESS.md`, `QA_UX_UI.md` y `PLAN_MVP.md` §14. **No volver a implementar F9/F10.**
-3. Si hay cambios nuevos, correr los checks obligatorios y el QA. Para el QA hacen falta los datos y
-   resultados de 001/t0 y 005/t0; los modelos/registros no forman parte de esa prueba.
-4. El PR #1 ya está fusionado y el tablero actualizado. No repetir el merge; continuar únicamente con el
-   siguiente trabajo acordado con el usuario.
-5. Las propuestas de la sección 4 siguen sin aprobarse; no empezarlas como continuación automática de §14.
+1. `git checkout main && git pull --ff-only`; comprobar si la rama documental de CP-037 ya se integró.
+2. Leer este archivo, `PROGRESS.md`, `QA_2026-10-29.md` y `PLAN_MVP.md` §13–§16.
+   **No volver a implementar UX/UI, Docker, autoajuste ni 304.**
+3. Para desarrollo, usar el arranque de la sección 1. Para Docker: `docker compose up -d --build`,
+   `docker compose ps` y abrir `http://localhost:8080`. Backend amd64; en Apple Silicon usa Rosetta.
+4. Para cambios de código, correr checks y QA según [`tools/e2e/README.md`](../tools/e2e/README.md).
+   UX/UI requiere datos y resultados de 001/t0 y 005/t0; el smoke Docker solo exige la muestra 001/t0.
+5. Las correcciones del QA y las propuestas de la sección 4 requieren acordar su alcance con el usuario;
+   no empezarlas como continuación automática del trabajo documental.
 
 ## 3. Lecciones aprendidas (léelas, ahorran horas)
 - **Niivue `scene.crosshairPos` es una fracción 0–1, no mm.** Para centrar: vóxel (orden del archivo) → mm con
@@ -87,10 +104,11 @@ regeneran con [`tools/e2e/README.md`](../tools/e2e/README.md); verificar siempre
 - Ejecutar un solo Chrome/SwiftShader de QA a la vez: instancias simultáneas pueden saturar la GPU y caer.
 - Un subagente o IA puede reportar éxito sin haberlo logrado (pasó en F8). Verifica siempre con capturas.
 
-## 4. Siguiente después de §14 (propuesto, sin aprobar)
+## 4. Mejoras posteriores (propuestas, sin aprobar)
 Reporte exportable por estudio (PDF o imprimible), 3D más limpio (iluminación y orientación), subir archivos
 arrastrándolos, atajos extra. Fase 2 pendiente: auth, skull-strip (HD-BET o SynthStrip) para DICOM sin
-`brain_mask`, registro entre series, RTSTRUCT y Docker.
+`brain_mask`, registro entre series y RTSTRUCT. Docker y el autoajuste ya están implementados.
+El plan de correcciones del QA está en [`QA_2026-10-29.md` §6](QA_2026-10-29.md#6-plan-de-corrección-propuesto-por-olas).
 
 ## 5. Protocolo de handoff (para quien trabaje, humano o IA)
 - En **cada** checkpoint actualiza la sección 2 de este archivo (estado, trabajo en curso, siguiente paso) en el mismo
@@ -98,21 +116,9 @@ arrastrándolos, atajos extra. Fase 2 pendiente: auth, skull-strip (HD-BET o Syn
 - Si vas a dejar trabajo a medias, súbelo a `wip/<tema>` (aunque no compile) y anótalo aquí.
 - Nunca dejes en tu máquina, sin subir, lo único que alguien necesita para continuar.
 
-## 6. En curso (CP-029): D2 · Docker Compose
-Borrador de Codex en la rama **`wip/d2-docker`** (sin probar). Spec y tickets en `PLAN_MVP.md` §15. Para retomar:
-`git checkout -b feat/D2-docker-compose origin/wip/d2-docker`, luego `docker compose up -d --build`,
-`docker compose ps` (todo *healthy*) y `cd tools/e2e && CERBERUS_UI=http://localhost:8080 node verify-docker.mjs`.
-Ojo: el backend es amd64 (Rosetta) por ANTs; el primer build tarda.
+## 6. Referencias históricas
 
-**Actualización CP-030:** D2a está hecho en la rama **`feat/D2-docker-compose`** (pusheada); D2b (nginx + smoke) sigue en curso.
-Retoma desde esa rama, no desde `wip/d2-docker`.
-
-**Actualización CP-031:** D2 (Docker Compose) **terminado y mergeado a `main`**. `docker compose up -d --build` → http://localhost:8080.
-Pendientes propuestos: D2d (caché HTTP de NIfTI con ETag/304 + `proxy_cache`) y decidir `CERBERUS_CPU_THREADS` por defecto.
-
-**En curso CP-032:** §16 (autoajuste de hilos/memoria + caché HTTP de NIfTI) en la rama `feat/D2e-autotune`. Spec en `PLAN_MVP.md` §16.
-**CP-033:** D2e-back hecho en `feat/D2e-autotune` (pusheada); falta D2e-front (indicador de recursos y estimaciones en la UI).
-**CP-034:** §16 terminado y en `main` (autoajuste `CERBERUS_CPU_THREADS=auto`, `/api/system`, indicador en la UI, 304 en NIfTI). Sin trabajo a medias.
-
-**CP-035 (QA):** hallazgos de seguridad/datos/código en `docs/QA_2026-10-29.md` con el plan de corrección por olas (sección 6). Empieza por la ola P (fuga de PHI en dcm2niix, CSRF, DNS rebinding, bomba gzip). Nada corregido aún.
-**CP-036:** QA completo (incluye caja negra). Lo más urgente: Q1/S3 (un upload chico tumba la API) y P1 (fuga de PHI). Plan en `QA_2026-10-29.md` §6.
+La evolución de Docker y recursos está en CP-029–CP-034 de [`PROGRESS.md`](PROGRESS.md);
+los hallazgos del QA, en CP-035/036. Las ramas `wip/d2-docker`, `feat/D2-docker-compose` y
+`feat/D2e-autotune` describen etapas anteriores, no trabajo que haya que retomar. La decisión vigente es
+`CERBERUS_CPU_THREADS=auto` y caché en el navegador con ETag/304, sin `proxy_cache` en nginx.
