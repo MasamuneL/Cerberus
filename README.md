@@ -94,6 +94,18 @@ La primera ejecución de la celda MONAI descarga el bundle `brats_mri_segmentati
 
 ## App web
 
+### Qué puerto abrir
+
+| Cómo arrancaste la app | URL de la UI | Servidor que la entrega |
+|---|---|---|
+| `docker compose up -d --build` | **http://localhost:8080** | nginx, con el frontend compilado por Vite |
+| `cd frontend && npm run dev` | **http://localhost:5173** por defecto | servidor de desarrollo de Vite |
+
+Es el mismo frontend React en ambos modos. **Docker no inicia el servidor de desarrollo en 5173**:
+si solo levantaste Compose, abre **8080**. El puerto de Docker se puede cambiar con `CERBERUS_HTTP_PORT`.
+En desarrollo, Vite necesita seguir ejecutándose en una terminal; la API se inicia aparte en **8000**.
+Con Compose, nginx reenvía `/api` al puerto 8000 interno del contenedor, que no se publica en el host.
+
 ### Opción rápida: Docker Desktop (recomendada para usarla)
 
 Requisitos: [Docker Desktop](https://www.docker.com/products/docker-desktop/) con **≥ 8 GB de RAM** asignados
@@ -147,12 +159,15 @@ uv run uvicorn cerberus_api.main:app --reload --reload-dir backend --port 8000  
 cd frontend && npm install && npm run dev                  # terminal 4: UI
 ```
 
-- UI: <http://localhost:5173>
+- UI de desarrollo (con Vite ejecutándose): <http://localhost:5173>. Si usas Docker: <http://localhost:8080>.
 - Documentación interactiva de la API: <http://localhost:8000/docs>
 - Si el puerto 5173 está ocupado: `cd frontend && npx vite --port 5180 --strictPort`
   (agrega ese origen a `CERBERUS_CORS_ORIGINS` si llamas a la API sin el proxy de Vite).
 
 ### Arquitectura
+
+El siguiente diagrama corresponde al modo desarrollo. Con Docker, el navegador entra por nginx en
+**8080**, que sirve el frontend compilado y reenvía `/api` a la API interna.
 
 ```
 Navegador (React + Niivue, :5173)

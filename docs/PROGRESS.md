@@ -40,7 +40,7 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 | D2c · docs Docker (§15) | ✅ | feat/D2-docker-compose | 5a4b229 | 2026-10-29 | Vikingo / Claude Code (orquestador) | |
 | D2e-back · autoajuste + caché HTTP (§16) | ✅ | feat/D2e-autotune | e74d08a | 2026-10-29 | Vikingo / Claude Code (subagente) | |
 | D2e-front · indicador de recursos + 304 (§16) | ✅ | feat/D2e-autotune | b4ef422 | 2026-10-29 | Vikingo / Claude Code (subagente) | |
-| D1 · actualización documental (CP-037) | ✅ | docs/D1-refresh-documentation | ver CP-037 | 2026-11-03 | Vikingo / Codex | Documentación terminada; integración a main pendiente |
+| D1 · actualización documental (CP-037/038) | ✅ | docs/D1-clarify-ports | 42d39db (CP-037) | 2026-11-03 | Vikingo / Codex | CP-037 integrado; aclaración de puertos CP-038 pendiente de integración |
 
 ## Bitácora de checkpoints
 
@@ -513,3 +513,17 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
   el cambio solo modifica documentación.
 - **Publicación:** rama `docs/D1-refresh-documentation`; integración a `main` pendiente.
 - **Siguiente paso:** revisar e integrar el cambio documental; acordar después el alcance de la ola P del QA.
+
+### CP-038 · 2026-11-03 · D1 · aclaración de puertos Docker y desarrollo
+- **Contexto:** CP-037 integrado mediante el PR #2, merge `42d39db`. El usuario pidió aclarar por qué
+  la UI funciona en 8080 con Docker y no responde en 5173 sin iniciar Vite.
+- **Hecho:** README con una tabla de URLs por modo: Docker/nginx en 8080 y Vite en 5173 por defecto.
+  Explica que ambos sirven el mismo frontend y que Compose no inicia el servidor de desarrollo;
+  la API usa 8000 en desarrollo y un puerto interno sin publicar en Docker. Añadida la referencia a
+  `CERBERUS_HTTP_PORT` y contextualizado el diagrama de arquitectura como modo desarrollo.
+- **Validación:** configuración contrastada con `compose.yaml`, `docker/frontend.Dockerfile` y
+  `frontend/vite.config.ts`; Ruff, formato y pyright correctos; **474 tests rápidos aprobados,
+  5 slow excluidos**; frontend build correcto, con el aviso conocido de bundles grandes.
+  Solo documentación; no se repitieron QA visual/Docker ni tests slow.
+- **Publicación:** rama `docs/D1-clarify-ports`; integración a `main` pendiente. HANDOFF §2 actualizado.
+- **Siguiente paso:** revisar e integrar esta aclaración documental. Las correcciones del QA siguen pendientes.
