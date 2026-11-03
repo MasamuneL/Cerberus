@@ -4,7 +4,7 @@
 > checkpoint. El historial completo está en [`PROGRESS.md`](PROGRESS.md) y el alcance y los contratos en
 > [`PLAN_MVP.md`](PLAN_MVP.md). Las reglas de trabajo están en [`../AGENTS.md`](../AGENTS.md).
 
-**Última actualización:** 2026-11-03 · último checkpoint: CP-037 · rama base: `main`
+**Última actualización:** 2026-11-03 · último checkpoint: CP-038 · rama base: `main`
 
 ## 1. Arranque rápido
 
@@ -43,15 +43,16 @@ y autoajuste de recursos y caché HTTP de NIfTI (§16: D2e-back/front).
 | §16 · recursos y caché | ✅ integrado | `CERBERUS_CPU_THREADS=auto`, `GET /api/system`, indicador y estimaciones en la UI, revalidación 304; CP-034 |
 | QA de seguridad y robustez | ⬜ correcciones pendientes | Hallazgos y propuesta por olas en [`QA_2026-10-29.md`](QA_2026-10-29.md); CP-035/036 |
 
-**Trabajo documental (CP-037):** actualización de README, este handoff y navegación del plan en
-`docs/D1-refresh-documentation`; integración a `main` pendiente. No modifica la implementación ni corrige
-los fallos del QA. No hay trabajo de implementación a medias declarado.
+**Trabajo documental:** CP-037 integrado en `main` mediante el PR #2, merge `42d39db`.
+CP-038 aclara en el README los puertos de Docker (8080), Vite en desarrollo (5173) y API (8000);
+rama `docs/D1-clarify-ports`, pendiente de integración. Sin cambios de implementación ni correcciones
+del QA. No hay trabajo de implementación a medias declarado.
 
 **Validación de CP-037 (2026-11-03):** Ruff, formato y pyright correctos; **474 tests rápidos pasaron,
 5 slow excluidos**; frontend build correcto. Comprobados 34 enlaces locales sin errores. No se repitió
 QA visual ni Docker en esta actualización documental; los resultados de esas suites que siguen son históricos.
 
-**Siguiente paso:** revisar e integrar la actualización documental. Después, acordar el inicio de la ola P
+**Siguiente paso:** revisar e integrar la aclaración de puertos (CP-038). Después, acordar el inicio de la ola P
 del QA: P1–P3, P5, S1–S3 y Q1–Q4. La solicitud actual autoriza documentación y publicación en Git;
 no incluye implementar esas correcciones.
 
@@ -78,7 +79,7 @@ regeneran con [`tools/e2e/README.md`](../tools/e2e/README.md); verificar siempre
 
 ### Cómo retomar con Claude u otra herramienta
 
-1. `git checkout main && git pull --ff-only`; comprobar si la rama documental de CP-037 ya se integró.
+1. `git checkout main && git pull --ff-only`; comprobar si la rama documental de CP-038 ya se integró.
 2. Leer este archivo, `PROGRESS.md`, `QA_2026-10-29.md` y `PLAN_MVP.md` §13–§16.
    **No volver a implementar UX/UI, Docker, autoajuste ni 304.**
 3. Para desarrollo, usar el arranque de la sección 1. Para Docker: `docker compose up -d --build`,
