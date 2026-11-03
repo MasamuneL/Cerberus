@@ -40,6 +40,7 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 | D2c · docs Docker (§15) | ✅ | feat/D2-docker-compose | 5a4b229 | 2026-10-29 | Vikingo / Claude Code (orquestador) | |
 | D2e-back · autoajuste + caché HTTP (§16) | ✅ | feat/D2e-autotune | e74d08a | 2026-10-29 | Vikingo / Claude Code (subagente) | |
 | D2e-front · indicador de recursos + 304 (§16) | ✅ | feat/D2e-autotune | b4ef422 | 2026-10-29 | Vikingo / Claude Code (subagente) | |
+| D1 · actualización documental (CP-037) | ✅ | docs/D1-refresh-documentation | ver CP-037 | 2026-11-03 | Vikingo / Codex | Documentación terminada; integración a main pendiente |
 
 ## Bitácora de checkpoints
 
@@ -493,3 +494,22 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
   Q2: cabeceras 4D×1 acumulan memoria. Confirmados en vivo: P2, S5, B7, F8. Pasaron la validación de rutas, los ZIP
   maliciosos, los límites de tamaño y el flujo DICOM sin fugas. Limpieza de 99x verificada.
 - **Siguiente paso:** ola P (P1–P3, P5, S1–S3, Q1–Q4) a la espera del visto bueno del usuario.
+
+### CP-037 · 2026-11-03 · D1 · actualización de README y documentación
+- **Pedido del usuario:** actualizar la documentación con las funciones integradas y publicarla en Git.
+- **Hecho:** README con áreas de Brodmann, dominios funcionales, capas, cursor, atajos, pestañas, recursos,
+  endpoints de áreas y sistema, caché 304 y variables de Docker/desarrollo. Requisitos de Node contrastados
+  con el lockfile. Añadidos enlaces al handoff, QA y runners.
+- **Coherencia:** `HANDOFF.md` §2 consolida el estado actual y los pendientes; los borradores históricos de
+  Docker dejan de aparecer como trabajo activo. `PLAN_MVP.md` distingue el MVP original de las extensiones
+  ya integradas y explica los límites del reporte de recursos y de la caché. Sin cambios de contratos ni código.
+- **Privacidad y seguridad:** se retira la promesa de anonimización completa del README y se documentan
+  los fallos conocidos de metadatos, temporales, CSRF, DNS rebinding y memoria. Los hallazgos del QA siguen
+  pendientes; los resultados históricos de QA se conservan con sus fechas y límites.
+- **Validación:** Ruff y formato correctos; pyright 0 errores; pytest **474 passed, 5 deselected**;
+  frontend build correcto, con el aviso conocido de bundles mayores de 500 kB. Revisión estática contra
+  rutas, modelos, componentes, runtime, Compose y lockfile; **34 enlaces locales comprobados sin errores**.
+  No se repitieron tests slow ni QA visual/Docker:
+  el cambio solo modifica documentación.
+- **Publicación:** rama `docs/D1-refresh-documentation`; integración a `main` pendiente.
+- **Siguiente paso:** revisar e integrar el cambio documental; acordar después el alcance de la ola P del QA.

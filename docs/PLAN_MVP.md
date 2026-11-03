@@ -2,10 +2,20 @@
 
 ## Contexto
 
-Hoy Cerberus es un notebook marimo (`cerberus_eda.py`) que inventaría el dataset CFB-GBM (NIfTI), calcula
-volumetría del GTV, segmenta con MONAI SegResNet y muestra cortes y 3D. Queremos convertirlo en una app web
-para el equipo. El stack ya está decidido: **FastAPI + arq/Redis** (backend Python, para reutilizar MONAI)
-y **React + Vite + TypeScript + Niivue** (frontend). Además debe aceptar **DICOM** convirtiéndolo a NIfTI.
+Cerberus nació como notebook marimo (`cerberus_eda.py`) para inventariar el dataset CFB-GBM (NIfTI), calcular
+volumetría del GTV, segmentar con MONAI SegResNet y mostrar cortes y 3D. La app web ya está implementada
+con **FastAPI + arq/Redis** (backend Python) y **React + Vite + TypeScript + Niivue** (frontend), incluida
+la entrada **DICOM** mediante conversión a NIfTI.
+
+**Estado de implementación:** MVP y extensiones §13–§16 integrados en `main`: áreas de Brodmann, dominios
+funcionales, UX/UI, Docker Compose, autoajuste de recursos y caché HTTP. El tablero y los checkpoints
+están en [`PROGRESS.md`](PROGRESS.md), y el estado vivo en [`HANDOFF.md`](HANDOFF.md).
+Los [hallazgos del QA de seguridad y robustez](QA_2026-10-29.md) siguen pendientes; implementar el alcance
+no implica que esos fallos estén resueltos.
+
+Las secciones §1–§10 describen el MVP original y sus tickets. Los contratos iniciales de disco y API
+(§6/§7) se complementan con áreas y `Study.has_areas` en §13, dominios en §14 y recursos/caché en §16.
+Para arrancar la app actual, consulta también el [README](../README.md).
 
 El equipo usa distintas IAs (Claude Code, Codex, etc.), así que el plan tiene que funcionar como **contrato
 autocontenido**: carpetas, contratos de API, tickets con criterios de aceptación y comandos de verificación.
@@ -28,8 +38,11 @@ y httpx como dependencias de desarrollo.
 - Subida de un `.zip` DICOM: detectar series, convertir a NIfTI, sugerir la secuencia, el usuario confirma
   y se guarda en `Data/`.
 
-**No incluye** (fase 2; ver §13 para áreas de Brodmann, que ya se agregó): auth/usuarios, base de datos, Otsu/K-Means en la app, edema FLAIR, skull-stripping
-automático, registro entre series, RTSTRUCT (rt-utils), exportar DICOM SEG, despliegue/Docker, Mayavi.
+**Extensiones ya implementadas:** áreas de Brodmann (§13), dominios y UX/UI (§14), Docker Compose (§15),
+autoajuste de recursos y caché HTTP (§16).
+
+**Fuera del alcance implementado:** auth/usuarios, base de datos, Otsu/K-Means en la app, edema FLAIR,
+skull-stripping automático, registro entre series, RTSTRUCT (rt-utils), exportar DICOM SEG y Mayavi en la app web.
 
 ## 2. Decisiones fijas (no reabrir sin hablar con el equipo)
 
@@ -107,6 +120,10 @@ Variables de entorno (prefijo `CERBERUS_`; los valores por defecto son relativos
 | `CERBERUS_MAX_UPLOAD_MB` | `2048` |
 | `CERBERUS_MAX_ZIP_UNCOMPRESSED_MB` | `4096` |
 | `CERBERUS_CORS_ORIGINS` | `["http://localhost:5173"]` |
+| `CERBERUS_CPU_THREADS` | `auto`; entero positivo para fijar los hilos del worker (§16) |
+
+Las variables de Compose para puertos, límites de memoria y carpetas del host se documentan en el
+[README, opción Docker](../README.md#opción-rápida-docker-desktop-recomendada-para-usarla).
 
 Comandos (todos desde la raíz):
 
@@ -114,7 +131,7 @@ Comandos (todos desde la raíz):
 uv sync                                                    # deps Python (incluye el paquete en modo editable)
 redis-server                                               # terminal 1
 uv run arq cerberus_api.worker.WorkerSettings              # terminal 2: worker
-uv run uvicorn cerberus_api.main:app --reload --port 8000  # terminal 3: API (docs en /docs)
+uv run uvicorn cerberus_api.main:app --reload --reload-dir backend --port 8000  # terminal 3: API (docs en /docs)
 cd frontend && npm install && npm run dev                  # terminal 4: UI en :5173
 
 # Checks obligatorios antes de un PR
@@ -409,6 +426,11 @@ backend correspondiente.
 
 ## 11. Riesgos conocidos
 
+El [QA del 2026-10-29](QA_2026-10-29.md) amplía esta lista con fallos reproducidos y un plan de corrección
+por olas aún pendiente. Incluye metadatos personales conservados al convertir DICOM, limpieza temporal
+incompleta ante fallos, CSRF, DNS rebinding y subidas NIfTI que agotan memoria. La ingesta no garantiza
+anonimización completa; el aviso original del formulario descrito en F6 sigue pendiente de corregir.
+
 - Un DICOM de hospital trae series **no co-registradas**: el remuestreo por affine solo es válido dentro de la
   misma sesión. Por eso se muestra un warning; el registro queda para fase 2.
 - Sin `brain_mask` (DICOM nuevo) la calidad de MONAI baja. El MVP solo avisa; HD-BET/SynthStrip quedan para fase 2.
@@ -557,6 +579,8 @@ Ola única en paralelo (B12, F9, F10, F11) → verificación con Playwright (cap
 
 ## 15. D2 · Docker Compose (Docker Desktop)
 
+**Estado:** implementado e integrado en `main` (CP-031). Las ramas de borrador citadas abajo son históricas.
+
 **Origen:** pedido del usuario; Codex escribió un borrador (respaldado en `wip/d2-docker`, sin build ni pruebas).
 **Meta:** `docker compose up -d --build` desde la raíz (o desde Docker Desktop) levanta Cerberus completo en
 `http://localhost:8080`, y la segmentación y el mapeo de áreas funcionan dentro de los contenedores.
@@ -585,11 +609,14 @@ Volúmenes bind: `./Data`, `./storage`, `./models` (pesos MONAI y atlas en cach�
 
 ## 16. D2d/D2e · Caché de volúmenes y autoajuste de recursos
 
+**Estado:** implementado e integrado en `main` (CP-034); sin `proxy_cache` en nginx.
+
 **Origen:** preguntas del usuario (2026-10-29): ¿la caché cerca del front? y ¿detectar la configuración óptima de cada
 computadora?
 
 **Decisiones**
-- **Redis sigue siendo solo la cola de jobs** (no es caché). La caché útil está en el **navegador**: los NIfTI
+- **Redis guarda la cola de jobs y el reporte de recursos del worker**; no almacena volúmenes.
+  La caché de volúmenes está en el **navegador**: los NIfTI
   (~75 MB) se revalidan con `ETag` / `Last-Modified` → **304**, con `Cache-Control: no-cache` (siempre revalida, nunca
   sirve una versión vieja). Los derivados ya llevan `?v=`. **No** se usa `proxy_cache` en nginx: para un solo usuario
   local no aporta y ocuparía RAM (tmpfs de `/tmp` en un rootfs de solo lectura).
@@ -598,13 +625,24 @@ computadora?
   - CPUs = cuota cgroup v2 (`/sys/fs/cgroup/cpu.max`) → `os.sched_getaffinity` → `os.cpu_count()`;
   - memoria = `memory.max` del cgroup → `/proc/meminfo` → `sysctl hw.memsize` en macOS;
   - dispositivo = cuda → mps → cpu.
-  - **hilos = max(1, min(CPUs − 1, 8))**; un valor numérico en la variable manda. Se aplica a `OMP_NUM_THREADS`,
+  - **hilos = max(1, min(floor(CPUs) − 1, 8))**; un entero positivo en la variable manda. Se aplica a `OMP_NUM_THREADS`,
     `MKL_NUM_THREADS`, `ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS` y `torch.set_num_threads`.
   - Warning si la memoria es < 5 GB (pico medido del worker: 4.2 GiB) o si la plataforma es x86_64 emulada.
 - El worker publica su `SystemInfo` en Redis (`cerberus:system:worker`) al arrancar; `GET /api/system` lo devuelve
   o, si no hay, calcula el de la API con `source="api"` y un warning.
 
 **Contrato (orquestador, CP-032):** `SystemInfo` en `schemas.py` / `types.ts`; `getSystem()` en `client.ts`.
+
+`GET /api/system` devuelve `source` (`worker` o `api`), `reported_at`, `in_container`, `platform`,
+`cpus_available`, `threads`, `threads_source` (`auto` o `env`), `memory_gb` (puede ser `null`),
+`device` (`cuda`, `mps` o `cpu`) y `warnings`. Es información detectada al publicar el reporte, no un
+monitor de utilización en tiempo real; el QA registra la ausencia de TTL del reporte del worker (B12).
+
+Las peticiones condicionales a archivos de estudios admiten `If-None-Match` y, en su ausencia,
+`If-Modified-Since`; una coincidencia devuelve 304 sin cuerpo. Esto también aplica a `HEAD`.
+La caché depende del navegador: CP-034 observó 304 en GTV/MONAI/Brodmann y 200 en T1Gd de 75 MB en
+Chrome headless, aunque curl obtuvo 304 para ese archivo. No se garantiza una segunda carga sin descarga
+para todos los tamaños de volumen. Las duraciones mostradas en la UI son estimaciones.
 
 | Ticket | Qué | Archivos |
 |---|---|---|
