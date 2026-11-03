@@ -13,6 +13,10 @@ están en [`PROGRESS.md`](PROGRESS.md), y el estado vivo en [`HANDOFF.md`](HANDO
 Los [hallazgos del QA de seguridad y robustez](QA_2026-10-29.md) siguen pendientes; implementar el alcance
 no implica que esos fallos estén resueltos.
 
+**Nueva fase planificada, sin implementar:** autenticación OIDC con Keycloak para la demo académica (§17),
+con una evolución posterior hacia identidad y permisos hospitalarios. Incorporada por petición del usuario
+el 2026-11-03; los tickets de esa fase permanecen pendientes.
+
 Las secciones §1–§10 describen el MVP original y sus tickets. Los contratos iniciales de disco y API
 (§6/§7) se complementan con áreas y `Study.has_areas` en §13, dominios en §14 y recursos/caché en §16.
 Para arrancar la app actual, consulta también el [README](../README.md).
@@ -40,6 +44,9 @@ y httpx como dependencias de desarrollo.
 
 **Extensiones ya implementadas:** áreas de Brodmann (§13), dominios y UX/UI (§14), Docker Compose (§15),
 autoajuste de recursos y caché HTTP (§16).
+
+**Siguiente fase planificada:** login, sesiones y permisos para la demo académica (§17). La autenticación
+todavía no está disponible en la app actual.
 
 **Fuera del alcance implementado:** auth/usuarios, base de datos, Otsu/K-Means en la app, edema FLAIR,
 skull-stripping automático, registro entre series, RTSTRUCT (rt-utils), exportar DICOM SEG y Mayavi en la app web.
@@ -648,3 +655,181 @@ para todos los tamaños de volumen. Las duraciones mostradas en la UI son estima
 |---|---|---|
 | D2e-back | `runtime.py` (detección + aplicación), hook de arranque del worker, `GET /api/system`, `CERBERUS_CPU_THREADS=auto` en compose; 304 condicional (`If-None-Match` / `If-Modified-Since`) + `Cache-Control: no-cache` en `/files/*.nii.gz`; tests con cgroup simulado; prueba en Docker con `--cpus 2 --memory 4g` | `backend/cerberus_api/{runtime.py,worker.py,routers/system.py,routers/studies.py,main.py}`, `compose.yaml`, tests |
 | D2e-front | Indicador de recursos en la UI (panel de Segmentación y de Áreas: "CPU · 8 hilos · 6 GB", warnings), tiempo estimado ajustado al dispositivo; verificar en Docker que una segunda carga del estudio da 304 (nginx deja pasar `If-None-Match`/`ETag`) | `frontend/src/components/*`, `docker/nginx.conf` (solo si hace falta), `tools/e2e/*` |
+
+## 17. Autenticación para demo académica · OIDC + Keycloak
+
+**Estado:** planificado, sin implementar. El usuario pidió incorporar esta fase el 2026-11-03.
+El alcance inmediato es una demo académica open source con datos públicos anonimizados o sintéticos;
+la visión posterior es una instalación hospitalaria. Este apartado no declara preparación para uso clínico.
+Los valores y contratos que siguen son decisiones de esta planificación; entrarán en vigor con sus tickets.
+
+### 17.1. Enfoque y alcance
+
+Se consideraron un login propio, un servicio de identidad administrado y OIDC con un proveedor configurable.
+Se adopta **OIDC + Keycloak autohospedado como proveedor incluido para la demo**: evita implementar contraseñas,
+MFA y recuperación de cuentas en Cerberus y permite sustituir el proveedor por uno institucional más adelante.
+El costo es operar y actualizar un servicio adicional. Keycloak es open source bajo Apache 2.0.
+
+**Incluye:** inicio de sesión, cierre de sesión local, expiración, dos roles de aplicación, protección de API
+y archivos, propiedad de jobs/subidas en curso, configuración reproducible de Keycloak y pruebas de acceso.
+Las cuentas se crean desde la consola de Keycloak; el registro público queda desactivado.
+
+**Fuera de esta entrega:** registro propio, recuperación de contraseñas dentro de Cerberus, MFA obligatorio,
+federación hospitalaria, permisos clínicos por paciente/estudio, auditoría clínica, alta disponibilidad y
+certificación normativa. La configuración de demo no se publica en internet ni usa datos clínicos reales.
+El rol administrativo de Keycloak no concede por sí mismo permisos dentro de Cerberus.
+
+### 17.2. Arquitectura y despliegue previstos
+
+- FastAPI actúa como cliente OIDC confidencial mediante **Authorization Code + PKCE S256**, `state` y `nonce`.
+  Usar Authlib; verificar las APIs de la versión que se instale. No implementar criptografía ni validar JWT a mano.
+  Validar firma, algoritmo permitido, `iss`, `aud`, `exp`, `nonce` y `azp` cuando corresponda antes de crear la sesión.
+- El navegador solo conserva un identificador opaco en cookie `HttpOnly`, `SameSite=Lax`, `Path=/` y sin `Domain`.
+  No se guardan tokens OIDC en `localStorage`, `sessionStorage`, URLs de la app ni cookies legibles por JavaScript.
+  Transacciones OIDC y sesiones viven en Redis, bajo claves `cerberus:auth:*`, separadas de arq.
+- Identidad interna estable: pareja **(`issuer`, `sub`)**, nunca correo o nombre de usuario como clave de acceso.
+  Los roles `reader` y `analyst` se leen del claim validado `cerberus_roles` (lista de cadenas) del ID Token.
+  Roles desconocidos se ignoran; una identidad sin ningún rol admitido no obtiene acceso. El realm de demo
+  configura el mapper correspondiente; un proveedor institucional podrá adaptar su mapeo sin cambiar la identidad.
+- Sesión: identificador aleatorio de al menos 32 bytes, renovación del identificador al autenticar, caducidad
+  por inactividad de **30 minutos** y absoluta de **60 minutos**. Transacción de login de un solo uso, TTL **5 minutos**,
+  ligada al navegador que la inició; su cookie temporal tampoco contiene `state`, `nonce` ni `code_verifier` en claro.
+  Los roles se renuevan con el siguiente login; no se promete revocación institucional instantánea en esta demo.
+- Logout invalida la sesión en Redis y borra la cookie. Es cierre de sesión de Cerberus; no promete cerrar
+  las sesiones de otras aplicaciones del proveedor. Redis caído produce 503 en operaciones que necesitan sesión;
+  no hay acceso anónimo de respaldo. Un fallo de Keycloak impide nuevos logins, sin convertir sesiones en anónimas.
+- Añadir `compose.auth.yaml` como overlay explícito: UI de Cerberus en **8080**, Keycloak en **8081**, ambos
+  publicados solo en `127.0.0.1`. El arranque objetivo será
+  `docker compose -f compose.yaml -f compose.auth.yaml up -d --build`. Este comando aún no está disponible.
+  La configuración base sin overlay mantiene el modo local actual; la demo con overlay exige autenticación.
+- El overlay incluye PostgreSQL privado para Keycloak y volúmenes persistentes. PostgreSQL no almacena imágenes
+  ni sustituye el catálogo en disco de Cerberus. Registrar realm `cerberus`, cliente `cerberus-web`, roles y
+  redirect URIs exactas; no usar comodines, credenciales versionadas ni el realm `master` para la aplicación.
+  El bootstrap obtiene secretos del entorno y es repetible sin sobrescribir cuentas ni resetear contraseñas.
+- Resolver explícitamente el acceso al proveedor desde navegador y contenedores: issuer público de demo
+  `http://localhost:8081/realms/cerberus`; backchannel Docker `http://keycloak:8080/realms/cerberus` para
+  token/JWKS. Comprobar metadata y transporte sin cambiar el issuer validado ni desactivar validaciones.
+  `localhost` dentro de `api` no apunta a Keycloak. En ejecución nativa, el backchannel puede coincidir con el issuer.
+- Cookie `Secure` y HTTPS obligatorios fuera de la demo HTTP en loopback. El uso de HTTP y `start-dev`
+  queda limitado a esa demo. No se envían imágenes, nombres de pacientes ni identificadores DICOM al proveedor.
+
+**Configuración propuesta** (se incorporará a `Settings`, Compose y README al implementar A0/A1):
+
+| Variable | Valor o regla |
+|---|---|
+| `CERBERUS_AUTH_MODE` | `off` en el modo local heredado; el overlay fija `oidc`; ningún fallback automático |
+| `CERBERUS_APP_ORIGIN` | `http://localhost:8080` en Docker; `http://localhost:5173` en desarrollo |
+| `CERBERUS_OIDC_ISSUER_URL` | Obligatorio en modo `oidc`; issuer público exacto del proveedor |
+| `CERBERUS_OIDC_BACKCHANNEL_URL` | Base interna confiable del mismo realm; si se omite, usa el issuer |
+| `CERBERUS_OIDC_CLIENT_ID` | `cerberus-web` en la demo |
+| `CERBERUS_OIDC_CLIENT_SECRET` | Obligatorio en modo `oidc`; solo backend y bootstrap, nunca frontend ni Git |
+| `CERBERUS_AUTH_COOKIE_SECURE` | `true`; `false` únicamente con origen público HTTP de loopback |
+| `CERBERUS_AUTH_IDLE_TIMEOUT_SECONDS` | `1800` |
+| `CERBERUS_AUTH_ABSOLUTE_TIMEOUT_SECONDS` | `3600`; no menor que el timeout de inactividad |
+| `CERBERUS_KEYCLOAK_HTTP_PORT` | `8081`, variable del overlay para el puerto del host |
+
+### 17.3. Permisos y recursos
+
+| Recurso u operación en modo OIDC | Sin sesión | Lector (`reader`) | Analista (`analyst`, incluye lectura) |
+|---|---|---|---|
+| Salud mínima y entrada al login | Permitido | Permitido | Permitido |
+| Catálogo, detalle, métricas, reportes y `/api/system` | 401 | Permitido | Permitido |
+| NIfTI originales, GTV, MONAI y Brodmann; GET y HEAD | 401 | Permitido | Permitido |
+| Subir NIfTI/ZIP, segmentar y mapear áreas | 401 | 403 | Permitido con protección CSRF |
+| Estado de jobs y manifest/preview/confirm/delete de ingesta | 401 | 403 | Solo recursos propios; ajenos o sin propietario: 404 |
+
+- Todos los estudios anonimizados de la demo forman un **catálogo compartido** entre usuarios con rol admitido.
+  No se presenta este modelo como aislamiento entre pacientes. Jobs y subidas en curso sí quedan ligados
+  a (`issuer`, `sub`); su propiedad no depende de que siga viva la sesión que los creó.
+- La propiedad se registra en Redis bajo `cerberus:auth:owners:*` antes de que el recurso pueda consultarse.
+  Se conserva mientras exista el recurso y se limpia al descartarlo o expirar su resultado. Metadata ausente
+  implica denegación; no se adoptan automáticamente ingestas/jobs previos a habilitar auth. La pérdida de Redis
+  puede volver inaccesibles esos recursos: se documenta y se proporciona limpieza administrativa, sin abrir acceso.
+- FastAPI verifica sesión y permisos **antes** de leer archivos, responder 304, escribir o encolar trabajos.
+  No basta ocultar botones. Las rutas `/api/auth/*` y salud se exceptúan según la tabla siguiente;
+  Swagger, ReDoc y OpenAPI se deshabilitan en el modo OIDC de demo para evitar rutas sin protección.
+- Todas las mutaciones de sesión autenticada, incluido logout, requieren token sincronizado en
+  `X-CSRF-Token` y `Origin` perteneciente a la lista explícita de orígenes de la app; rechazo 403 si falta
+  o no coincide. No se permite CORS con `*` y credenciales. El callback se protege con la transacción OIDC,
+  no con una excepción genérica a la protección de métodos mutantes. Validar también `Host` y proxy confiable.
+- Respuestas de sesión y JSON autenticado: `Cache-Control: no-store`. Volúmenes: `private, no-cache`,
+  con autenticación previa a la revalidación. Logout no garantiza borrar archivos descargados o cachés previas;
+  la política hospitalaria de retención en clientes se definirá antes de usar datos reales.
+
+### 17.4. Contratos previstos, todavía no vigentes
+
+Estos endpoints/modelos se añadirán conjuntamente a `schemas.py`, `frontend/src/api/types.ts` y al contrato
+de §7 en A0/A2. Esta planificación no cambia los contratos implementados de §6/§7 ni sus archivos de código.
+
+| Método y ruta | Respuesta prevista |
+|---|---|
+| `GET /api/auth/config` | Público, 200 `AuthConfig = {"mode":"off"\|"oidc"}`; sin secretos |
+| `GET /api/auth/login` | 302 al proveedor; callback y regreso a `/` fijados por configuración, sin `return_to` arbitrario |
+| `GET /api/auth/callback` | Consume code/state; valida OIDC, crea cookie y devuelve 303 a `/`; error genérico 400/401, o 403 sin rol |
+| `GET /api/auth/me` | 200 `AuthSession = {"roles":["reader"\|"analyst"],"expires_at":"ISO-8601","csrf_token":"…"}`; 401 sin sesión válida |
+| `POST /api/auth/logout` | 204 tras invalidar sesión; requiere sesión y CSRF |
+
+Con `AUTH_MODE=off`, `/auth/config` informa `off` y el resto de rutas de autenticación devuelve 404.
+Nuevas interfaces compartidas: `Role = Literal["reader", "analyst"]` y
+`Principal(issuer: str, sub: str, roles: frozenset[Role])`. El modo local sin auth no fabrica una identidad OIDC.
+Una sesión activa puede continuar hasta su caducidad si Keycloak no responde; los nuevos logins devuelven 503.
+No se conservan refresh tokens ni se implementa renovación silenciosa en la demo.
+
+### 17.5. Tickets y orden de ejecución
+
+Cada ticket sigue §12: rama, pruebas rápidas sin red, revisión y checkpoint. Los nombres de archivos nuevos
+indican destinos previstos; las firmas de librerías se verificarán en su código instalado antes de implementarlas.
+
+| ID | Entrega y archivos principales | Dependencias |
+|---|---|---|
+| A0 · contratos y configuración | `config.py`, nuevo `identity.py`, `schemas.py`, `frontend/src/api/types.ts`, §7; tipos `Role`, `Principal`, `AuthConfig` y `AuthSession`; tests `test_auth_config.py` | MVP |
+| A1 · proveedor reproducible | Nuevo `compose.auth.yaml`, `docker/keycloak/realm.json` sin usuarios/secretos y bootstrap en `tools/auth/`; PostgreSQL privado, realm/roles/cliente y README | A0 |
+| A2 · OIDC y sesiones | Nuevos `oidc.py`, `sessions.py`, `routers/auth.py`; `deps.py`, `main.py`, dependencias en `pyproject.toml` y `uv.lock`; tests `test_oidc.py`, `test_sessions.py`, `test_auth_routes.py` | A0, A1 |
+| A3 · permisos y propiedad | Nuevo `access.py`; `deps.py`, `main.py`, routers `studies/jobs/uploads`, limpieza en `worker.py`, `docker/nginx.conf`; tests `test_access.py` y ampliación de tests API | A2; coordinar con S1/S2 del QA |
+| A4 · UI de acceso | Nuevos `hooks/useAuth.ts`, `components/LoginPanel.tsx`; `App.tsx`, `api/client.ts`, controles en paneles y visor; textos en español, permisos y expiración | A2, A3 |
+| A5 · E2E y documentación | Nuevo `tools/e2e/verify-auth.mjs`; runners existentes, README, HANDOFF y PROGRESS; validación con Keycloak real y capturas | A1–A4 y ola P del QA |
+
+**Aceptación por ticket:**
+
+- **A0:** tests de modo off/oidc, secreto requerido, rechazo de origen HTTP no local para cookie insegura y
+  timeouts inválidos; paridad Python/TypeScript; no se enciende auth por accidente en los tests existentes.
+  Verificar compatibilidad de licencias y versión de Authlib antes de añadirla a los grupos de dependencias.
+- **A1:** con secretos locales, el comando del overlay levanta servicios sanos, conserva usuarios al reiniciar,
+  permite crear lector/analista sin registro público y registra el callback exacto de la UI en 8080. Se comprueban issuer,
+  backchannel y JWKS desde `api`; la documentación distingue 8080, 8081, 5173 y el 8000 interno.
+- **A2:** tests con proveedor/transporte y reloj falsos: login válido; `state` o `nonce` incorrectos/ausentes;
+  callback repetido, transacción de otro navegador o expirada; firma/issuer/audience/exp inválidos, algoritmo
+  no permitido y rotación de claves; sesión fijada, inactividad y caducidad absoluta; logout e indisponibilidad
+  de Redis/proveedor. Ningún secreto ni token OIDC aparece en respuestas, logs ni almacenamiento del navegador.
+- **A3:** tests parametrizados contra la matriz completa, incluyendo llamadas directas a API, GET/HEAD con
+  ETag tras logout y acceso cruzado entre dos analistas a jobs, manifests y previews. Verificar CSRF/Origin,
+  Host inválido y que un rechazo no crea archivos ni encola trabajos. El worker conserva las reglas de privacidad.
+- **A4:** estados de carga, anónimo, lector, analista, sin permisos y sesión expirada; al recibir 401, detener
+  polling, abortar descargas y desmontar el visor/limpiar datos visibles. 403 se muestra como falta de permiso,
+  no como sesión caducada. El modo off conserva el flujo local; login, logout y avisos se operan con teclado.
+- **A5:** navegador real en 8080 con Keycloak en 8081: login lector/analista, prohibiciones, volumen protegido,
+  expiración, logout y acceso directo posterior denegado; probar también Vite en 5173 con callback por su proxy.
+  Los runners previos reciben sesión cuando auth está activa, nunca un bypass de permisos. Pasan checks §5,
+  revisión visual y el QA afectado; se registra evidencia de esta fase sin reutilizar aprobaciones de CP-027/034.
+
+### 17.6. Relación con QA y evolución hospitalaria
+
+La solicitud actual incorpora el plan; **no inicia su implementación ni las correcciones del QA**.
+A0/A1 pueden prepararse antes de cerrar la ola P, respetando sus dependencias. S1/S2 se resuelven
+coordinadamente con A3 para no duplicar middleware de CSRF/Host; sus guardas deben proteger también
+el modo local sin autenticación. La aceptación final de A5 requiere la **ola P** del QA (P1–P3, P5, S1–S3, Q1–Q4),
+que sigue pendiente. Añadir login no corrige fugas DICOM, agotamiento de memoria ni carreras de escritura.
+El resto de olas R/F/H sigue registrado como pendiente y no desaparece al cerrar esta fase.
+
+Antes de un piloto hospitalario se planificará y validará una fase aparte: identidad institucional por OIDC
+(o federación mediante Keycloak), MFA y revocación, permisos por estudio/equipo, auditoría de accesos y
+descargas sin PHI en logs, HTTPS y operación de producción con backups, recuperación y política de caché.
+Se revisarán también las olas restantes del QA y las obligaciones del hospital. Son requisitos futuros,
+no criterios de una demo ni una promesa de cumplimiento clínico o normativo.
+
+**Referencias técnicas** (consultadas 2026-11-03):
+
+- [OIDC Core](https://openid.net/specs/openid-connect-core-1_0.html) y [OAuth Security BCP / RFC 9700](https://www.rfc-editor.org/rfc/rfc9700.html).
+- [Keycloak en Docker](https://www.keycloak.org/getting-started/getting-started-docker), [hostname/backchannel](https://www.keycloak.org/server/hostname) y [licencia](https://github.com/keycloak/keycloak/blob/main/LICENSE.txt).
+- [Authlib: clientes web y PKCE](https://docs.authlib.org/en/latest/oauth2/client/web/).
+- [OWASP: sesiones](https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html) y [CSRF](https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html).

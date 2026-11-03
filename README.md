@@ -12,6 +12,10 @@ autoajuste de recursos y caché HTTP de volúmenes. Estado y trabajo pendiente e
 [`docs/HANDOFF.md`](docs/HANDOFF.md); historial en [`docs/PROGRESS.md`](docs/PROGRESS.md).
 Los hallazgos del [QA de seguridad y robustez](docs/QA_2026-10-29.md) siguen pendientes de corrección.
 
+**Siguiente fase planificada:** login OIDC con Keycloak para la demo académica, sesiones y roles lector/analista.
+Todavía no está implementada; alcance, tickets y evolución hospitalaria en
+[`PLAN_MVP.md` §17](docs/PLAN_MVP.md#17-autenticación-para-demo-académica--oidc--keycloak).
+
 ## Qué incluye
 
 - **`cerberus_eda.py`** — notebook [marimo](https://marimo.io) con:

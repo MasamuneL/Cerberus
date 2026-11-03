@@ -4,7 +4,7 @@
 > checkpoint. El historial completo está en [`PROGRESS.md`](PROGRESS.md) y el alcance y los contratos en
 > [`PLAN_MVP.md`](PLAN_MVP.md). Las reglas de trabajo están en [`../AGENTS.md`](../AGENTS.md).
 
-**Última actualización:** 2026-11-03 · último checkpoint: CP-038 · rama base: `main`
+**Última actualización:** 2026-11-03 · último checkpoint: CP-039 · rama base: `main`
 
 ## 1. Arranque rápido
 
@@ -41,20 +41,26 @@ y autoajuste de recursos y caché HTTP de NIfTI (§16: D2e-back/front).
 | §13–§14 · áreas y UX/UI | ✅ integrado | Capas, cursor, atajos, pestañas, funciones en riesgo, IBM Plex y navegación con teclado; PR #1, merge `bcef409` |
 | §15 · Docker Compose | ✅ integrado | Redis, API, worker y frontend/nginx; acceso local en `http://localhost:8080`; CP-031 |
 | §16 · recursos y caché | ✅ integrado | `CERBERUS_CPU_THREADS=auto`, `GET /api/system`, indicador y estimaciones en la UI, revalidación 304; CP-034 |
+| §17 · login para demo académica | ⬜ implementación pendiente | OIDC + Keycloak, sesiones y roles lector/analista; tickets A0–A5, plan incorporado en CP-039 |
 | QA de seguridad y robustez | ⬜ correcciones pendientes | Hallazgos y propuesta por olas en [`QA_2026-10-29.md`](QA_2026-10-29.md); CP-035/036 |
 
-**Trabajo documental:** CP-037 integrado en `main` mediante el PR #2, merge `42d39db`.
-CP-038 aclara en el README los puertos de Docker (8080), Vite en desarrollo (5173) y API (8000);
-rama `docs/D1-clarify-ports`, pendiente de integración. Sin cambios de implementación ni correcciones
-del QA. No hay trabajo de implementación a medias declarado.
+**Trabajo documental:** CP-037 y CP-038 integrados en `main` mediante los PR #2 y #3
+(merges `42d39db` y `f45e5e7`). CP-039 incorpora §17 al plan, pendiente de integración desde
+`docs/AUTH-demo-plan`. No instala Keycloak, no añade login y no corrige el QA. No hay implementación
+a medias declarada. El plan funcional implementado llega hasta §16; §17 amplía el trabajo pendiente.
 
 **Validación de CP-037 (2026-11-03):** Ruff, formato y pyright correctos; **474 tests rápidos pasaron,
 5 slow excluidos**; frontend build correcto. Comprobados 34 enlaces locales sin errores. No se repitió
 QA visual ni Docker en esta actualización documental; los resultados de esas suites que siguen son históricos.
 
-**Siguiente paso:** revisar e integrar la aclaración de puertos (CP-038). Después, acordar el inicio de la ola P
-del QA: P1–P3, P5, S1–S3 y Q1–Q4. La solicitud actual autoriza documentación y publicación en Git;
-no incluye implementar esas correcciones.
+**Validación de CP-039 (2026-11-03):** checks obligatorios correctos, **474 tests rápidos aprobados,
+5 slow excluidos** y 35 enlaces locales comprobados. Contratos vigentes de §6/§7 intactos y A0–A5 pendientes.
+Solo cambian documentos; el login y su E2E no se han implementado ni ejecutado.
+
+**Siguiente paso:** revisar e integrar la planificación de autenticación (CP-039). Cuando el usuario solicite
+implementarla, empezar por A0 y seguir las dependencias de §17.5. A5 depende de la ola P del QA
+(P1–P3, P5, S1–S3 y Q1–Q4); S1/S2 se coordinan con A3. La solicitud actual incorpora el plan,
+sin iniciar implementación ni correcciones del QA.
 
 **QA histórico de UX/UI (CP-027):** `CERBERUS_UI=http://localhost:5180 npm run verify` terminó con exit 0 el
 2026-10-29 a las 17:43:15 UTC: **33/33 checks**, **14 auditorías axe sin violaciones automáticas** y
@@ -79,8 +85,8 @@ regeneran con [`tools/e2e/README.md`](../tools/e2e/README.md); verificar siempre
 
 ### Cómo retomar con Claude u otra herramienta
 
-1. `git checkout main && git pull --ff-only`; comprobar si la rama documental de CP-038 ya se integró.
-2. Leer este archivo, `PROGRESS.md`, `QA_2026-10-29.md` y `PLAN_MVP.md` §13–§16.
+1. `git checkout main && git pull --ff-only`; comprobar si la rama documental de CP-039 ya se integró.
+2. Leer este archivo, `PROGRESS.md`, `QA_2026-10-29.md` y `PLAN_MVP.md` §13–§17.
    **No volver a implementar UX/UI, Docker, autoajuste ni 304.**
 3. Para desarrollo, usar el arranque de la sección 1. Para Docker: `docker compose up -d --build`,
    `docker compose ps` y abrir `http://localhost:8080`. Backend amd64; en Apple Silicon usa Rosetta.
@@ -107,8 +113,10 @@ regeneran con [`tools/e2e/README.md`](../tools/e2e/README.md); verificar siempre
 
 ## 4. Mejoras posteriores (propuestas, sin aprobar)
 Reporte exportable por estudio (PDF o imprimible), 3D más limpio (iluminación y orientación), subir archivos
-arrastrándolos, atajos extra. Fase 2 pendiente: auth, skull-strip (HD-BET o SynthStrip) para DICOM sin
+arrastrándolos, atajos extra. Fase 2 pendiente: skull-strip (HD-BET o SynthStrip) para DICOM sin
 `brain_mask`, registro entre series y RTSTRUCT. Docker y el autoajuste ya están implementados.
+El login para la demo ya tiene planificación incorporada en `PLAN_MVP.md` §17, con implementación pendiente;
+la evolución hospitalaria se describe aparte y no se considera aprobada para ejecución.
 El plan de correcciones del QA está en [`QA_2026-10-29.md` §6](QA_2026-10-29.md#6-plan-de-corrección-propuesto-por-olas).
 
 ## 5. Protocolo de handoff (para quien trabaje, humano o IA)

@@ -40,7 +40,13 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 | D2c · docs Docker (§15) | ✅ | feat/D2-docker-compose | 5a4b229 | 2026-10-29 | Vikingo / Claude Code (orquestador) | |
 | D2e-back · autoajuste + caché HTTP (§16) | ✅ | feat/D2e-autotune | e74d08a | 2026-10-29 | Vikingo / Claude Code (subagente) | |
 | D2e-front · indicador de recursos + 304 (§16) | ✅ | feat/D2e-autotune | b4ef422 | 2026-10-29 | Vikingo / Claude Code (subagente) | |
-| D1 · actualización documental (CP-037/038) | ✅ | docs/D1-clarify-ports | 42d39db (CP-037) | 2026-11-03 | Vikingo / Codex | CP-037 integrado; aclaración de puertos CP-038 pendiente de integración |
+| D1 · actualización documental (CP-037/038) | ✅ | main | 42d39db, f45e5e7 | 2026-11-03 | Vikingo / Codex | PR #2 y #3 integrados |
+| A0 · contratos y configuración de auth (§17) | ⬜ | — | — | — | — | Planificado en CP-039; sin implementar |
+| A1 · Keycloak reproducible (§17) | ⬜ | — | — | — | — | Depende de A0 |
+| A2 · OIDC y sesiones (§17) | ⬜ | — | — | — | — | Depende de A0 y A1 |
+| A3 · permisos y propiedad (§17) | ⬜ | — | — | — | — | Depende de A2; coordinar S1/S2 del QA |
+| A4 · UI de acceso (§17) | ⬜ | — | — | — | — | Depende de A2 y A3 |
+| A5 · E2E y documentación de auth (§17) | ⬜ | — | — | — | — | Depende de A1–A4 y ola P del QA |
 
 ## Bitácora de checkpoints
 
@@ -527,3 +533,23 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
   Solo documentación; no se repitieron QA visual/Docker ni tests slow.
 - **Publicación:** rama `docs/D1-clarify-ports`; integración a `main` pendiente. HANDOFF §2 actualizado.
 - **Siguiente paso:** revisar e integrar esta aclaración documental. Las correcciones del QA siguen pendientes.
+
+### CP-039 · 2026-11-03 · planificación de autenticación para la demo académica
+- **Pedido del usuario:** incorporar al plan el login recomendado para una demo open source con visión hospitalaria.
+- **Hecho:** `PLAN_MVP.md` §17 con OIDC configurable y Keycloak incluido para autohospedaje; alcance de demo,
+  arquitectura FastAPI como cliente confidencial, PKCE, sesiones opacas en Redis, expiración, CSRF y roles
+  lector/analista. Se definen protección de archivos y revalidación 304, propiedad de jobs/ingestas, configuración
+  prevista, endpoints futuros y criterios de aceptación. Puertos previstos: Cerberus 8080 y Keycloak 8081.
+- **Planificación:** tickets **A0–A5 pendientes** en el tablero, con archivos, dependencias y pruebas.
+  La aceptación final A5 depende de la ola P del QA; S1/S2 se coordinan con A3. Las olas R/F/H siguen pendientes.
+  Identidad institucional, MFA obligatorio, permisos clínicos y auditoría quedan como evolución hospitalaria aparte.
+- **Coherencia:** README indica que el login aún no existe; HANDOFF §2 registra la nueva fase y confirma
+  la integración de CP-038 mediante el PR #3 (`f45e5e7`). Los checkpoints previos se conservan como historial.
+- **Validación:** Ruff y formato correctos; pyright 0 errores; **474 tests rápidos aprobados, 5 slow excluidos**;
+  frontend build correcto, con el aviso conocido de bundles grandes; **35 enlaces locales sin errores**.
+  Comprobados contratos vigentes §6/§7 sin cambios, tickets A0–A5 pendientes y diff solo Markdown.
+  Revisión de alcance y seguridad contra el código actual y documentación oficial enlazada en §17.
+  No se ejecutó QA visual/Docker ni tests de autenticación: esta entrega solo incorpora la planificación.
+- **Publicación:** rama `docs/AUTH-demo-plan`; integración a `main` pendiente. Sin código, dependencias nuevas,
+  servicios de identidad instalados ni cambios en los contratos implementados.
+- **Siguiente paso:** revisar e integrar el plan; cuando se solicite implementarlo, comenzar por A0 y seguir §17.5.
