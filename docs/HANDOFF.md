@@ -65,7 +65,20 @@ generados del JSON Schema contra las interfaces reales. Revisión independiente:
 ambiental, corregido y verificado con regresión que fallaba antes del cambio. Plan de ejecución en
 [`superpowers/plans/2026-11-05-A0-auth-config.md`](superpowers/plans/2026-11-05-A0-auth-config.md).
 No incluye rutas OIDC, Keycloak ni UI; configurar `oidc` todavía no protege los recursos. A1–A5 siguen pendientes;
-**siguiente paso:** implementar A1 sobre `main`. A5 depende de la ola P del QA
+**Trabajo en curso:** A1 implementado en `feat/A1-keycloak` (`d044333`), worktree `/private/tmp/cerberus-auth-A1`.
+Overlay con Keycloak 26.8.1 y PostgreSQL 18, imágenes por digest; bootstrap crea `.env.auth` con permisos
+0600 y conserva archivos existentes. Realm sin usuarios, cliente confidencial con PKCE S256 y mapper
+de roles limitado a `cerberus-web`. **575 tests rápidos aprobados**, Ruff/formato/pyright correctos y build
+correcto. QA real del proveedor: issuer/JWKS desde API, callback exacto, rechazo de redirect ajeno, lector y
+analista con Authorization Code+PKCE en Chrome, claim correcto y cuentas/contraseñas conservadas tras
+reiniciar PostgreSQL/Keycloak; cuentas temporales de QA eliminadas. Captura del login en español revisada.
+Revisión independiente sin hallazgos. Smoke Docker de la UI completo antes de integrar: **15/15 checks**,
+11 capturas, sin pendientes; revisadas 1440×900 y 1280×800 (14:01–14:04 UTC).
+Se corrigieron URLs HTTP de Debian a HTTPS en el Dockerfile: el build limpio fallaba con HTTP 403;
+las firmas de paquetes siguen verificándose. No incluye rutas/sesiones de Cerberus ni protección todavía.
+Plan de ejecución: [`superpowers/plans/2026-11-05-auth-remaining.md`](superpowers/plans/2026-11-05-auth-remaining.md).
+El usuario autorizó avanzar los tickets posibles con commits/push frecuentes y QA antes de cada merge.
+A5 depende de la ola P del QA
 (P1–P3, P5, S1–S3 y Q1–Q4); S1/S2 se coordinan con A3.
 
 **Verificación visual de CP-040:** `CERBERUS_UI=http://localhost:5180 node verify.mjs` se ejecutó contra

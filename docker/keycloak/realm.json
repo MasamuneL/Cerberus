@@ -1,0 +1,64 @@
+{
+  "realm": "cerberus",
+  "enabled": true,
+  "displayName": "Cerberus · Demo académica",
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "resetPasswordAllowed": false,
+  "loginWithEmailAllowed": false,
+  "bruteForceProtected": true,
+  "failureFactor": 5,
+  "internationalizationEnabled": true,
+  "supportedLocales": ["es", "en"],
+  "defaultLocale": "es",
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 3600,
+  "eventsEnabled": false,
+  "adminEventsEnabled": false,
+  "roles": {
+    "client": {
+      "cerberus-web": [
+        {"name": "reader", "description": "Lectura del catálogo compartido de la demo"},
+        {"name": "analyst", "description": "Lectura, ingestas y trabajos de análisis"}
+      ]
+    }
+  },
+  "clients": [
+    {
+      "clientId": "cerberus-web",
+      "name": "Cerberus",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${CERBERUS_OIDC_CLIENT_SECRET}",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": ["${CERBERUS_APP_ORIGIN}/api/auth/callback"],
+      "webOrigins": ["${CERBERUS_APP_ORIGIN}"],
+      "defaultClientScopes": [],
+      "optionalClientScopes": [],
+      "fullScopeAllowed": true,
+      "attributes": {"pkce.code.challenge.method": "S256"},
+      "protocolMappers": [
+        {
+          "name": "cerberus_roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-client-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "usermodel.clientRoleMapping.clientId": "cerberus-web",
+            "claim.name": "cerberus_roles",
+            "jsonType.label": "String",
+            "multivalued": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "false",
+            "userinfo.token.claim": "false"
+          }
+        }
+      ]
+    }
+  ]
+}

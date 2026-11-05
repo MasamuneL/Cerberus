@@ -14,8 +14,8 @@ Los [hallazgos del QA de seguridad y robustez](QA_2026-10-29.md) siguen pendient
 no implica que esos fallos estén resueltos.
 
 **Fase de autenticación en desarrollo:** OIDC con Keycloak para la demo académica (§17), con una evolución
-posterior hacia identidad y permisos hospitalarios. A0 incorpora configuración e interfaces; el login,
-las sesiones, los permisos y la UI todavía dependen de A1–A5.
+posterior hacia identidad y permisos hospitalarios. A0 incorpora configuración e interfaces y A1 el proveedor;
+el login, las sesiones, los permisos y la UI todavía dependen de A2–A5.
 
 Las secciones §1–§10 describen el MVP original y sus tickets. Los contratos iniciales de disco y API
 (§6/§7) se complementan con áreas y `Study.has_areas` en §13, dominios en §14 y recursos/caché en §16.
@@ -678,7 +678,7 @@ para todos los tamaños de volumen. Las duraciones mostradas en la UI son estima
 
 ## 17. Autenticación para demo académica · OIDC + Keycloak
 
-**Estado:** A0 implementa configuración y contratos; A1–A5 pendientes. El usuario pidió incorporar esta fase
+**Estado:** A0 integrado; A1 implementa el proveedor en su rama; A2–A5 pendientes. El usuario pidió incorporar esta fase
 el 2026-11-03 y continuar su desarrollo el 2026-11-05.
 El alcance inmediato es una demo académica open source con datos públicos anonimizados o sintéticos;
 la visión posterior es una instalación hospitalaria. Este apartado no declara preparación para uso clínico.
@@ -721,7 +721,8 @@ El rol administrativo de Keycloak no concede por sí mismo permisos dentro de Ce
   no hay acceso anónimo de respaldo. Un fallo de Keycloak impide nuevos logins, sin convertir sesiones en anónimas.
 - Añadir `compose.auth.yaml` como overlay explícito: UI de Cerberus en **8080**, Keycloak en **8081**, ambos
   publicados solo en `127.0.0.1`. El arranque objetivo será
-  `docker compose -f compose.yaml -f compose.auth.yaml up -d --build`. Este comando aún no está disponible.
+  `docker compose --env-file .env.auth -f compose.yaml -f compose.auth.yaml up -d --build`, tras ejecutar
+  `uv run python tools/auth/bootstrap.py`. A1 incluye el proveedor; sesiones y protección siguen en A2/A3.
   La configuración base sin overlay mantiene el modo local actual; la demo con overlay exige autenticación.
 - El overlay incluye PostgreSQL privado para Keycloak y volúmenes persistentes. PostgreSQL no almacena imágenes
   ni sustituye el catálogo en disco de Cerberus. Registrar realm `cerberus`, cliente `cerberus-web`, roles y
@@ -747,7 +748,10 @@ El rol administrativo de Keycloak no concede por sí mismo permisos dentro de Ce
 | `CERBERUS_AUTH_COOKIE_SECURE` | `true`; `false` únicamente con origen público HTTP de loopback |
 | `CERBERUS_AUTH_IDLE_TIMEOUT_SECONDS` | `1800` |
 | `CERBERUS_AUTH_ABSOLUTE_TIMEOUT_SECONDS` | `3600`; ambos timeouts positivos, absoluto no menor que inactividad |
-| `CERBERUS_KEYCLOAK_HTTP_PORT` | Prevista en A1: `8081`, variable del overlay, no de `Settings` |
+| `CERBERUS_KEYCLOAK_HTTP_PORT` | `8081`, variable del overlay A1, no de `Settings` |
+| `CERBERUS_AUTH_DB_PASSWORD` | Secreto local obligatorio de PostgreSQL, solo overlay/bootstrap |
+| `CERBERUS_KEYCLOAK_ADMIN_PASSWORD` | Secreto local obligatorio del administrador, solo Keycloak/bootstrap |
+| `CERBERUS_KEYCLOAK_ADMIN_USERNAME` | `cerberus-admin`, solo overlay |
 
 Las URLs requieren HTTP(S), host y puerto válido; no admiten credenciales, espacios, query ni fragmento.
 Origen e issuer públicos requieren HTTPS salvo HTTP con `localhost` exacto o IP canónica de loopback;
@@ -846,8 +850,9 @@ indican destinos previstos; las firmas de librerías se verificarán en su códi
 
 ### 17.6. Relación con QA y evolución hospitalaria
 
-La solicitud del 2026-11-05 autoriza continuar con autenticación; esta entrega implementa únicamente A0.
-Las correcciones del QA siguen pendientes y no se incluyen implícitamente en este ticket.
+La solicitud del 2026-11-05 autoriza continuar los tickets posibles de autenticación, con commit/push frecuentes
+y QA antes de cada merge. Se ejecutan por dependencias y en ramas independientes. Las correcciones de la ola P
+son dependencias de A5; el resto del QA sigue pendiente y no se incluye implícitamente en cada ticket.
 A0/A1 pueden prepararse antes de cerrar la ola P, respetando sus dependencias. S1/S2 se resuelven
 coordinadamente con A3 para no duplicar middleware de CSRF/Host; sus guardas deben proteger también
 el modo local sin autenticación. La aceptación final de A5 requiere la **ola P** del QA (P1–P3, P5, S1–S3, Q1–Q4),
