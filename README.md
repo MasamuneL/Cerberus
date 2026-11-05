@@ -13,7 +13,8 @@ autoajuste de recursos y caché HTTP de volúmenes. Estado y trabajo pendiente e
 Los hallazgos del [QA de seguridad y robustez](docs/QA_2026-10-29.md) siguen pendientes de corrección.
 
 **Autenticación en desarrollo:** A0 incorpora configuración validada y contratos para OIDC, sesiones y roles
-lector/analista. El inicio de sesión y la protección de recursos todavía no están disponibles (A1–A5);
+lector/analista. A1 añade Keycloak persistente; el inicio de sesión y la protección de recursos todavía
+no están disponibles (A2–A5);
 `CERBERUS_AUTH_MODE=oidc` por sí solo aún no protege la app. El modo local conserva `off` por defecto.
 Variables, restricciones y tickets en
 [`PLAN_MVP.md` §17](docs/PLAN_MVP.md#17-autenticación-para-demo-académica--oidc--keycloak).
@@ -147,6 +148,53 @@ el registro ANTs puede variar entre ejecuciones con varios hilos. Son mediciones
 no tiempos garantizados para cualquier equipo o estudio.
 
 Smoke test de la versión Docker: `cd tools/e2e && npm ci && CERBERUS_UI=http://localhost:8080 node verify-docker.mjs`.
+
+### Proveedor de identidad de la demo (A1)
+
+El overlay añade **Keycloak 26.8.1 en http://localhost:8081** y PostgreSQL 18 privado. Cerberus conserva
+**http://localhost:8080**. Esta entrega prepara el proveedor: las rutas de login, sesiones y permisos
+todavía se completan en A2/A3; el overlay de A1 por sí solo no protege los recursos.
+
+```bash
+uv run python tools/auth/bootstrap.py
+docker compose --env-file .env.auth -f compose.yaml -f compose.auth.yaml up -d --build
+docker compose --env-file .env.auth -f compose.yaml -f compose.auth.yaml ps
+```
+
+El bootstrap crea `.env.auth` con permisos `0600` y tres secretos aleatorios distintos; no los imprime
+ni sobrescribe un archivo existente. Si se proporcionan `CERBERUS_AUTH_DB_PASSWORD`,
+`CERBERUS_KEYCLOAK_ADMIN_PASSWORD` o `CERBERUS_OIDC_CLIENT_SECRET` en el entorno, los usa al crear el archivo.
+Este generador exige al menos 32 caracteres URL-safe (letras, números, `_` y `-`), evitando interpolación
+accidental de Compose. `.env.auth` está ignorado por Git. Conserva el archivo para los siguientes arranques:
+cambiar su contraseña de base de datos no cambia automáticamente la de un volumen existente.
+
+En http://localhost:8081/admin, entra como `cerberus-admin` con la contraseña administrativa del archivo
+local. Selecciona el realm **cerberus**, crea las cuentas desde **Users** y asigna en **Role mapping** uno
+de los roles del cliente **cerberus-web**: `reader` o `analyst`. El realm no incluye cuentas ni contraseñas,
+el registro público está desactivado y los roles administrativos de Keycloak no conceden permisos de Cerberus.
+Los usuarios creados conservan sus contraseñas al repetir el bootstrap o reiniciar servicios.
+
+El cliente exige Authorization Code con PKCE S256 y registra exactamente
+`http://localhost:8080/api/auth/callback`. El claim `cerberus_roles` del ID Token contiene únicamente roles
+de `cerberus-web`. El password grant, el flujo implícito y las cuentas de servicio del cliente están desactivados.
+En desarrollo, **5173** sigue siendo Vite y **8000** la API nativa; para registrar el callback de Vite en una
+instalación nueva usa `CERBERUS_APP_ORIGIN=http://localhost:5173` al ejecutar el overlay. La importación de
+un realm existente se omite para conservar sus cuentas: los cambios posteriores de redirect URIs se hacen
+explícitamente desde la consola, sin recrear el realm.
+
+| Variable del overlay | Default |
+|---|---|
+| `CERBERUS_KEYCLOAK_HTTP_PORT` | `8081`, solo loopback |
+| `CERBERUS_KEYCLOAK_ADMIN_USERNAME` | `cerberus-admin` |
+| `CERBERUS_APP_ORIGIN` | `http://localhost:8080` |
+| Issuer público | `http://localhost:8081/realms/cerberus` |
+| Backchannel de API en Docker | `http://keycloak:8080/realms/cerberus` |
+
+La metadata conserva el issuer público y ofrece token/JWKS por la red interna; no se desactivan las
+validaciones OIDC. PostgreSQL no publica puertos y solo comparte su red privada con Keycloak. Los datos
+de identidad viven en volúmenes `auth-db-data` y `keycloak-data`; el catálogo y las imágenes siguen en disco.
+Para parar, usa el mismo comando de Compose con ambos archivos y `down`, sin `-v` si quieres conservar
+las cuentas. `start-dev` y HTTP pertenecen exclusivamente a esta demo local.
 
 ### Modo desarrollo: requisitos
 

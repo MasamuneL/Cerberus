@@ -41,11 +41,11 @@ antes de cada merge a `main` el 2026-11-05.
 `APP_ORIGIN/api/auth/callback`, PKCE S256 obligatorio, claim `cerberus_roles` en ID Token. Bootstrap crea
 `.env.auth` con permisos 0600 usando secretos del entorno o aleatorios; no sobreescribe archivos existentes.
 
-- [ ] Probar generación sin mostrar secretos, permisos, valores ambientales y repetición sin sobrescritura.
-- [ ] Crear overlay con PostgreSQL sin puertos, Keycloak en 8081 de loopback y healthchecks.
-- [ ] Crear realm sin usuarios; registro público, implicit y password grant desactivados; roles de aplicación
+- [x] Probar generación sin mostrar secretos, permisos, valores ambientales y repetición sin sobrescritura.
+- [x] Crear overlay con PostgreSQL sin puertos, Keycloak en 8081 de loopback y healthchecks.
+- [x] Crear realm sin usuarios; registro público, implicit y password grant desactivados; roles de aplicación
   y mapper limitado al cliente para excluir roles administrativos.
-- [ ] Validar Compose y stack real, metadata/JWKS desde API, callback/roles y persistencia tras reinicio.
+- [x] Validar Compose y stack real, metadata/JWKS desde API, callback/roles y persistencia tras reinicio.
 - [ ] Checks del repo, revisión independiente, commit/push/PR y merge solo después del QA; checkpoint.
 
 ## A2 · OIDC y sesiones
