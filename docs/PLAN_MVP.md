@@ -7,6 +7,10 @@ volumetría del GTV, segmentar con MONAI SegResNet y mostrar cortes y 3D. La app
 con **FastAPI + arq/Redis** (backend Python) y **React + Vite + TypeScript + Niivue** (frontend), incluida
 la entrada **DICOM** mediante conversión a NIfTI.
 
+El notebook y su auxiliar Mayavi se archivaron sin modificar fuera del repositorio el 2026-11-05.
+Ubicación, hashes, recuperación desde Git y comandos en [`ARCHIVO.md`](ARCHIVO.md).
+Las citas `cerberus_eda.py:<líneas>` que siguen identifican el original histórico y conservan su numeración.
+
 **Estado de implementación:** MVP y extensiones §13–§16 integrados en `main`: áreas de Brodmann, dominios
 funcionales, UX/UI, Docker Compose, autoajuste de recursos y caché HTTP. El tablero y los checkpoints
 están en [`PROGRESS.md`](PROGRESS.md), y el estado vivo en [`HANDOFF.md`](HANDOFF.md).
@@ -81,8 +85,7 @@ Redis (:6379) ◄── worker arq ──► MONAI SegResNet (torch, cpu/mps/cud
 ```
 Cerberus/
 ├── AGENTS.md  CLAUDE.md  README.md  pyproject.toml  uv.lock
-├── cerberus_eda.py  cerberus_mayavi.py         # se quedan como están (referencia)
-├── docs/PLAN_MVP.md  docs/PROGRESS.md
+├── docs/PLAN_MVP.md  docs/PROGRESS.md  docs/ARCHIVO.md
 ├── backend/
 │   ├── cerberus_api/
 │   │   ├── __init__.py
@@ -148,6 +151,10 @@ cd frontend && npm install && npm run dev                  # terminal 4: UI en :
 uv run ruff check backend && uv run ruff format --check backend && uv run pyright && uv run pytest -m "not slow"
 cd frontend && npm run build                               # tsc -b && vite build
 ```
+
+Las dependencias específicas del notebook están en el grupo opcional `notebook`; no se instalan
+por defecto. Para ejecutar la referencia archivada, usar `uv run --group notebook` y las rutas de
+[`ARCHIVO.md`](ARCHIVO.md). La app web y el grupo `runtime` de Docker no dependen de esos archivos.
 
 Configuración que agrega B0 en `pyproject.toml`:
 - `[build-system]` hatchling; `[tool.hatch.build.targets.wheel] packages = ["backend/cerberus_api"]`.
@@ -444,7 +451,7 @@ backend correspondiente.
 2. Con Redis, el worker, la API y la UI levantados:
    - `curl localhost:8000/api/studies` incluye `001/t0`.
    - En la UI: seleccionar 001/t0 → se ve T1Gd multiplanar con el GTV en rojo → la volumetría coincide con la
-     tabla de la sección 2 del notebook (`uv run marimo run cerberus_eda.py`), con una tolerancia de ±0.01 cm³.
+     tabla de la sección 2 del notebook archivado (comando en [`ARCHIVO.md`](ARCHIVO.md)), con una tolerancia de ±0.01 cm³.
    - "Segmentar con MONAI" → el job termina → el overlay se ve alineado con la anatomía y el Dice TC es
      comparable al de la sección 5.4 del notebook (se espera una diferencia pequeña por el remuestreo).
    - Subir `Data/001/t0/1_t0_flair.nii.gz` como paciente `900`, tiempo `t0`, secuencia `flair` → aparece en la lista.

@@ -47,6 +47,7 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 | A3 · permisos y propiedad (§17) | ⬜ | — | — | — | — | Depende de A2; coordinar S1/S2 del QA |
 | A4 · UI de acceso (§17) | ⬜ | — | — | — | — | Depende de A2 y A3 |
 | A5 · E2E y documentación de auth (§17) | ⬜ | — | — | — | — | Depende de A1–A4 y ola P del QA |
+| Mantenimiento · limpieza del repositorio | 🟡 | chore/repo-cleanup | — | 2026-11-05 | Vikingo / Codex | Archivos archivados, dependencias opcionales y ramas integradas retiradas; CP-043 |
 
 ## Bitácora de checkpoints
 
@@ -613,3 +614,33 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 - **Límites y siguiente paso:** A2 (OIDC y sesiones), luego A3 (protección) y A4 (UI). A1 todavía no protege
   los recursos de Cerberus; A5 y ola P pendientes. Trabajo aislado en `/private/tmp/cerberus-auth-A1`; secretos
   locales en `.env.auth`, ignorados por Git. Se conservan cambios ajenos de limpieza en el checkout principal.
+
+### CP-043 · 2026-11-05 · limpieza reversible del repositorio
+- **Pedido del usuario:** retirar archivos de menor utilidad, mover el notebook a otra carpeta de BigData,
+  poner en cuarentena lo dudoso, eliminar ramas obsoletas y actualizar Graphify tras cada bloque importante.
+- **Archivo:** `cerberus_eda.py` y `cerberus_mayavi.py` conservados byte por byte fuera del repo, con SHA-256;
+  enlaces a `Data/` y `models/` mantienen sus rutas. El `main.py` de ejemplo y las cachés raíz se conservan
+  en cuarentena. No se retiran datos, modelos, resultados, configuraciones del IDE ni evidencias de QA.
+  [`ARCHIVO.md`](ARCHIVO.md) documenta ubicación, integridad, recuperación desde Git y ejecución.
+- **Dependencias:** diez requisitos específicos del notebook pasan a un grupo opcional; `runtime` y todas
+  las versiones del lockfile se conservan. Sincronización normal retira 41 paquetes exclusivos del entorno
+  anterior; `.venv` baja aproximadamente de 2.1 GB a 1.1 GB. `marimo check` del original archivado correcto.
+- **Ramas:** 30 locales y 29 remotas integradas eliminadas inicialmente, con bundle completo verificado,
+  inventario de SHA y borrado remoto atómico condicionado al SHA. A0/A1 se integraron durante esta sesión;
+  tras un respaldo adicional se retiraron sus ramas, sin worktrees activos: total **32 locales y 31 remotas**.
+  Se conservan `main`, la limpieza, A2 activo y los dos borradores `wip` con commits no integrados.
+- **Concurrencia:** limpieza actualizada sobre `ec34d25` (A1 integrado), conservando las entregas de la otra
+  sesión. Sin cambios en código de backend/frontend, Compose ni contratos de disco/API.
+- **Graphify:** CLI 0.9.102 temporal, extracción AST local sin LLM; configuración en `.graphifyignore`.
+  Regenerado tras archivar, limpiar ramas e incorporar A1; `graph.json`, `graph.html` y `GRAPH_REPORT.md`
+  locales, ignorados por Git. Los documentos no se indexan en este modo.
+- **Checks:** Ruff y formato correctos, pyright sin errores, **575 tests rápidos aprobados, 5 slow excluidos**;
+  build correcto con el aviso conocido de bundles grandes. Versiones del lockfile, grupo `runtime`, hashes
+  de originales, enlaces de datos y 50 enlaces Markdown locales comprobados. Tests slow no ejecutados.
+- **QA visual:** primer intento 13/17 checks, exit 1, por detenerse Vite compartido durante la ejecución;
+  conexión rechazada al seleccionar 005/t0 y abrir el segundo tamaño. Repetición completa con API/Vite propios
+  en 5182, 14:09:00–14:14:44 UTC: **33/33 checks**, 14 auditorías axe sin violaciones automáticas,
+  27 capturas y exit 0. Revisadas capas y segmentación a 1440×900 y tabla 005/t0 a 1280×800,
+  sin regresiones observadas. Sin modificar el runner ni ejecutar modelos o subidas reales.
+- **Publicación:** rama `chore/repo-cleanup`, pendiente de revisión/integración. Siguiente paso: revisar
+  e integrar el PR de mantenimiento; el desarrollo de A2 sigue en su worktree independiente.

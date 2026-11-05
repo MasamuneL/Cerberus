@@ -2,7 +2,7 @@
 
 Análisis exploratorio, visualización 3D y segmentación de glioblastoma sobre el dataset **CFB-GBM** (The Cancer Imaging Archive).
 
-Además del notebook, Cerberus es ahora una **app web**: backend **FastAPI + arq/Redis + MONAI** y frontend
+Cerberus es una **app web**: backend **FastAPI + arq/Redis + MONAI** y frontend
 **React + Vite + TypeScript + [Niivue](https://github.com/niivue/niivue)** como visor de imagen médica.
 
 Proyecto de Big Data — UDG, 5.º semestre.
@@ -21,14 +21,13 @@ Variables, restricciones y tickets en
 
 ## Qué incluye
 
-- **`cerberus_eda.py`** — notebook [marimo](https://marimo.io) con:
-  - Inventario de la data (secuencias, shape, spacing, dtype).
-  - Cortes axial / coronal / sagital sincronizados con máscara GTV superpuesta.
-  - Volumetría tumoral (planimetría vs ABC/2, umbrales RANO 2.0).
-  - Líneas base clásicas de segmentación (Otsu, K-Means).
-  - Segmentación con **MONAI Model Zoo `brats_mri_segmentation`** (SegResNet).
-  - Iso-superficies 3D con **Mayavi** (offscreen) y Plotly interactivo.
-- **`cerberus_mayavi.py`** — escena Mayavi reutilizable; también abre una ventana Qt interactiva a partir de un `.npz` exportado por el notebook.
+- Backend FastAPI con volumetría GTV, seguimiento RANO, segmentación MONAI y mapeo de áreas.
+- Frontend React con visor Niivue, capas, funciones en riesgo y subidas NIfTI/DICOM.
+- Docker Compose, pruebas y documentación de contratos y trabajo pendiente.
+
+El notebook marimo original y su auxiliar Mayavi están archivados fuera del repo, en
+`../Cerberus-archivo-2026-11-05/referencia/`. Siguen disponibles como referencia de fórmulas;
+[ubicación, recuperación desde Git y ejecución](docs/ARCHIVO.md).
 
 > ⚠️ La máscara de referencia del dataset es el **GTV de radioterapia** (puede incluir cavidad de resección y excluye edema), no el "volumen tumoral" genérico.
 
@@ -36,8 +35,6 @@ Variables, restricciones y tickets en
 
 ```
 Cerberus/
-├── cerberus_eda.py        # notebook marimo principal
-├── cerberus_mayavi.py     # escena 3D Mayavi
 ├── backend/
 │   ├── cerberus_api/      # FastAPI (main, routers/, servicios, worker arq)
 │   └── tests/             # pytest
@@ -46,6 +43,7 @@ Cerberus/
 │   ├── PLAN_MVP.md        # plan, contratos y tickets del MVP
 │   ├── PROGRESS.md        # bitácora de checkpoints
 │   ├── HANDOFF.md         # estado actual y cómo continuar
+│   ├── ARCHIVO.md         # referencias archivadas, cuarentena y recuperación
 │   ├── QA_UX_UI.md        # evidencia y límites del QA visual
 │   └── QA_2026-10-29.md   # hallazgos pendientes de seguridad y robustez
 ├── compose.yaml           # redis, api, worker y frontend
@@ -84,20 +82,8 @@ Si clonaste sin LFS, los `.nii.gz` serán punteros de texto; descárgalos con:
 git lfs pull
 ```
 
-## Uso
-
-```bash
-# Editar / explorar el notebook
-uv run marimo edit cerberus_eda.py
-
-# Modo app (solo lectura)
-uv run marimo run cerberus_eda.py
-
-# Ventana Mayavi interactiva con una escena exportada desde el notebook
-uv run python cerberus_mayavi.py escena.npz
-```
-
-La primera ejecución de la celda MONAI descarga el bundle `brats_mri_segmentation` en `models/`.
+La instalación normal incluye la app web. Para el notebook histórico se habilita el grupo opcional
+`notebook`; los comandos y las rutas figuran en [`docs/ARCHIVO.md`](docs/ARCHIVO.md).
 
 ## App web
 
