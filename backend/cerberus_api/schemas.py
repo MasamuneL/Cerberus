@@ -7,11 +7,27 @@
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel
+from pydantic import AwareDatetime, BaseModel, Field
+
+from cerberus_api.identity import AuthMode, Role
 
 RanoCategory = Literal["PD", "PR", "MR", "SD"]
 JobState = Literal["queued", "in_progress", "complete", "failed", "not_found"]
 UploadState = Literal["processing", "ready", "failed"]
+
+
+class AuthConfig(BaseModel):
+    """Configuración pública de acceso, sin credenciales del proveedor (§17)."""
+
+    mode: AuthMode
+
+
+class AuthSession(BaseModel):
+    """Datos públicos de sesión; excluye identidad, cookie y tokens OIDC (§17)."""
+
+    roles: list[Role] = Field(min_length=1)
+    expires_at: AwareDatetime
+    csrf_token: str = Field(min_length=1)
 
 
 class Study(BaseModel):

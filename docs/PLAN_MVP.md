@@ -13,9 +13,9 @@ están en [`PROGRESS.md`](PROGRESS.md), y el estado vivo en [`HANDOFF.md`](HANDO
 Los [hallazgos del QA de seguridad y robustez](QA_2026-10-29.md) siguen pendientes; implementar el alcance
 no implica que esos fallos estén resueltos.
 
-**Nueva fase planificada, sin implementar:** autenticación OIDC con Keycloak para la demo académica (§17),
-con una evolución posterior hacia identidad y permisos hospitalarios. Incorporada por petición del usuario
-el 2026-11-03; los tickets de esa fase permanecen pendientes.
+**Fase de autenticación en desarrollo:** OIDC con Keycloak para la demo académica (§17), con una evolución
+posterior hacia identidad y permisos hospitalarios. A0 incorpora configuración e interfaces; el login,
+las sesiones, los permisos y la UI todavía dependen de A1–A5.
 
 Las secciones §1–§10 describen el MVP original y sus tickets. Los contratos iniciales de disco y API
 (§6/§7) se complementan con áreas y `Study.has_areas` en §13, dominios en §14 y recursos/caché en §16.
@@ -129,6 +129,9 @@ Variables de entorno (prefijo `CERBERUS_`; los valores por defecto son relativos
 | `CERBERUS_CORS_ORIGINS` | `["http://localhost:5173"]` |
 | `CERBERUS_CPU_THREADS` | `auto`; entero positivo para fijar los hilos del worker (§16) |
 
+La configuración de autenticación de A0 figura en §17.2. Está disponible en `Settings`, pero las rutas y
+la protección de recursos se implementarán en A2/A3; configurar `oidc` todavía no protege esta versión.
+
 Las variables de Compose para puertos, límites de memoria y carpetas del host se documentan en el
 [README, opción Docker](../README.md#opción-rápida-docker-desktop-recomendada-para-usarla).
 
@@ -234,6 +237,23 @@ Jobs de arq: `segment_study(ctx, patient, timepoint) -> dict` y `ingest_dicom(ct
 El trabajo pesado se corre con `await asyncio.to_thread(...)`. `job_timeout = 1800`.
 `GET /api/jobs` usa `arq.jobs.Job(job_id, redis).status()`; si es `complete`, llama `result_info()` y mapea
 `success=False` → `failed`, poniendo el `str` de la excepción en `error`.
+
+### Modelos de autenticación (A0; rutas pendientes de A2)
+
+```jsonc
+// AuthConfig: únicamente configuración pública
+{ "mode": "off" } // "off" | "oidc"
+
+// AuthSession: respuesta prevista de /api/auth/me
+{ "roles": ["reader"], "expires_at": "2026-11-05T12:00:00Z", "csrf_token": "…" }
+```
+
+`Role = "reader" | "analyst"`. `AuthSession.roles` no admite listas vacías ni roles desconocidos;
+`expires_at` exige una fecha ISO-8601 con zona horaria y `csrf_token` no puede estar vacío.
+Los modelos existen en Python y TypeScript; **ninguna ruta `/api/auth/*` está montada todavía**.
+No contienen issuer, subject, cookie, secreto del cliente ni tokens OIDC. La identidad interna es
+`Principal(issuer: str, sub: str, roles: frozenset[Role])`, inmutable y con sus tres campos no vacíos;
+se define en `identity.py` y no se publica como respuesta de la API.
 
 ## 8. Tickets
 
@@ -658,7 +678,8 @@ para todos los tamaños de volumen. Las duraciones mostradas en la UI son estima
 
 ## 17. Autenticación para demo académica · OIDC + Keycloak
 
-**Estado:** planificado, sin implementar. El usuario pidió incorporar esta fase el 2026-11-03.
+**Estado:** A0 implementa configuración y contratos; A1–A5 pendientes. El usuario pidió incorporar esta fase
+el 2026-11-03 y continuar su desarrollo el 2026-11-05.
 El alcance inmediato es una demo académica open source con datos públicos anonimizados o sintéticos;
 la visión posterior es una instalación hospitalaria. Este apartado no declara preparación para uso clínico.
 Los valores y contratos que siguen son decisiones de esta planificación; entrarán en vigor con sus tickets.
@@ -713,20 +734,30 @@ El rol administrativo de Keycloak no concede por sí mismo permisos dentro de Ce
 - Cookie `Secure` y HTTPS obligatorios fuera de la demo HTTP en loopback. El uso de HTTP y `start-dev`
   queda limitado a esa demo. No se envían imágenes, nombres de pacientes ni identificadores DICOM al proveedor.
 
-**Configuración propuesta** (se incorporará a `Settings`, Compose y README al implementar A0/A1):
+**Configuración disponible en `Settings` desde A0** (su conexión con Compose pertenece a A1):
 
 | Variable | Valor o regla |
 |---|---|
 | `CERBERUS_AUTH_MODE` | `off` en el modo local heredado; el overlay fija `oidc`; ningún fallback automático |
-| `CERBERUS_APP_ORIGIN` | `http://localhost:8080` en Docker; `http://localhost:5173` en desarrollo |
+| `CERBERUS_APP_ORIGIN` | Default `http://localhost:5173`; A1 fijará `http://localhost:8080` en Docker; origen exacto sin ruta ni barra final |
 | `CERBERUS_OIDC_ISSUER_URL` | Obligatorio en modo `oidc`; issuer público exacto del proveedor |
 | `CERBERUS_OIDC_BACKCHANNEL_URL` | Base interna confiable del mismo realm; si se omite, usa el issuer |
-| `CERBERUS_OIDC_CLIENT_ID` | `cerberus-web` en la demo |
+| `CERBERUS_OIDC_CLIENT_ID` | Default `cerberus-web`; no vacío en modo `oidc` |
 | `CERBERUS_OIDC_CLIENT_SECRET` | Obligatorio en modo `oidc`; solo backend y bootstrap, nunca frontend ni Git |
 | `CERBERUS_AUTH_COOKIE_SECURE` | `true`; `false` únicamente con origen público HTTP de loopback |
 | `CERBERUS_AUTH_IDLE_TIMEOUT_SECONDS` | `1800` |
-| `CERBERUS_AUTH_ABSOLUTE_TIMEOUT_SECONDS` | `3600`; no menor que el timeout de inactividad |
-| `CERBERUS_KEYCLOAK_HTTP_PORT` | `8081`, variable del overlay para el puerto del host |
+| `CERBERUS_AUTH_ABSOLUTE_TIMEOUT_SECONDS` | `3600`; ambos timeouts positivos, absoluto no menor que inactividad |
+| `CERBERUS_KEYCLOAK_HTTP_PORT` | Prevista en A1: `8081`, variable del overlay, no de `Settings` |
+
+Las URLs requieren HTTP(S), host y puerto válido; no admiten credenciales, espacios, query ni fragmento.
+Origen e issuer públicos requieren HTTPS salvo HTTP con `localhost` exacto o IP canónica de loopback;
+no se resuelven nombres por DNS para conceder esta excepción. `AUTH_COOKIE_SECURE=false` solo se admite
+con origen HTTP de loopback. El backchannel admite HTTP interno explícito y nunca sustituye el issuer
+validado; omitirlo conserva exactamente la URL del issuer, incluida su barra final si existe.
+En modo `oidc`, se exige issuer, cliente y secreto no vacíos, y CORS rechaza comodines. El secreto usa
+`SecretStr`; su representación y serialización lo ocultan, y los mensajes de validación omiten entradas.
+El modo `off` no exige proveedor ni secreto y sigue siendo el default. Estas validaciones son locales,
+sin discovery ni conexiones a Keycloak/Redis; todavía no habilitan autenticación.
 
 ### 17.3. Permisos y recursos
 
@@ -756,10 +787,11 @@ El rol administrativo de Keycloak no concede por sí mismo permisos dentro de Ce
   con autenticación previa a la revalidación. Logout no garantiza borrar archivos descargados o cachés previas;
   la política hospitalaria de retención en clientes se definirá antes de usar datos reales.
 
-### 17.4. Contratos previstos, todavía no vigentes
+### 17.4. Modelos disponibles y endpoints previstos
 
-Estos endpoints/modelos se añadirán conjuntamente a `schemas.py`, `frontend/src/api/types.ts` y al contrato
-de §7 en A0/A2. Esta planificación no cambia los contratos implementados de §6/§7 ni sus archivos de código.
+Los modelos `AuthConfig`, `AuthSession`, `AuthMode` y `Role` ya están reflejados en `schemas.py`,
+`frontend/src/api/types.ts` y §7 desde A0. `Principal` es interno. Los endpoints siguientes siguen
+pendientes de A2; su comportamiento previsto no está disponible todavía.
 
 | Método y ruta | Respuesta prevista |
 |---|---|
@@ -814,7 +846,8 @@ indican destinos previstos; las firmas de librerías se verificarán en su códi
 
 ### 17.6. Relación con QA y evolución hospitalaria
 
-La solicitud actual incorpora el plan; **no inicia su implementación ni las correcciones del QA**.
+La solicitud del 2026-11-05 autoriza continuar con autenticación; esta entrega implementa únicamente A0.
+Las correcciones del QA siguen pendientes y no se incluyen implícitamente en este ticket.
 A0/A1 pueden prepararse antes de cerrar la ola P, respetando sus dependencias. S1/S2 se resuelven
 coordinadamente con A3 para no duplicar middleware de CSRF/Host; sus guardas deben proteger también
 el modo local sin autenticación. La aceptación final de A5 requiere la **ola P** del QA (P1–P3, P5, S1–S3, Q1–Q4),
@@ -833,3 +866,10 @@ no criterios de una demo ni una promesa de cumplimiento clínico o normativo.
 - [Keycloak en Docker](https://www.keycloak.org/getting-started/getting-started-docker), [hostname/backchannel](https://www.keycloak.org/server/hostname) y [licencia](https://github.com/keycloak/keycloak/blob/main/LICENSE.txt).
 - [Authlib: clientes web y PKCE](https://docs.authlib.org/en/latest/oauth2/client/web/).
 - [OWASP: sesiones](https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html) y [CSRF](https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html).
+
+**Revisión de dependencia para A2 (2026-11-05):** [Authlib 1.9.4 en PyPI](https://pypi.org/project/Authlib/1.9.4/)
+declara Python ≥3.10, compatible con Python 3.11 del proyecto, y licencia
+[BSD-3-Clause](https://github.com/authlib/authlib/blob/v1.9.4/LICENSE). Permite redistribución abierta o
+cerrada conservando avisos y condiciones; al incorporarla se conservarán esos avisos. A0 no instala ni
+fija esta dependencia; A2 deberá comprobar versión, avisos de seguridad y APIs instaladas antes de añadirla
+a los grupos principal/runtime. No se implementará validación criptográfica propia.

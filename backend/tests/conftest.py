@@ -9,6 +9,41 @@ import pytest
 
 MakeNifti = Callable[..., Path]
 MakeStudy = Callable[..., Path]
+_AUTH_ENV_NAMES = (
+    "AUTH_MODE",
+    "APP_ORIGIN",
+    "OIDC_ISSUER_URL",
+    "OIDC_BACKCHANNEL_URL",
+    "OIDC_CLIENT_ID",
+    "OIDC_CLIENT_SECRET",
+    "AUTH_COOKIE_SECURE",
+    "AUTH_IDLE_TIMEOUT_SECONDS",
+    "AUTH_ABSOLUTE_TIMEOUT_SECONDS",
+)
+_AUTH_ENV_PATCH = pytest.StashKey[pytest.MonkeyPatch]()
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    """Aísla auth antes de que la colección importe `main.app` y cachee `Settings`."""
+    patch = pytest.MonkeyPatch()
+    for name in _AUTH_ENV_NAMES:
+        patch.delenv(f"CERBERUS_{name}", raising=False)
+    config.stash[_AUTH_ENV_PATCH] = patch
+
+
+def pytest_unconfigure(config: pytest.Config) -> None:
+    """Restaura el entorno si pytest se ejecuta dentro de otro proceso Python."""
+    patch = config.stash.get(_AUTH_ENV_PATCH, None)
+    if patch is not None:
+        patch.undo()
+
+
+@pytest.fixture(autouse=True)
+def _clean_auth_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """El entorno OIDC de una demo no debe activar auth en las pruebas existentes."""
+    for name in _AUTH_ENV_NAMES:
+        monkeypatch.delenv(f"CERBERUS_{name}", raising=False)
+
 
 # Cubo de GTV conocido (10×10×10 vóxeles) y caja de cerebro más grande, en índices de vóxel
 GTV_SLICE = (slice(10, 20), slice(10, 20), slice(5, 15))

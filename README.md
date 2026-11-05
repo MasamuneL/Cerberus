@@ -12,8 +12,10 @@ autoajuste de recursos y caché HTTP de volúmenes. Estado y trabajo pendiente e
 [`docs/HANDOFF.md`](docs/HANDOFF.md); historial en [`docs/PROGRESS.md`](docs/PROGRESS.md).
 Los hallazgos del [QA de seguridad y robustez](docs/QA_2026-10-29.md) siguen pendientes de corrección.
 
-**Siguiente fase planificada:** login OIDC con Keycloak para la demo académica, sesiones y roles lector/analista.
-Todavía no está implementada; alcance, tickets y evolución hospitalaria en
+**Autenticación en desarrollo:** A0 incorpora configuración validada y contratos para OIDC, sesiones y roles
+lector/analista. El inicio de sesión y la protección de recursos todavía no están disponibles (A1–A5);
+`CERBERUS_AUTH_MODE=oidc` por sí solo aún no protege la app. El modo local conserva `off` por defecto.
+Variables, restricciones y tickets en
 [`PLAN_MVP.md` §17](docs/PLAN_MVP.md#17-autenticación-para-demo-académica--oidc--keycloak).
 
 ## Qué incluye

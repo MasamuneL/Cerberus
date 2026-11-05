@@ -41,12 +41,12 @@ integrada por el PR #4; el usuario pidió continuar su implementación el 2026-1
 `oidc_client_secret: SecretStr | None`; issuer/backchannel opcionales en modo off.
 `Principal` es un modelo congelado con `issuer: str`, `sub: str`, `roles: frozenset[Role]` no vacíos.
 
-- [ ] Escribir pruebas parametrizadas de defaults, entorno, campos obligatorios OIDC, secretos vacíos,
+- [x] Escribir pruebas parametrizadas de defaults, entorno, campos obligatorios OIDC, secretos vacíos,
   timeouts cero/negativos/invertidos, seguridad de cookies y URLs válidas/engañosas.
-- [ ] Ejecutar `uv run pytest backend/tests/test_auth_config.py -q`; observar fallos por funcionalidad ausente.
-- [ ] Implementar validación con Pydantic instalado y análisis de URL, preservando el issuer exacto.
+- [x] Ejecutar `uv run pytest backend/tests/test_auth_config.py -q`; observar fallos por funcionalidad ausente.
+- [x] Implementar validación con Pydantic instalado y análisis de URL, preservando el issuer exacto.
   Resolver backchannel omitido al issuer; no iniciar conexiones. Probar identidad inmutable y roles inválidos.
-- [ ] Repetir pruebas focalizadas hasta obtener verde.
+- [x] Repetir pruebas focalizadas hasta obtener verde.
 
 ## Tarea 2 · Contratos públicos y documentación
 
@@ -57,11 +57,21 @@ integrada por el PR #4; el usuario pidió continuar su implementación el 2026-1
 `AuthSession(roles: list[Role], expires_at: datetime con zona, csrf_token: str)`.
 TypeScript usa `string` para fecha ISO-8601. `Principal` es interno y no se publica como respuesta.
 
-- [ ] Añadir pruebas de serialización pública con fechas con zona y rechazo de roles/fechas inválidos;
+- [x] Añadir pruebas de serialización pública con fechas con zona y rechazo de roles/fechas inválidos;
   ejecutar antes de implementar los modelos.
-- [ ] Implementar los modelos y su espejo TypeScript; documentar modelos disponibles y rutas pendientes A2.
-- [ ] Registrar versión/licencia de Authlib consultadas en fuentes primarias; su instalación pertenece a A2.
-- [ ] Ejecutar Ruff, formato, pyright, pytest rápido y build de frontend. Ejecutar el runner visual vigente
+- [x] Implementar los modelos y su espejo TypeScript; documentar modelos disponibles y rutas pendientes A2.
+- [x] Registrar versión/licencia de Authlib consultadas en fuentes primarias; su instalación pertenece a A2.
+- [x] Ejecutar Ruff, formato, pyright, pytest rápido y build de frontend. Ejecutar el runner visual vigente
   y revisar capturas si los servicios/datos están disponibles; registrar cualquier límite real.
 - [ ] Revisar el diff contra A0; commit, push y PR con criterios cumplidos. Mantener estado pendiente de
   integración hasta merge y registrar checkpoint/handoff verificables.
+
+## Registro de ejecución
+
+- Configuración e identidad: 87 casos pasaron después de observar 15 fallos por funcionalidad ausente.
+- Contratos: 5 fallos por modelos ausentes antes de implementarlos; serialización y validación después en verde.
+- Revisión independiente: un hallazgo de aislamiento previo a la colección de pytest, corregido con regresión
+  RED→GREEN; suite completa rápida de 568 casos en verde. Sin otros hallazgos accionables.
+- Paridad de contratos comprobada con JSON Schema de Python y compilación TypeScript; build en verde.
+- QA visual parcial documentado en CP-040: runner detenido durante axe de Segmentación; no se reutiliza el
+  reporte histórico como aprobación nueva. Capturas de capas y segmentación revisadas.
