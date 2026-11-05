@@ -41,7 +41,7 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 | D2e-back · autoajuste + caché HTTP (§16) | ✅ | feat/D2e-autotune | e74d08a | 2026-10-29 | Vikingo / Claude Code (subagente) | |
 | D2e-front · indicador de recursos + 304 (§16) | ✅ | feat/D2e-autotune | b4ef422 | 2026-10-29 | Vikingo / Claude Code (subagente) | |
 | D1 · actualización documental (CP-037/038) | ✅ | main | 42d39db, f45e5e7 | 2026-11-03 | Vikingo / Codex | PR #2 y #3 integrados |
-| A0 · contratos y configuración de auth (§17) | 🟡 | feat/A0-auth-config | ff989ea | 2026-11-05 | Vikingo / Codex | Implementado; PR #5 pendiente de integración. QA visual parcial; CP-040 |
+| A0 · contratos y configuración de auth (§17) | ✅ | feat/A0-auth-config | 3bd8ee4 | 2026-11-05 | Vikingo / Codex | PR #5 integrado tras QA completo; CP-041 |
 | A1 · Keycloak reproducible (§17) | ⬜ | — | — | — | — | Depende de A0 |
 | A2 · OIDC y sesiones (§17) | ⬜ | — | — | — | — | Depende de A0 y A1 |
 | A3 · permisos y propiedad (§17) | ⬜ | — | — | — | — | Depende de A2; coordinar S1/S2 del QA |
@@ -583,3 +583,13 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 - **Publicación:** implementación `ff989ea` en `feat/A0-auth-config`, subida y disponible en el
   [PR #5](https://github.com/MasamuneL/Cerberus/pull/5), pendiente de revisión/integración a `main`.
   El tablero conserva A0 🟡 hasta el merge. Siguiente paso: integrar A0 y entonces tomar A1.
+
+### CP-041 · 2026-11-05 · A0 integrado tras QA completo
+- **Autorización:** continuar los tickets posibles, hacer commits/push frecuentes y ejecutar QA antes del merge.
+- **QA previo al merge:** runner vigente sin cambios, 13:43:05–13:48:52 UTC, exit 0; **33/33 checks**, 14
+  auditorías axe sin violaciones automáticas y 27 capturas. Revisadas capas 1440×900 y tabla 005/t0 a 1280×800.
+  El bloqueo de CP-040 no se reprodujo; no se omitieron comprobaciones ni se modificó el runner.
+- **Checks:** Ruff/formato/pyright correctos, **568 tests rápidos aprobados, 5 slow excluidos**, build correcto.
+  Árbol del merge idéntico al commit validado `36812e4`; cambios posteriores solo documentales.
+- **Integración:** PR #5 fusionado mediante merge `3bd8ee4`. A0 ✅; login, permisos y UI todavía pendientes.
+- **Siguiente paso:** A1 en rama aislada, conservando los cambios de limpieza ajenos en el checkout principal.

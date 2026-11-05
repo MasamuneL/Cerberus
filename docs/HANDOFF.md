@@ -4,7 +4,7 @@
 > checkpoint. El historial completo está en [`PROGRESS.md`](PROGRESS.md) y el alcance y los contratos en
 > [`PLAN_MVP.md`](PLAN_MVP.md). Las reglas de trabajo están en [`../AGENTS.md`](../AGENTS.md).
 
-**Última actualización:** 2026-11-05 · último checkpoint: CP-040 · rama base: `main`
+**Última actualización:** 2026-11-05 · último checkpoint: CP-041 · rama base: `main`
 
 ## 1. Arranque rápido
 
@@ -41,13 +41,12 @@ y autoajuste de recursos y caché HTTP de NIfTI (§16: D2e-back/front).
 | §13–§14 · áreas y UX/UI | ✅ integrado | Capas, cursor, atajos, pestañas, funciones en riesgo, IBM Plex y navegación con teclado; PR #1, merge `bcef409` |
 | §15 · Docker Compose | ✅ integrado | Redis, API, worker y frontend/nginx; acceso local en `http://localhost:8080`; CP-031 |
 | §16 · recursos y caché | ✅ integrado | `CERBERUS_CPU_THREADS=auto`, `GET /api/system`, indicador y estimaciones en la UI, revalidación 304; CP-034 |
-| §17 · login para demo académica | 🟡 A0 implementado en rama | Configuración e identidad listas; pendiente de integración. Keycloak, sesiones, permisos y UI pendientes en A1–A5 |
+| §17 · login para demo académica | 🟡 A0 integrado | PR #5, merge `3bd8ee4`, QA completo en CP-041. Keycloak, sesiones, permisos y UI pendientes en A1–A5 |
 | QA de seguridad y robustez | ⬜ correcciones pendientes | Hallazgos y propuesta por olas en [`QA_2026-10-29.md`](QA_2026-10-29.md); CP-035/036 |
 
 **Integración:** CP-037, CP-038 y CP-039 integrados en `main` mediante los PR #2, #3 y #4
 (merges `42d39db`, `f45e5e7` y `c2e0a4c`). El plan funcional integrado llega hasta §16;
-A0 está implementado y validado en `feat/A0-auth-config` (`ff989ea`), disponible en el
-[PR #5](https://github.com/MasamuneL/Cerberus/pull/5), pendiente de revisión/integración.
+A0 está integrado mediante el [PR #5](https://github.com/MasamuneL/Cerberus/pull/5), merge `3bd8ee4`.
 
 **Validación de CP-037 (2026-11-03):** Ruff, formato y pyright correctos; **474 tests rápidos pasaron,
 5 slow excluidos**; frontend build correcto. Comprobados 34 enlaces locales sin errores. No se repitió
@@ -66,7 +65,7 @@ generados del JSON Schema contra las interfaces reales. Revisión independiente:
 ambiental, corregido y verificado con regresión que fallaba antes del cambio. Plan de ejecución en
 [`superpowers/plans/2026-11-05-A0-auth-config.md`](superpowers/plans/2026-11-05-A0-auth-config.md).
 No incluye rutas OIDC, Keycloak ni UI; configurar `oidc` todavía no protege los recursos. A1–A5 siguen pendientes;
-**siguiente paso:** revisar/integrar A0 antes de empezar A1. A5 depende de la ola P del QA
+**siguiente paso:** implementar A1 sobre `main`. A5 depende de la ola P del QA
 (P1–P3, P5, S1–S3 y Q1–Q4); S1/S2 se coordinan con A3.
 
 **Verificación visual de CP-040:** `CERBERUS_UI=http://localhost:5180 node verify.mjs` se ejecutó contra
@@ -106,7 +105,7 @@ regeneran con [`tools/e2e/README.md`](../tools/e2e/README.md); verificar siempre
 
 ### Cómo retomar con Claude u otra herramienta
 
-1. `git checkout main && git pull --ff-only`; comprobar si `feat/A0-auth-config` ya se integró antes de tomar A1.
+1. `git checkout main && git pull --ff-only`; A0 ya integrado. Continuar A1 según el tablero.
 2. Leer este archivo, `PROGRESS.md`, `QA_2026-10-29.md` y `PLAN_MVP.md` §13–§17.
    **No volver a implementar UX/UI, Docker, autoajuste ni 304.**
 3. Para desarrollo, usar el arranque de la sección 1. Para Docker: `docker compose up -d --build`,
