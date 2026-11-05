@@ -41,7 +41,7 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 | D2e-back · autoajuste + caché HTTP (§16) | ✅ | feat/D2e-autotune | e74d08a | 2026-10-29 | Vikingo / Claude Code (subagente) | |
 | D2e-front · indicador de recursos + 304 (§16) | ✅ | feat/D2e-autotune | b4ef422 | 2026-10-29 | Vikingo / Claude Code (subagente) | |
 | D1 · actualización documental (CP-037/038) | ✅ | main | 42d39db, f45e5e7 | 2026-11-03 | Vikingo / Codex | PR #2 y #3 integrados |
-| A0 · contratos y configuración de auth (§17) | ⬜ | — | — | — | — | Planificado en CP-039; sin implementar |
+| A0 · contratos y configuración de auth (§17) | 🟡 | feat/A0-auth-config | — | 2026-11-05 | Vikingo / Codex | Inicio autorizado; configuración y contratos, sin rutas de login |
 | A1 · Keycloak reproducible (§17) | ⬜ | — | — | — | — | Depende de A0 |
 | A2 · OIDC y sesiones (§17) | ⬜ | — | — | — | — | Depende de A0 y A1 |
 | A3 · permisos y propiedad (§17) | ⬜ | — | — | — | — | Depende de A2; coordinar S1/S2 del QA |

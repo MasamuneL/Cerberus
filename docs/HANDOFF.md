@@ -57,10 +57,12 @@ QA visual ni Docker en esta actualización documental; los resultados de esas su
 5 slow excluidos** y 35 enlaces locales comprobados. Contratos vigentes de §6/§7 intactos y A0–A5 pendientes.
 Solo cambian documentos; el login y su E2E no se han implementado ni ejecutado.
 
-**Siguiente paso:** revisar e integrar la planificación de autenticación (CP-039). Cuando el usuario solicite
-implementarla, empezar por A0 y seguir las dependencias de §17.5. A5 depende de la ola P del QA
-(P1–P3, P5, S1–S3 y Q1–Q4); S1/S2 se coordinan con A3. La solicitud actual incorpora el plan,
-sin iniciar implementación ni correcciones del QA.
+**Trabajo en curso (2026-11-05):** CP-039 ya está integrado por el PR #4 (`c2e0a4c`). El usuario autorizó
+continuar con el inicio de sesión. A0 está reservado en `feat/A0-auth-config` por Codex: configuración validada,
+identidad y contratos públicos. Plan de ejecución en
+[`superpowers/plans/2026-11-05-A0-auth-config.md`](superpowers/plans/2026-11-05-A0-auth-config.md).
+No incluye rutas OIDC, Keycloak ni UI. A1–A5 siguen pendientes; A5 depende de la ola P del QA
+(P1–P3, P5, S1–S3 y Q1–Q4); S1/S2 se coordinan con A3.
 
 **QA histórico de UX/UI (CP-027):** `CERBERUS_UI=http://localhost:5180 npm run verify` terminó con exit 0 el
 2026-10-29 a las 17:43:15 UTC: **33/33 checks**, **14 auditorías axe sin violaciones automáticas** y
