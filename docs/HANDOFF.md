@@ -72,7 +72,8 @@ de roles limitado a `cerberus-web`. **575 tests rápidos aprobados**, Ruff/forma
 correcto. QA real del proveedor: issuer/JWKS desde API, callback exacto, rechazo de redirect ajeno, lector y
 analista con Authorization Code+PKCE en Chrome, claim correcto y cuentas/contraseñas conservadas tras
 reiniciar PostgreSQL/Keycloak; cuentas temporales de QA eliminadas. Captura del login en español revisada.
-Revisión independiente sin hallazgos. Smoke Docker de la UI en curso antes de integrar.
+Revisión independiente sin hallazgos. Smoke Docker de la UI completo antes de integrar: **15/15 checks**,
+11 capturas, sin pendientes; revisadas 1440×900 y 1280×800 (14:01–14:04 UTC).
 Se corrigieron URLs HTTP de Debian a HTTPS en el Dockerfile: el build limpio fallaba con HTTP 403;
 las firmas de paquetes siguen verificándose. No incluye rutas/sesiones de Cerberus ni protección todavía.
 Plan de ejecución: [`superpowers/plans/2026-11-05-auth-remaining.md`](superpowers/plans/2026-11-05-auth-remaining.md).
