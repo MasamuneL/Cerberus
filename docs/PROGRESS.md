@@ -43,7 +43,7 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 | D1 · actualización documental (CP-037/038) | ✅ | main | 42d39db, f45e5e7 | 2026-11-03 | Vikingo / Codex | PR #2 y #3 integrados |
 | A0 · contratos y configuración de auth (§17) | ✅ | feat/A0-auth-config | 3bd8ee4 | 2026-11-05 | Vikingo / Codex | PR #5 integrado tras QA completo; CP-041 |
 | A1 · Keycloak reproducible (§17) | ✅ | feat/A1-keycloak | 5470dcf | 2026-11-05 | Vikingo / Codex | PR #6 integrado tras QA real y smoke Docker; CP-042 |
-| A2 · OIDC y sesiones (§17) | ⬜ | — | — | — | — | Depende de A0 y A1 |
+| A2 · OIDC y sesiones (§17) | 🟡 | feat/A2-oidc-sessions | — | 2026-11-05 | Vikingo / Codex | A0/A1 integrados; transacciones OIDC y sesiones Redis en curso |
 | A3 · permisos y propiedad (§17) | ⬜ | — | — | — | — | Depende de A2; coordinar S1/S2 del QA |
 | A4 · UI de acceso (§17) | ⬜ | — | — | — | — | Depende de A2 y A3 |
 | A5 · E2E y documentación de auth (§17) | ⬜ | — | — | — | — | Depende de A1–A4 y ola P del QA |

@@ -77,7 +77,8 @@ Revisión independiente sin hallazgos. Smoke Docker de la UI completo antes de i
 11 capturas, sin pendientes; revisadas 1440×900 y 1280×800 (14:01–14:04 UTC).
 Se corrigieron URLs HTTP de Debian a HTTPS en el Dockerfile: el build limpio fallaba con HTTP 403;
 las firmas de paquetes siguen verificándose. No incluye rutas/sesiones de Cerberus ni protección todavía.
-**Siguiente paso:** A2 sobre `main`, conservando este worktree y su `.env.auth` local para el QA del proveedor.
+**Trabajo en curso:** A2 en `feat/A2-oidc-sessions`, worktree `/private/tmp/cerberus-auth-A1`.
+Se conserva `.env.auth` local para el QA real; A0/A1 ya están en `main`.
 Plan de ejecución: [`superpowers/plans/2026-11-05-auth-remaining.md`](superpowers/plans/2026-11-05-auth-remaining.md).
 El usuario autorizó avanzar los tickets posibles con commits/push frecuentes y QA antes de cada merge.
 A5 depende de la ola P del QA
