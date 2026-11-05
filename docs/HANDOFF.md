@@ -65,7 +65,10 @@ generados del JSON Schema contra las interfaces reales. Revisión independiente:
 ambiental, corregido y verificado con regresión que fallaba antes del cambio. Plan de ejecución en
 [`superpowers/plans/2026-11-05-A0-auth-config.md`](superpowers/plans/2026-11-05-A0-auth-config.md).
 No incluye rutas OIDC, Keycloak ni UI; configurar `oidc` todavía no protege los recursos. A1–A5 siguen pendientes;
-**siguiente paso:** implementar A1 sobre `main`. A5 depende de la ola P del QA
+**Trabajo en curso:** A1 en `feat/A1-keycloak`, worktree `/private/tmp/cerberus-auth-A1`, reservado por Codex.
+Plan de ejecución: [`superpowers/plans/2026-11-05-auth-remaining.md`](superpowers/plans/2026-11-05-auth-remaining.md).
+El usuario autorizó avanzar los tickets posibles con commits/push frecuentes y QA antes de cada merge.
+A5 depende de la ola P del QA
 (P1–P3, P5, S1–S3 y Q1–Q4); S1/S2 se coordinan con A3.
 
 **Verificación visual de CP-040:** `CERBERUS_UI=http://localhost:5180 node verify.mjs` se ejecutó contra
