@@ -77,6 +77,12 @@ sin defectos visuales observados en ellas. `shots/report.json` registra la ejecu
 con errores de navegador cerrado tras SIGINT y exit 130. No se modificó el runner ni se declaró aprobación
 completa de QA; las capturas restantes con fecha anterior siguen siendo históricas.
 
+**QA previo a integración de A0 (2026-11-05):** nueva ejecución completa sin modificar el runner,
+13:43–13:48 UTC: **33/33 checks**, **14 auditorías axe sin violaciones automáticas**, 27 capturas y exit 0.
+Revisadas las capturas nuevas de capas a 1440×900 y tabla 005/t0 a 1280×800. El bloqueo anterior no se reprodujo;
+esta evidencia reemplaza la ejecución parcial como validación actual de A0. Ruff/formato/pyright y **568 tests
+rápidos** correctos; build de frontend correcto. No prueba autenticación real, todavía pendiente de A1–A5.
+
 **QA histórico de UX/UI (CP-027):** `CERBERUS_UI=http://localhost:5180 npm run verify` terminó con exit 0 el
 2026-10-29 a las 17:43:15 UTC: **33/33 checks**, **14 auditorías axe sin violaciones automáticas** y
 **27 capturas**. Revisadas capturas a 1440×900 y 1280×800, incluida la tabla de 005/t0 y el fondo del atlas.
