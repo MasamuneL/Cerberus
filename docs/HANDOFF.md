@@ -46,7 +46,8 @@ y autoajuste de recursos y caché HTTP de NIfTI (§16: D2e-back/front).
 
 **Integración:** CP-037, CP-038 y CP-039 integrados en `main` mediante los PR #2, #3 y #4
 (merges `42d39db`, `f45e5e7` y `c2e0a4c`). El plan funcional integrado llega hasta §16;
-A0 está implementado y validado en `feat/A0-auth-config`, pendiente de revisión/integración.
+A0 está implementado y validado en `feat/A0-auth-config` (`ff989ea`), disponible en el
+[PR #5](https://github.com/MasamuneL/Cerberus/pull/5), pendiente de revisión/integración.
 
 **Validación de CP-037 (2026-11-03):** Ruff, formato y pyright correctos; **474 tests rápidos pasaron,
 5 slow excluidos**; frontend build correcto. Comprobados 34 enlaces locales sin errores. No se repitió

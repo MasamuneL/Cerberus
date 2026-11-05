@@ -63,7 +63,7 @@ TypeScript usa `string` para fecha ISO-8601. `Principal` es interno y no se publ
 - [x] Registrar versión/licencia de Authlib consultadas en fuentes primarias; su instalación pertenece a A2.
 - [x] Ejecutar Ruff, formato, pyright, pytest rápido y build de frontend. Ejecutar el runner visual vigente
   y revisar capturas si los servicios/datos están disponibles; registrar cualquier límite real.
-- [ ] Revisar el diff contra A0; commit, push y PR con criterios cumplidos. Mantener estado pendiente de
+- [x] Revisar el diff contra A0; commit, push y PR con criterios cumplidos. Mantener estado pendiente de
   integración hasta merge y registrar checkpoint/handoff verificables.
 
 ## Registro de ejecución
@@ -75,3 +75,5 @@ TypeScript usa `string` para fecha ISO-8601. `Principal` es interno y no se publ
 - Paridad de contratos comprobada con JSON Schema de Python y compilación TypeScript; build en verde.
 - QA visual parcial documentado en CP-040: runner detenido durante axe de Segmentación; no se reutiliza el
   reporte histórico como aprobación nueva. Capturas de capas y segmentación revisadas.
+- Implementación `ff989ea` subida en `feat/A0-auth-config`, [PR #5](https://github.com/MasamuneL/Cerberus/pull/5).
+  Sin merge a `main`; A0 permanece pendiente de integración.

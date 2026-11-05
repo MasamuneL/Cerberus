@@ -41,7 +41,7 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 | D2e-back · autoajuste + caché HTTP (§16) | ✅ | feat/D2e-autotune | e74d08a | 2026-10-29 | Vikingo / Claude Code (subagente) | |
 | D2e-front · indicador de recursos + 304 (§16) | ✅ | feat/D2e-autotune | b4ef422 | 2026-10-29 | Vikingo / Claude Code (subagente) | |
 | D1 · actualización documental (CP-037/038) | ✅ | main | 42d39db, f45e5e7 | 2026-11-03 | Vikingo / Codex | PR #2 y #3 integrados |
-| A0 · contratos y configuración de auth (§17) | 🟡 | feat/A0-auth-config | — | 2026-11-05 | Vikingo / Codex | Implementado y validado; pendiente de integración. CP-040 |
+| A0 · contratos y configuración de auth (§17) | 🟡 | feat/A0-auth-config | ff989ea | 2026-11-05 | Vikingo / Codex | Implementado; PR #5 pendiente de integración. QA visual parcial; CP-040 |
 | A1 · Keycloak reproducible (§17) | ⬜ | — | — | — | — | Depende de A0 |
 | A2 · OIDC y sesiones (§17) | ⬜ | — | — | — | — | Depende de A0 y A1 |
 | A3 · permisos y propiedad (§17) | ⬜ | — | — | — | — | Depende de A2; coordinar S1/S2 del QA |
@@ -580,5 +580,6 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
   no es una aprobación global. Las capturas restantes de ejecuciones anteriores conservan su fecha histórica.
 - **Límites:** sin rutas de login, Keycloak, sesiones, permisos ni UI; configurar `oidc` todavía no protege
   recursos en esta versión. QA de seguridad y A1–A5 siguen pendientes. No se ejecutaron tests slow ni E2E de auth.
-- **Publicación:** implementación en `feat/A0-auth-config`, pendiente de revisión/integración a `main`.
+- **Publicación:** implementación `ff989ea` en `feat/A0-auth-config`, subida y disponible en el
+  [PR #5](https://github.com/MasamuneL/Cerberus/pull/5), pendiente de revisión/integración a `main`.
   El tablero conserva A0 🟡 hasta el merge. Siguiente paso: integrar A0 y entonces tomar A1.
