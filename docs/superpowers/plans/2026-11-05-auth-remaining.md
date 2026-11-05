@@ -46,7 +46,7 @@ antes de cada merge a `main` el 2026-11-05.
 - [x] Crear realm sin usuarios; registro público, implicit y password grant desactivados; roles de aplicación
   y mapper limitado al cliente para excluir roles administrativos.
 - [x] Validar Compose y stack real, metadata/JWKS desde API, callback/roles y persistencia tras reinicio.
-- [ ] Checks del repo, revisión independiente, commit/push/PR y merge solo después del QA; checkpoint.
+- [x] Checks del repo, revisión independiente, commit/push/PR y merge solo después del QA; checkpoint.
 
 ## A2 · OIDC y sesiones
 

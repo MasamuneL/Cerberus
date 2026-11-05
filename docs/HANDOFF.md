@@ -4,7 +4,7 @@
 > checkpoint. El historial completo está en [`PROGRESS.md`](PROGRESS.md) y el alcance y los contratos en
 > [`PLAN_MVP.md`](PLAN_MVP.md). Las reglas de trabajo están en [`../AGENTS.md`](../AGENTS.md).
 
-**Última actualización:** 2026-11-05 · último checkpoint: CP-041 · rama base: `main`
+**Última actualización:** 2026-11-05 · último checkpoint: CP-042 · rama base: `main`
 
 ## 1. Arranque rápido
 
@@ -41,12 +41,13 @@ y autoajuste de recursos y caché HTTP de NIfTI (§16: D2e-back/front).
 | §13–§14 · áreas y UX/UI | ✅ integrado | Capas, cursor, atajos, pestañas, funciones en riesgo, IBM Plex y navegación con teclado; PR #1, merge `bcef409` |
 | §15 · Docker Compose | ✅ integrado | Redis, API, worker y frontend/nginx; acceso local en `http://localhost:8080`; CP-031 |
 | §16 · recursos y caché | ✅ integrado | `CERBERUS_CPU_THREADS=auto`, `GET /api/system`, indicador y estimaciones en la UI, revalidación 304; CP-034 |
-| §17 · login para demo académica | 🟡 A0 integrado | PR #5, merge `3bd8ee4`, QA completo en CP-041. Keycloak, sesiones, permisos y UI pendientes en A1–A5 |
+| §17 · login para demo académica | 🟡 A0/A1 integrados | PR #5/#6, `3bd8ee4`/`5470dcf`; Keycloak listo. Sesiones, permisos y UI pendientes en A2–A5 |
 | QA de seguridad y robustez | ⬜ correcciones pendientes | Hallazgos y propuesta por olas en [`QA_2026-10-29.md`](QA_2026-10-29.md); CP-035/036 |
 
 **Integración:** CP-037, CP-038 y CP-039 integrados en `main` mediante los PR #2, #3 y #4
 (merges `42d39db`, `f45e5e7` y `c2e0a4c`). El plan funcional integrado llega hasta §16;
 A0 está integrado mediante el [PR #5](https://github.com/MasamuneL/Cerberus/pull/5), merge `3bd8ee4`.
+A1 está integrado mediante el [PR #6](https://github.com/MasamuneL/Cerberus/pull/6), merge `5470dcf`.
 
 **Validación de CP-037 (2026-11-03):** Ruff, formato y pyright correctos; **474 tests rápidos pasaron,
 5 slow excluidos**; frontend build correcto. Comprobados 34 enlaces locales sin errores. No se repitió
@@ -65,7 +66,7 @@ generados del JSON Schema contra las interfaces reales. Revisión independiente:
 ambiental, corregido y verificado con regresión que fallaba antes del cambio. Plan de ejecución en
 [`superpowers/plans/2026-11-05-A0-auth-config.md`](superpowers/plans/2026-11-05-A0-auth-config.md).
 No incluye rutas OIDC, Keycloak ni UI; configurar `oidc` todavía no protege los recursos. A1–A5 siguen pendientes;
-**Trabajo en curso:** A1 implementado en `feat/A1-keycloak` (`d044333`), worktree `/private/tmp/cerberus-auth-A1`.
+**A1 integrado (CP-042):** `feat/A1-keycloak`, merge `5470dcf`; worktree de desarrollo `/private/tmp/cerberus-auth-A1`.
 Overlay con Keycloak 26.8.1 y PostgreSQL 18, imágenes por digest; bootstrap crea `.env.auth` con permisos
 0600 y conserva archivos existentes. Realm sin usuarios, cliente confidencial con PKCE S256 y mapper
 de roles limitado a `cerberus-web`. **575 tests rápidos aprobados**, Ruff/formato/pyright correctos y build
@@ -76,6 +77,7 @@ Revisión independiente sin hallazgos. Smoke Docker de la UI completo antes de i
 11 capturas, sin pendientes; revisadas 1440×900 y 1280×800 (14:01–14:04 UTC).
 Se corrigieron URLs HTTP de Debian a HTTPS en el Dockerfile: el build limpio fallaba con HTTP 403;
 las firmas de paquetes siguen verificándose. No incluye rutas/sesiones de Cerberus ni protección todavía.
+**Siguiente paso:** A2 sobre `main`, conservando este worktree y su `.env.auth` local para el QA del proveedor.
 Plan de ejecución: [`superpowers/plans/2026-11-05-auth-remaining.md`](superpowers/plans/2026-11-05-auth-remaining.md).
 El usuario autorizó avanzar los tickets posibles con commits/push frecuentes y QA antes de cada merge.
 A5 depende de la ola P del QA
@@ -118,7 +120,7 @@ regeneran con [`tools/e2e/README.md`](../tools/e2e/README.md); verificar siempre
 
 ### Cómo retomar con Claude u otra herramienta
 
-1. `git checkout main && git pull --ff-only`; A0 ya integrado. Continuar A1 según el tablero.
+1. `git checkout main && git pull --ff-only`; A0 y A1 integrados. Continuar A2 según el tablero.
 2. Leer este archivo, `PROGRESS.md`, `QA_2026-10-29.md` y `PLAN_MVP.md` §13–§17.
    **No volver a implementar UX/UI, Docker, autoajuste ni 304.**
 3. Para desarrollo, usar el arranque de la sección 1. Para Docker: `docker compose up -d --build`,

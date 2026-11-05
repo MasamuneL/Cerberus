@@ -42,7 +42,7 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 | D2e-front · indicador de recursos + 304 (§16) | ✅ | feat/D2e-autotune | b4ef422 | 2026-10-29 | Vikingo / Claude Code (subagente) | |
 | D1 · actualización documental (CP-037/038) | ✅ | main | 42d39db, f45e5e7 | 2026-11-03 | Vikingo / Codex | PR #2 y #3 integrados |
 | A0 · contratos y configuración de auth (§17) | ✅ | feat/A0-auth-config | 3bd8ee4 | 2026-11-05 | Vikingo / Codex | PR #5 integrado tras QA completo; CP-041 |
-| A1 · Keycloak reproducible (§17) | 🟡 | feat/A1-keycloak | — | 2026-11-05 | Vikingo / Codex | A0 integrado; proveedor reproducible y QA real en curso |
+| A1 · Keycloak reproducible (§17) | ✅ | feat/A1-keycloak | 5470dcf | 2026-11-05 | Vikingo / Codex | PR #6 integrado tras QA real y smoke Docker; CP-042 |
 | A2 · OIDC y sesiones (§17) | ⬜ | — | — | — | — | Depende de A0 y A1 |
 | A3 · permisos y propiedad (§17) | ⬜ | — | — | — | — | Depende de A2; coordinar S1/S2 del QA |
 | A4 · UI de acceso (§17) | ⬜ | — | — | — | — | Depende de A2 y A3 |
@@ -593,3 +593,23 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
   Árbol del merge idéntico al commit validado `36812e4`; cambios posteriores solo documentales.
 - **Integración:** PR #5 fusionado mediante merge `3bd8ee4`. A0 ✅; login, permisos y UI todavía pendientes.
 - **Siguiente paso:** A1 en rama aislada, conservando los cambios de limpieza ajenos en el checkout principal.
+
+### CP-042 · 2026-11-05 · A1 · proveedor reproducible integrado
+- **Hecho:** overlay `compose.auth.yaml` con Keycloak 26.8.1 y PostgreSQL 18 por digest, red privada para la base,
+  seis servicios sanos y puertos de host solo loopback (8080 app, 8081 proveedor). `realm.json` sin usuarios,
+  cliente confidencial con callback exacto y PKCE S256; mapper de roles limitado a `cerberus-web`.
+  Bootstrap genera `.env.auth` 0600 sin mostrar secretos ni sobrescribir archivos existentes. README y §17 actualizados.
+- **Desviación necesaria:** Debian HTTP devolvía 403 en el build limpio; Dockerfile cambia repositorios a HTTPS
+  manteniendo firmas. Reconstrucción completa y arranque real correctos.
+- **Checks:** Ruff/formato/pyright correctos, **575 tests rápidos aprobados, 5 slow excluidos**, build correcto.
+  Siete tests nuevos cubren bootstrap, permisos, entorno, valores inválidos y preservación del archivo existente.
+- **QA del proveedor:** metadata y JWKS desde API con issuer público y transporte interno; callback exacto,
+  redirect ajeno rechazado, registro público desactivado. Cuentas temporales reader/analyst: Authorization Code
+  con PKCE en Chrome y claim real correcto. Tras reiniciar PostgreSQL/Keycloak, mismas cuentas, roles y contraseñas
+  siguen funcionando; cuentas de QA eliminadas. Captura en español revisada.
+- **QA Docker previo al merge:** 2026-11-05 14:01:13–14:04:13 UTC, exit 0, **15/15 checks**, 11 capturas y ningún
+  pendiente. Revisadas capturas de recursos 1440×900 y volumetría 1280×800. Revisión independiente sin hallazgos.
+- **Integración:** PR #6, merge `5470dcf`; árbol igual al commit validado `111811d`. Checkpoint documental posterior.
+- **Límites y siguiente paso:** A2 (OIDC y sesiones), luego A3 (protección) y A4 (UI). A1 todavía no protege
+  los recursos de Cerberus; A5 y ola P pendientes. Trabajo aislado en `/private/tmp/cerberus-auth-A1`; secretos
+  locales en `.env.auth`, ignorados por Git. Se conservan cambios ajenos de limpieza en el checkout principal.
