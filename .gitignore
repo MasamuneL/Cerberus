@@ -12,6 +12,7 @@ wheels/
 .venv/
 venv/
 .env
+.env.auth
 
 # Datos: solo se versiona la muestra Data/001 (vía Git LFS).
 # El resto se descarga de TCIA (ver README).
