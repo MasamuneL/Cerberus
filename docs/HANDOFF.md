@@ -4,7 +4,7 @@
 > checkpoint. El historial completo está en [`PROGRESS.md`](PROGRESS.md) y el alcance y los contratos en
 > [`PLAN_MVP.md`](PLAN_MVP.md). Las reglas de trabajo están en [`../AGENTS.md`](../AGENTS.md).
 
-**Última actualización:** 2026-11-03 · último checkpoint: CP-039 · rama base: `main`
+**Última actualización:** 2026-11-05 · último checkpoint: CP-040 · rama base: `main`
 
 ## 1. Arranque rápido
 
@@ -41,13 +41,13 @@ y autoajuste de recursos y caché HTTP de NIfTI (§16: D2e-back/front).
 | §13–§14 · áreas y UX/UI | ✅ integrado | Capas, cursor, atajos, pestañas, funciones en riesgo, IBM Plex y navegación con teclado; PR #1, merge `bcef409` |
 | §15 · Docker Compose | ✅ integrado | Redis, API, worker y frontend/nginx; acceso local en `http://localhost:8080`; CP-031 |
 | §16 · recursos y caché | ✅ integrado | `CERBERUS_CPU_THREADS=auto`, `GET /api/system`, indicador y estimaciones en la UI, revalidación 304; CP-034 |
-| §17 · login para demo académica | ⬜ implementación pendiente | OIDC + Keycloak, sesiones y roles lector/analista; tickets A0–A5, plan incorporado en CP-039 |
+| §17 · login para demo académica | 🟡 A0 implementado en rama | Configuración e identidad listas; pendiente de integración. Keycloak, sesiones, permisos y UI pendientes en A1–A5 |
 | QA de seguridad y robustez | ⬜ correcciones pendientes | Hallazgos y propuesta por olas en [`QA_2026-10-29.md`](QA_2026-10-29.md); CP-035/036 |
 
-**Trabajo documental:** CP-037 y CP-038 integrados en `main` mediante los PR #2 y #3
-(merges `42d39db` y `f45e5e7`). CP-039 incorpora §17 al plan, pendiente de integración desde
-`docs/AUTH-demo-plan`. No instala Keycloak, no añade login y no corrige el QA. No hay implementación
-a medias declarada. El plan funcional implementado llega hasta §16; §17 amplía el trabajo pendiente.
+**Integración:** CP-037, CP-038 y CP-039 integrados en `main` mediante los PR #2, #3 y #4
+(merges `42d39db`, `f45e5e7` y `c2e0a4c`). El plan funcional integrado llega hasta §16;
+A0 está implementado y validado en `feat/A0-auth-config` (`ff989ea`), disponible en el
+[PR #5](https://github.com/MasamuneL/Cerberus/pull/5), pendiente de revisión/integración.
 
 **Validación de CP-037 (2026-11-03):** Ruff, formato y pyright correctos; **474 tests rápidos pasaron,
 5 slow excluidos**; frontend build correcto. Comprobados 34 enlaces locales sin errores. No se repitió
@@ -57,10 +57,31 @@ QA visual ni Docker en esta actualización documental; los resultados de esas su
 5 slow excluidos** y 35 enlaces locales comprobados. Contratos vigentes de §6/§7 intactos y A0–A5 pendientes.
 Solo cambian documentos; el login y su E2E no se han implementado ni ejecutado.
 
-**Siguiente paso:** revisar e integrar la planificación de autenticación (CP-039). Cuando el usuario solicite
-implementarla, empezar por A0 y seguir las dependencias de §17.5. A5 depende de la ola P del QA
-(P1–P3, P5, S1–S3 y Q1–Q4); S1/S2 se coordinan con A3. La solicitud actual incorpora el plan,
-sin iniciar implementación ni correcciones del QA.
+**CP-040 · A0 (2026-11-05):** el usuario autorizó continuar con el inicio de sesión. En `feat/A0-auth-config`,
+Codex implementó `Settings` para `off`/`oidc`, URLs públicas/backchannel, secreto protegido, cookies y timeouts;
+`Principal` inmutable y contratos `AuthConfig`/`AuthSession` en Python/TypeScript. Los tests aíslan el entorno
+OIDC antes de importar la app y lo restauran al salir de pytest. **568 tests rápidos aprobados, 5 slow
+excluidos**, Ruff/formato/pyright y build correctos; paridad de tipos comprobada compilando contratos
+generados del JSON Schema contra las interfaces reales. Revisión independiente: un hallazgo de aislamiento
+ambiental, corregido y verificado con regresión que fallaba antes del cambio. Plan de ejecución en
+[`superpowers/plans/2026-11-05-A0-auth-config.md`](superpowers/plans/2026-11-05-A0-auth-config.md).
+No incluye rutas OIDC, Keycloak ni UI; configurar `oidc` todavía no protege los recursos. A1–A5 siguen pendientes;
+**siguiente paso:** revisar/integrar A0 antes de empezar A1. A5 depende de la ola P del QA
+(P1–P3, P5, S1–S3 y Q1–Q4); S1/S2 se coordinan con A3.
+
+**Verificación visual de CP-040:** `CERBERUS_UI=http://localhost:5180 node verify.mjs` se ejecutó contra
+API/Vite de esta rama. Completó 10 comprobaciones a 1440×900 y generó 9 capturas nuevas; quedó sin avanzar
+después de `1440x900_segmentación.png`, durante la auditoría de ese panel. Se interrumpió la ejecución;
+no hay aprobación global ni verificación a 1280×800. Revisadas las capturas de capas y segmentación,
+sin defectos visuales observados en ellas. `shots/report.json` registra la ejecución parcial: 10/13 checks,
+con errores de navegador cerrado tras SIGINT y exit 130. No se modificó el runner ni se declaró aprobación
+completa de QA; las capturas restantes con fecha anterior siguen siendo históricas.
+
+**QA previo a integración de A0 (2026-11-05):** nueva ejecución completa sin modificar el runner,
+13:43–13:48 UTC: **33/33 checks**, **14 auditorías axe sin violaciones automáticas**, 27 capturas y exit 0.
+Revisadas las capturas nuevas de capas a 1440×900 y tabla 005/t0 a 1280×800. El bloqueo anterior no se reprodujo;
+esta evidencia reemplaza la ejecución parcial como validación actual de A0. Ruff/formato/pyright y **568 tests
+rápidos** correctos; build de frontend correcto. No prueba autenticación real, todavía pendiente de A1–A5.
 
 **QA histórico de UX/UI (CP-027):** `CERBERUS_UI=http://localhost:5180 npm run verify` terminó con exit 0 el
 2026-10-29 a las 17:43:15 UTC: **33/33 checks**, **14 auditorías axe sin violaciones automáticas** y
@@ -85,7 +106,7 @@ regeneran con [`tools/e2e/README.md`](../tools/e2e/README.md); verificar siempre
 
 ### Cómo retomar con Claude u otra herramienta
 
-1. `git checkout main && git pull --ff-only`; comprobar si la rama documental de CP-039 ya se integró.
+1. `git checkout main && git pull --ff-only`; comprobar si `feat/A0-auth-config` ya se integró antes de tomar A1.
 2. Leer este archivo, `PROGRESS.md`, `QA_2026-10-29.md` y `PLAN_MVP.md` §13–§17.
    **No volver a implementar UX/UI, Docker, autoajuste ni 304.**
 3. Para desarrollo, usar el arranque de la sección 1. Para Docker: `docker compose up -d --build`,
@@ -115,8 +136,8 @@ regeneran con [`tools/e2e/README.md`](../tools/e2e/README.md); verificar siempre
 Reporte exportable por estudio (PDF o imprimible), 3D más limpio (iluminación y orientación), subir archivos
 arrastrándolos, atajos extra. Fase 2 pendiente: skull-strip (HD-BET o SynthStrip) para DICOM sin
 `brain_mask`, registro entre series y RTSTRUCT. Docker y el autoajuste ya están implementados.
-El login para la demo ya tiene planificación incorporada en `PLAN_MVP.md` §17, con implementación pendiente;
-la evolución hospitalaria se describe aparte y no se considera aprobada para ejecución.
+El login para la demo tiene planificación incorporada en `PLAN_MVP.md` §17; A0 está implementado en rama,
+con A1–A5 pendientes. La evolución hospitalaria se describe aparte y no se considera aprobada para ejecución.
 El plan de correcciones del QA está en [`QA_2026-10-29.md` §6](QA_2026-10-29.md#6-plan-de-corrección-propuesto-por-olas).
 
 ## 5. Protocolo de handoff (para quien trabaje, humano o IA)

@@ -5,6 +5,18 @@ export type RanoCategory = "PD" | "PR" | "MR" | "SD";
 export type JobState = "queued" | "in_progress" | "complete" | "failed" | "not_found";
 export type UploadState = "processing" | "ready" | "failed";
 export type ModelChannel = "T1c" | "T1" | "T2" | "FLAIR";
+export type AuthMode = "off" | "oidc";
+export type Role = "reader" | "analyst";
+
+export interface AuthConfig {
+  mode: AuthMode;
+}
+
+export interface AuthSession {
+  roles: Role[];
+  expires_at: string; // ISO-8601 con zona horaria
+  csrf_token: string;
+}
 
 export interface Study {
   patient: string;

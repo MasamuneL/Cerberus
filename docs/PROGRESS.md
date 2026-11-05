@@ -41,7 +41,7 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 | D2e-back · autoajuste + caché HTTP (§16) | ✅ | feat/D2e-autotune | e74d08a | 2026-10-29 | Vikingo / Claude Code (subagente) | |
 | D2e-front · indicador de recursos + 304 (§16) | ✅ | feat/D2e-autotune | b4ef422 | 2026-10-29 | Vikingo / Claude Code (subagente) | |
 | D1 · actualización documental (CP-037/038) | ✅ | main | 42d39db, f45e5e7 | 2026-11-03 | Vikingo / Codex | PR #2 y #3 integrados |
-| A0 · contratos y configuración de auth (§17) | ⬜ | — | — | — | — | Planificado en CP-039; sin implementar |
+| A0 · contratos y configuración de auth (§17) | 🟡 | feat/A0-auth-config | ff989ea | 2026-11-05 | Vikingo / Codex | Implementado; PR #5 pendiente de integración. QA visual parcial; CP-040 |
 | A1 · Keycloak reproducible (§17) | ⬜ | — | — | — | — | Depende de A0 |
 | A2 · OIDC y sesiones (§17) | ⬜ | — | — | — | — | Depende de A0 y A1 |
 | A3 · permisos y propiedad (§17) | ⬜ | — | — | — | — | Depende de A2; coordinar S1/S2 del QA |
@@ -553,3 +553,33 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 - **Publicación:** rama `docs/AUTH-demo-plan`; integración a `main` pendiente. Sin código, dependencias nuevas,
   servicios de identidad instalados ni cambios en los contratos implementados.
 - **Siguiente paso:** revisar e integrar el plan; cuando se solicite implementarlo, comenzar por A0 y seguir §17.5.
+
+### CP-040 · 2026-11-05 · A0 · configuración y contratos de autenticación
+- **Pedido del usuario:** continuar el plan con el inicio de sesión. CP-039 ya está integrado por el PR #4,
+  merge `c2e0a4c`. Se toma únicamente A0, según el flujo de un ticket por rama.
+- **Hecho:** `Settings` admite `off`/`oidc`, origen público, issuer exacto y backchannel separado, cliente,
+  secreto con `SecretStr`, cookie segura y timeouts positivos/coherentes. OIDC exige credenciales; HTTP público
+  y cookies inseguras quedan limitados a loopback según §17. CORS rechaza comodines en modo OIDC.
+  `identity.py` define `AuthMode`, `Role` y `Principal` inmutable; `schemas.py`, TypeScript y §7 incorporan
+  `AuthConfig` y `AuthSession`. README y §17 distinguen modelos disponibles de endpoints pendientes.
+- **Revisión:** APIs comprobadas en Pydantic instalado. Authlib 1.9.4 declara Python ≥3.10 y BSD-3-Clause
+  (fuentes primarias enlazadas en §17); compatible con Python 3.11, con conservación de avisos al incorporarla.
+  No se instala ni cambia `uv.lock`; versión, seguridad y firmas se verificarán de nuevo en A2.
+- **Pruebas:** **568 tests rápidos aprobados, 5 slow excluidos** (94 nuevos casos), Ruff y formato correctos,
+  pyright 0 errores y frontend build correcto. Paridad Python/TypeScript comprobada generando tipos desde
+  JSON Schema y compilando aserciones de igualdad contra las interfaces reales; 36 enlaces locales sin errores.
+  Se conserva el aviso conocido de bundles mayores de 500 kB.
+- **Revisión independiente:** encontró que la fixture de aislamiento ambiental se ejecutaba después de importar
+  `main.app`. Corregido con `pytest_configure`/`pytest_unconfigure` y fixture por test. La regresión en un
+  subproceso falló antes de la corrección y pasó después; verifica colección con OIDC ambiental inválido y
+  restauración del entorno. Sin otros hallazgos accionables.
+- **QA visual parcial:** runner vigente contra API/Vite de la rama en 5180; 10 comprobaciones completadas a
+  1440×900 y 9 capturas nuevas. Se interrumpió al quedar sin avance durante axe de Segmentación, después de
+  guardar su captura. Revisadas capas y segmentación, sin defectos observados; no se completó 1280×800.
+  `shots/report.json` registra resultado parcial 10/13, errores de navegador cerrado tras SIGINT y exit 130;
+  no es una aprobación global. Las capturas restantes de ejecuciones anteriores conservan su fecha histórica.
+- **Límites:** sin rutas de login, Keycloak, sesiones, permisos ni UI; configurar `oidc` todavía no protege
+  recursos en esta versión. QA de seguridad y A1–A5 siguen pendientes. No se ejecutaron tests slow ni E2E de auth.
+- **Publicación:** implementación `ff989ea` en `feat/A0-auth-config`, subida y disponible en el
+  [PR #5](https://github.com/MasamuneL/Cerberus/pull/5), pendiente de revisión/integración a `main`.
+  El tablero conserva A0 🟡 hasta el merge. Siguiente paso: integrar A0 y entonces tomar A1.
