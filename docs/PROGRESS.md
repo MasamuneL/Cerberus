@@ -633,7 +633,9 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
   sesión. Sin cambios en código de backend/frontend, Compose ni contratos de disco/API.
 - **Graphify:** CLI 0.9.102 temporal, extracción AST local sin LLM; configuración en `.graphifyignore`.
   Regenerado tras archivar, limpiar ramas e incorporar A1; `graph.json`, `graph.html` y `GRAPH_REPORT.md`
-  locales, ignorados por Git. Los documentos no se indexan en este modo.
+  locales, ignorados por Git. Después el usuario autorizó instalarlo: disponible de forma persistente
+  en `~/.local/bin/graphify`, con entorno aislado de uv; sin dependencias nuevas en Cerberus.
+  Los documentos no se indexan en este modo.
 - **Checks:** Ruff y formato correctos, pyright sin errores, **575 tests rápidos aprobados, 5 slow excluidos**;
   build correcto con el aviso conocido de bundles grandes. Versiones del lockfile, grupo `runtime`, hashes
   de originales, enlaces de datos y 50 enlaces Markdown locales comprobados. Tests slow no ejecutados.

@@ -39,7 +39,8 @@ comandos en [`ARCHIVO.md`](ARCHIVO.md). Diez dependencias específicas pasan al 
 `runtime` y las versiones del lockfile se conservan. Eliminadas 32 ramas locales y 31 remotas integradas,
 con bundles verificados; los dos borradores `wip` y el trabajo activo de A2 se mantienen.
 Checks tras sincronizar el entorno sin dependencias opcionales: **575 tests rápidos aprobados,
-5 slow excluidos**, Ruff/formato/pyright y build correctos. Graphify se regenera tras los bloques de cambios;
+5 slow excluidos**, Ruff/formato/pyright y build correctos. Graphify 0.9.102 instalado en `~/.local/bin/graphify`
+con autorización del usuario; se regenera tras los bloques de cambios;
 artefactos locales en `graphify-out/`, excluidos de Git. QA visual final en 5182 (14:09–14:14 UTC):
 **33/33 checks**, 14 auditorías axe sin violaciones automáticas, 27 capturas y exit 0. Revisadas capas y
 segmentación a 1440×900 y tabla 005/t0 a 1280×800, sin regresiones observadas. Esta ejecución sustituye

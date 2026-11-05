@@ -73,15 +73,20 @@ git push origin feat/B3-volumetry  # solo si también se necesita restaurar la r
 
 ## Graphify
 
-El entorno no tenía CLI ni grafo previo. Se usa Graphify 0.9.102 mediante `uv run --no-project --with`,
-sin añadirlo a las dependencias de Cerberus. `.graphifyignore` excluye datos, modelos, dependencias,
-cachés y resultados. Los artefactos locales se generan en `graphify-out/`, ignorado por Git.
+El entorno no tenía CLI ni grafo previo. La primera extracción usó Graphify 0.9.102 mediante
+`uv run --no-project --with`. Después, con autorización del usuario, se instaló como herramienta
+persistente de usuario mediante `uv tool install graphifyy==0.9.102`; no se añadió a las dependencias
+de Cerberus. El ejecutable queda en `~/.local/bin/graphify`. `.graphifyignore` excluye datos, modelos,
+dependencias, cachés y resultados. Los artefactos locales se generan en `graphify-out/`, ignorado por Git.
 
 ```bash
-uv run --no-project --with graphifyy==0.9.102 graphify extract . --code-only --no-cluster --max-workers 2
-uv run --no-project --with graphifyy==0.9.102 graphify update . --force --no-cluster
-uv run --no-project --with graphifyy==0.9.102 graphify cluster-only . --no-label
+graphify extract . --code-only --no-cluster --max-workers 2
+graphify update . --force --no-cluster
+graphify cluster-only . --no-label
 ```
+
+Sin instalación persistente, los mismos comandos funcionan anteponiendo
+`uv run --no-project --with graphifyy==0.9.102` a `graphify`.
 
 La extracción usa AST local y omite documentos y análisis semántico por LLM. El informe y el HTML
 se regeneran después de cada bloque importante. Este grafo ayuda a revisar dependencias, pero no
