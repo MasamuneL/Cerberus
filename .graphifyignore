@@ -1,0 +1,19 @@
+# Solo código del proyecto; excluir datos, dependencias y artefactos generados.
+.git/
+.venv/
+.idea/
+.claude/
+Data/
+models/
+storage/
+storage-docker/
+**/node_modules/
+**/dist/
+**/__pycache__/
+__marimo__/
+.pytest_cache/
+.ruff_cache/
+tools/e2e/shots/
+graphify-out/
+uv.lock
+**/package-lock.json

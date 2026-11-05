@@ -4,7 +4,7 @@
 > checkpoint. El historial completo está en [`PROGRESS.md`](PROGRESS.md) y el alcance y los contratos en
 > [`PLAN_MVP.md`](PLAN_MVP.md). Las reglas de trabajo están en [`../AGENTS.md`](../AGENTS.md).
 
-**Última actualización:** 2026-11-05 · último checkpoint: CP-042 · rama base: `main`
+**Última actualización:** 2026-11-05 · último checkpoint: CP-043 · rama base: `main`
 
 ## 1. Arranque rápido
 
@@ -31,6 +31,23 @@ Abre las PNG y revísalas: **no te fíes solo de los ✅**. Leer píxeles del ca
 (`preserveDrawingBuffer=false`), así que esos chequeos de píxeles no son confiables.
 
 ## 2. Estado actual
+
+**CP-043 · limpieza del repositorio:** preparada en `chore/repo-cleanup`, basada en A0/A1 ya integrados.
+Notebook y auxiliar Mayavi archivados sin modificar en `../Cerberus-archivo-2026-11-05/referencia/`;
+el ejemplo `main.py` y las cachés del notebook están en cuarentena. Recuperación desde Git, hashes y
+comandos en [`ARCHIVO.md`](ARCHIVO.md). Diez dependencias específicas pasan al grupo opcional `notebook`;
+`runtime` y las versiones del lockfile se conservan. Eliminadas 32 ramas locales y 31 remotas integradas,
+con bundles verificados; los dos borradores `wip` y el trabajo activo de A2 se mantienen.
+Checks tras sincronizar el entorno sin dependencias opcionales: **575 tests rápidos aprobados,
+5 slow excluidos**, Ruff/formato/pyright y build correctos. Graphify 0.9.102 instalado en `~/.local/bin/graphify`
+con autorización del usuario; se regenera tras los bloques de cambios;
+artefactos locales en `graphify-out/`, excluidos de Git. QA visual final en 5182 (14:09–14:14 UTC):
+**33/33 checks**, 14 auditorías axe sin violaciones automáticas, 27 capturas y exit 0. Revisadas capas y
+segmentación a 1440×900 y tabla 005/t0 a 1280×800, sin regresiones observadas. Esta ejecución sustituye
+el primer intento, que perdió el Vite compartido; el runner no cambió. Auditados 50 enlaces locales,
+integridad de los bundles y ausencia de archivos archivados/datos en Graphify.
+Siguiente paso: revisar e integrar el PR de limpieza. Autenticación continúa
+en su worktree independiente; esta limpieza no implementa A2 ni modifica sus contratos.
 
 **Implementación integrada en `main`:** MVP completo (B0–B8, F0–F6, D1, E2E), áreas de Brodmann
 (§13: B9–B11, F7, F8), dominios funcionales y UX/UI (§14: B12, F9–F11), Docker Compose (§15: D2a–D2c)
