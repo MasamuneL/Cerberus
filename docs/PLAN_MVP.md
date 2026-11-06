@@ -45,8 +45,8 @@ y httpx como dependencias de desarrollo.
 **Extensiones ya implementadas:** áreas de Brodmann (§13), dominios y UX/UI (§14), Docker Compose (§15),
 autoajuste de recursos y caché HTTP (§16).
 
-**Autenticación en desarrollo:** login y sesiones en la API desde A2 (§17). La protección del catálogo,
-los archivos y los trabajos requiere A3; la interfaz de acceso requiere A4. La aceptación final corresponde a A5.
+**Autenticación en desarrollo:** login y sesiones desde A2 (§17); A3 protege catálogo, archivos y trabajos.
+La interfaz de acceso requiere A4. La aceptación final corresponde a A5.
 
 **Fuera del alcance implementado:** auth/usuarios, base de datos, Otsu/K-Means en la app, edema FLAIR,
 skull-stripping automático, registro entre series, RTSTRUCT (rt-utils), exportar DICOM SEG y Mayavi en la app web.
