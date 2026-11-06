@@ -106,7 +106,12 @@ automáticas y 27 capturas (22:01:16–22:07:03 UTC); smoke Docker **15/15**, 11
 (22:08:20–22:11:07 UTC). Revisadas capturas de capas 1440×900 y tabla 005/t0 1280×800, y recursos/volumetría
 Docker en ambas resoluciones. La restauración del wrapper de QA falló por cwd; corregida y ejecutada
 manualmente: `/auth/config` informa `oidc` y catálogo anónimo devuelve 401. No es un fallo del runner ni del producto.
-**Trabajo en curso:** A4 en `feat/A4-auth-ui`, mismo worktree. Después, ola P pendiente y A5.
+**Trabajo en curso:** A4 en `feat/A4-auth-ui`, mismo worktree. Navegación de errores implementada y subida
+hasta `93620fc`; UI aún pendiente. El usuario pidió QA durante esta fase: **732 tests rápidos**, visual
+**33/33**, 14 axe sin violaciones automáticas, 27 capturas y smoke Docker **15/15** con 11 capturas,
+sin pendientes. Regresión Keycloak/Redis y permisos reales aprobados, incluida navegación HTML; cuentas
+eliminadas, timeouts y OIDC restaurados. Informe: [`QA_AUTH_2026-11-06.md`](QA_AUTH_2026-11-06.md).
+No se integró A4 ni se declaró completo. Después, ola P pendiente y A5.
 Plan de ejecución: [`superpowers/plans/2026-11-05-auth-remaining.md`](superpowers/plans/2026-11-05-auth-remaining.md).
 El usuario autorizó avanzar los tickets posibles con commits/push frecuentes y QA antes de cada merge.
 A5 depende de la ola P del QA

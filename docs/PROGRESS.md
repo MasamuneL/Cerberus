@@ -45,7 +45,7 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 | A1 · Keycloak reproducible (§17) | ✅ | feat/A1-keycloak | 5470dcf | 2026-11-05 | Vikingo / Codex | PR #6 integrado tras QA real y smoke Docker; CP-042 |
 | A2 · OIDC y sesiones (§17) | ✅ | feat/A2-oidc-sessions | 7635e58 | 2026-11-06 | Vikingo / Codex | PR #8 integrado tras QA real y smoke Docker; CP-044 |
 | A3 · permisos y propiedad (§17) | ✅ | feat/A3-access-control | 9674ee4 | 2026-11-06 | Vikingo / Codex | PR #9 integrado; 725 tests, visual 33/33 y Docker 15/15; CP-045 |
-| A4 · UI de acceso (§17) | 🟡 | feat/A4-auth-ui | — | 2026-11-06 | Vikingo / Codex | A2/A3 integrados; acceso, roles y expiración en curso |
+| A4 · UI de acceso (§17) | 🟡 | feat/A4-auth-ui | — | 2026-11-06 | Vikingo / Codex | Navegación 93620fc; QA 732 tests, visual 33/33, Docker 15/15; UI pendiente |
 | A5 · E2E y documentación de auth (§17) | ⬜ | — | — | — | — | Depende de A1–A4 y ola P del QA |
 
 ## Bitácora de checkpoints
