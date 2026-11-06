@@ -1,5 +1,7 @@
 // Cliente HTTP de la API (docs/PLAN_MVP.md §7).
 import type {
+  AuthConfig,
+  AuthSession,
   ConfirmUpload,
   JobCreated,
   JobStatus,
@@ -30,27 +32,82 @@ export class ApiError extends Error {
 
 const enc = encodeURIComponent;
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+// Solo memoria: ninguna credencial ni token CSRF se persiste en el navegador.
+let csrfToken: string | null = null;
+let unauthorized: (() => void) | null = null;
+let generation = 0;
+const pending = new Set<AbortController>();
+
+export function clearAuthContext(): void {
+  csrfToken = null;
+  unauthorized = null;
+  generation += 1;
+  for (const controller of pending) controller.abort();
+  pending.clear();
+}
+
+export function setAuthContext(token: string, onUnauthorized: () => void): void {
+  if (csrfToken !== token) clearAuthContext();
+  csrfToken = token;
+  unauthorized = onUnauthorized;
+}
+
+async function exchange<T>(
+  path: string,
+  init: RequestInit | undefined,
+  consume: (response: Response) => Promise<T>,
+  observeUnauthorized = true,
+): Promise<T> {
+  const controller = new AbortController();
+  const requestGeneration = generation;
+  pending.add(controller);
   const headers = new Headers(init?.headers);
   if (init?.method && !["GET", "HEAD", "OPTIONS"].includes(init.method.toUpperCase())) {
     headers.set("X-Cerberus", "1");
+    if (csrfToken) headers.set("X-CSRF-Token", csrfToken);
   }
-  const res = await fetch(`${API}${path}`, { ...init, headers });
-  if (!res.ok) {
-    let detail = res.statusText;
-    try {
-      const body: unknown = await res.json();
-      if (body && typeof body === "object" && "detail" in body) {
-        const d = (body as { detail: unknown }).detail;
-        detail = typeof d === "string" ? d : JSON.stringify(d);
+  try {
+    const signal = init?.signal ? AbortSignal.any([init.signal, controller.signal]) : controller.signal;
+    const res = await fetch(`${API}${path}`, { ...init, headers, signal, credentials: "same-origin" });
+    if (!res.ok) {
+      let detail = res.statusText;
+      try {
+        const body: unknown = await res.json();
+        if (body && typeof body === "object" && "detail" in body) {
+          const d = (body as { detail: unknown }).detail;
+          detail = typeof d === "string" ? d : JSON.stringify(d);
+        }
+      } catch {
+        // cuerpo no JSON: se queda statusText
       }
-    } catch {
-      // cuerpo no JSON: se queda statusText
+      if (res.status === 401 && observeUnauthorized && requestGeneration === generation && unauthorized) {
+        const notify = unauthorized;
+        clearAuthContext();
+        notify();
+      }
+      throw new ApiError(res.status, detail);
     }
-    throw new ApiError(res.status, detail);
+    return await consume(res);
+  } finally {
+    pending.delete(controller);
   }
-  if (res.status === 204) return undefined as T;
-  return (await res.json()) as T;
+}
+
+function request<T>(path: string, init?: RequestInit, observeUnauthorized = true): Promise<T> {
+  return exchange(path, init, async (res) => res.status === 204 ? undefined as T : await res.json() as T, observeUnauthorized);
+}
+
+export const getAuthConfig = (signal?: AbortSignal): Promise<AuthConfig> =>
+  request("/auth/config", { signal, cache: "no-store" }, false);
+export const getAuthSession = (signal?: AbortSignal): Promise<AuthSession> =>
+  request("/auth/me", { signal, cache: "no-store" }, false);
+export const logoutSession = (token: string): Promise<void> =>
+  request("/auth/logout", { method: "POST", headers: { "X-CSRF-Token": token } }, false);
+
+/** Descarga cancelable y revalidada; Niivue no admite AbortSignal en su cargador HTTP. */
+export function fetchVolume(url: string, signal: AbortSignal): Promise<ArrayBuffer> {
+  if (!url.startsWith(`${API}/`)) throw new Error("URL de volumen inválida");
+  return exchange(url.slice(API.length), { signal, cache: "no-cache" }, (res) => res.arrayBuffer());
 }
 
 export const listStudies = (): Promise<Study[]> => request("/studies");

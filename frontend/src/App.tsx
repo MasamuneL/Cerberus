@@ -5,6 +5,8 @@ import SidePanel, { SIDE_TABS, type SideTab } from "./components/SidePanel";
 import UploadPanel from "./components/UploadPanel";
 import StudyList, { type StudyKey } from "./components/StudyList";
 import Viewer from "./components/Viewer";
+import LoginPanel from "./components/LoginPanel";
+import { useAuth, type AuthControl } from "./hooks/useAuth";
 
 const errText = (e: unknown) =>
   e instanceof ApiError ? e.detail : e instanceof Error ? e.message : String(e);
@@ -21,6 +23,12 @@ function readSavedTab(): SideTab | null {
 }
 
 export default function App() {
+  const auth = useAuth();
+  return auth.status === "off" || auth.status === "authenticated"
+    ? <Workspace auth={auth} /> : <LoginPanel auth={auth} />;
+}
+
+function Workspace({ auth }: { auth: AuthControl }) {
   const [studies, setStudies] = useState<Study[]>([]);
   const [studiesLoading, setStudiesLoading] = useState(true);
   const [studiesError, setStudiesError] = useState<string | null>(null);
@@ -156,9 +164,13 @@ export default function App() {
       <header className="app-header">
         <h1>Cerberus</h1>
         <p>Visor y volumetría de glioblastoma (CFB-GBM)</p>
-        <button type="button" className="header-btn" onClick={() => setShowUpload((v) => !v)}>
-          {showUpload ? "Cerrar subida" : "Subir estudio"}
-        </button>
+        <div className="auth-header-actions">
+          {auth.status === "authenticated" && <span className="auth-role">{auth.canAnalyze ? "Analista" : "Lector"}</span>}
+          {auth.canAnalyze && <button type="button" className="header-btn" onClick={() => setShowUpload((v) => !v)}>
+            {showUpload ? "Cerrar subida" : "Subir estudio"}
+          </button>}
+          {auth.status === "authenticated" && <button type="button" className="btn-secondary" onClick={() => void auth.logout()}>Cerrar sesión</button>}
+        </div>
       </header>
       <div className="app-body">
         <aside className="sidebar">
@@ -172,7 +184,7 @@ export default function App() {
           />
         </aside>
         <main className="viewer">
-          {showUpload && (
+          {showUpload && auth.canAnalyze && (
             <div className="upload-overlay">
               <UploadPanel onUploaded={(st) => void onUploaded(st)} onClose={() => setShowUpload(false)} />
             </div>
@@ -195,6 +207,7 @@ export default function App() {
                   focusedLabel={focusedLabel}
                 />
                 <SidePanel
+                  canAnalyze={auth.canAnalyze}
                   study={detail}
                   tab={chosenTab ?? (detail.has_areas ? "areas" : "volumetria")}
                   onTabChange={chooseTab}

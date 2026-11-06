@@ -8,20 +8,23 @@ let cached: SystemInfo | null = null;
 let fetchedAt = 0;
 let inflight: Promise<void> | null = null;
 let focusBound = false;
+let cacheGeneration = 0;
 const listeners = new Set<(s: SystemInfo | null) => void>();
 
 function load(): void {
-  if (inflight) return;
+  if (inflight || listeners.size === 0) return;
+  const generation = cacheGeneration;
   fetchedAt = Date.now();
   inflight = getSystem()
     .then((s) => {
-      cached = s;
+      if (generation === cacheGeneration) cached = s;
     })
     .catch(() => {
       // 404 (backend sin /api/system) o error: se oculta el indicador.
-      cached = null;
+      if (generation === cacheGeneration) cached = null;
     })
     .finally(() => {
+      if (generation !== cacheGeneration) return;
       inflight = null;
       listeners.forEach((l) => l(cached));
     });
@@ -44,6 +47,14 @@ export function useSystemInfo(): SystemInfo | null {
     else setInfo(cached);
     return () => {
       listeners.delete(setInfo);
+      if (listeners.size === 0) {
+        window.removeEventListener("focus", onFocus);
+        focusBound = false;
+        cacheGeneration += 1;
+        cached = null;
+        fetchedAt = 0;
+        inflight = null;
+      }
     };
   }, []);
   return info;
