@@ -163,7 +163,8 @@ class OIDCClient:
                 },
             )
             claims.validate(now=self.clock(), leeway=0)
-            raw_roles = claims.get("cerberus_roles")
+            # Keycloak omite este claim cuando la cuenta no tiene roles del cliente.
+            raw_roles = claims.get("cerberus_roles", [])
             if not isinstance(raw_roles, list) or not all(isinstance(role, str) for role in raw_roles):
                 raise ValueError("Claim de roles inválido")
             roles: frozenset[Role] = frozenset(cast(Role, role) for role in raw_roles if role in ("reader", "analyst"))

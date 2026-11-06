@@ -17,13 +17,13 @@ UploadState = Literal["processing", "ready", "failed"]
 
 
 class AuthConfig(BaseModel):
-    """Configuración pública de acceso, sin credenciales del proveedor (§17)."""
+    """Respuesta pública de `/api/auth/config`, sin credenciales del proveedor (§17)."""
 
     mode: AuthMode
 
 
 class AuthSession(BaseModel):
-    """Datos públicos de sesión; excluye identidad, cookie y tokens OIDC (§17)."""
+    """Respuesta de `/api/auth/me`; excluye identidad, cookie y tokens OIDC (§17)."""
 
     roles: list[Role] = Field(min_length=1)
     expires_at: AwareDatetime

@@ -155,6 +155,15 @@ def test_identity_without_application_role_has_no_access(signing_key: RSAKey, ro
         asyncio.run(provider.client().exchange_code("code", transaction()))
 
 
+def test_missing_role_claim_is_forbidden(signing_key: RSAKey) -> None:
+    from cerberus_api.oidc import OIDCForbidden
+
+    provider = Provider(signing_key)
+    provider.claims.pop("cerberus_roles")
+    with pytest.raises(OIDCForbidden):
+        asyncio.run(provider.client().exchange_code("code", transaction()))
+
+
 @pytest.mark.parametrize("roles", ["reader", ["reader", 1], None])
 def test_role_claim_must_be_list_of_strings(signing_key: RSAKey, roles: Any) -> None:
     from cerberus_api.oidc import OIDCInvalid
