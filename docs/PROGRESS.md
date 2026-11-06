@@ -43,7 +43,7 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 | D1 · actualización documental (CP-037/038) | ✅ | main | 42d39db, f45e5e7 | 2026-11-03 | Vikingo / Codex | PR #2 y #3 integrados |
 | A0 · contratos y configuración de auth (§17) | ✅ | feat/A0-auth-config | 3bd8ee4 | 2026-11-05 | Vikingo / Codex | PR #5 integrado tras QA completo; CP-041 |
 | A1 · Keycloak reproducible (§17) | ✅ | feat/A1-keycloak | 5470dcf | 2026-11-05 | Vikingo / Codex | PR #6 integrado tras QA real y smoke Docker; CP-042 |
-| A2 · OIDC y sesiones (§17) | 🟡 | feat/A2-oidc-sessions | — | 2026-11-05 | Vikingo / Codex | A0/A1 integrados; transacciones OIDC y sesiones Redis en curso |
+| A2 · OIDC y sesiones (§17) | ✅ | feat/A2-oidc-sessions | 7635e58 | 2026-11-06 | Vikingo / Codex | PR #8 integrado tras QA real y smoke Docker; CP-044 |
 | A3 · permisos y propiedad (§17) | ⬜ | — | — | — | — | Depende de A2; coordinar S1/S2 del QA |
 | A4 · UI de acceso (§17) | ⬜ | — | — | — | — | Depende de A2 y A3 |
 | A5 · E2E y documentación de auth (§17) | ⬜ | — | — | — | — | Depende de A1–A4 y ola P del QA |
@@ -613,3 +613,25 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 - **Límites y siguiente paso:** A2 (OIDC y sesiones), luego A3 (protección) y A4 (UI). A1 todavía no protege
   los recursos de Cerberus; A5 y ola P pendientes. Trabajo aislado en `/private/tmp/cerberus-auth-A1`; secretos
   locales en `.env.auth`, ignorados por Git. Se conservan cambios ajenos de limpieza en el checkout principal.
+
+### CP-044 · 2026-11-06 · A2 · OIDC y sesiones integrados
+- **Hecho:** rutas config/login/callback/me/logout; cliente Authlib 1.9.4 + HTTPX2 2.15.1, firma RS256 mediante
+  joserfc 1.8.0 y validación OIDC. Transacciones de 300 s ligadas al navegador y de un uso; sesiones Redis con
+  cookie opaca HttpOnly/Lax, renovación, expiración por inactividad y absoluta, logout con CSRF/Origin.
+  Estado de sesión público limitado a roles, vencimiento y CSRF. Modo off conserva 404 salvo config.
+- **Seguridad y revisión:** regresiones RED→GREEN de `azp` falso/vacío y claim de roles omitido por Keycloak
+  (403 sin rol); query del callback fuera de logs de Uvicorn incluso si fallan dependencias. Reproducida fuga
+  de nginx con API caída, con y sin barra final; corregida y comprobada con marcadores sintéticos. Revisión
+  independiente sin otros hallazgos verificables. APIs comprobadas en los paquetes instalados; sin criptografía propia.
+- **Checks:** Ruff/formato/pyright correctos, **649 tests rápidos aprobados, 5 slow excluidos**; build correcto
+  con aviso conocido de bundles grandes y 37 enlaces locales sin errores. Fakeredis/Lua solo en dev, sin red en tests.
+- **QA real previo al merge:** Chrome, Keycloak y Redis: lector/analista, cuenta sin rol, renovación, CSRF/Origin,
+  logout e identificador viejo; state incorrecto/otro navegador/replay. Proveedor caído conserva sesión válida y
+  nuevos logins dan 503; Redis caído da 503. Caducidad real con 2 s idle/5 s absolutos, luego valores por defecto
+  restaurados y cuentas temporales eliminadas. Respuestas y cookies sin tokens del proveedor.
+- **Smoke Docker previo al merge:** 2026-11-06 21:30:11–21:32:50 UTC, exit 0, **15/15 checks**, 11 capturas,
+  ningún pendiente. Revisadas recursos 1440×900 y volumetría 1280×800; sin regresiones observadas.
+- **Integración:** PR #8, merge `7635e58`; árbol idéntico al commit validado `cbb8d3e`. CP-043 está reservado
+  por la limpieza en PR #7, aún pendiente; este checkpoint no modifica ni integra ese trabajo.
+- **Siguiente paso:** A3 para imponer permisos/propiedad/CSRF/Host en recursos, después A4 UI. A2 todavía no
+  protege catálogo, archivos, jobs ni subidas; A5 requiere ola P. Worktree `/private/tmp/cerberus-auth-A1` conservado.

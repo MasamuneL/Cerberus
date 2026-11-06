@@ -59,7 +59,7 @@ transacciones una sola vez y renueva sesión al autenticar; tiempos y transporte
 - [x] TDD del almacén: navegador, repetición, inactividad, máximo absoluto, renovación y Redis indisponible.
 - [x] TDD de OIDC: firma/algoritmo/issuer/audience/exp/nonce/azp, rotación de claves y proveedor caído.
 - [x] Rutas con errores genéricos, cookies HttpOnly/Lax y logout con CSRF/Origin; modo off conserva 404.
-- [ ] QA de login real con Keycloak y expiración/logout; checks, revisión, publicación/merge y checkpoint.
+- [x] QA de login real con Keycloak y expiración/logout; checks, revisión, publicación/merge y checkpoint.
 
 ## A3 · Permisos y propiedad
 

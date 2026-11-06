@@ -693,7 +693,7 @@ para todos los tamaños de volumen. Las duraciones mostradas en la UI son estima
 
 ## 17. Autenticación para demo académica · OIDC + Keycloak
 
-**Estado:** A0 y A1 integrados; A2 implementa login/sesiones en su rama; A3–A5 pendientes. El usuario pidió incorporar esta fase
+**Estado:** A0–A2 integrados; A3–A5 pendientes. El usuario pidió incorporar esta fase
 el 2026-11-03 y continuar su desarrollo el 2026-11-05.
 El alcance inmediato es una demo académica open source con datos públicos anonimizados o sintéticos;
 la visión posterior es una instalación hospitalaria. Este apartado no declara preparación para uso clínico.
