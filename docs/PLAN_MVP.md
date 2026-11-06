@@ -130,7 +130,7 @@ Variables de entorno (prefijo `CERBERUS_`; los valores por defecto son relativos
 | `CERBERUS_CPU_THREADS` | `auto`; entero positivo para fijar los hilos del worker (§16) |
 
 La configuración de autenticación de A0 figura en §17.2. A2 monta las rutas OIDC y sesiones; la protección de
-los recursos existentes corresponde a A3. Configurar `oidc` en esta etapa todavía no protege el catálogo.
+los recursos existentes se aplica en A3, incluida la revalidación de archivos y la propiedad de jobs/ingestas.
 
 Las variables de Compose para puertos, límites de memoria y carpetas del host se documentan en el
 [README, opción Docker](../README.md#opción-rápida-docker-desktop-recomendada-para-usarla).
@@ -140,7 +140,7 @@ Comandos (todos desde la raíz):
 ```bash
 uv sync                                                    # deps Python (incluye el paquete en modo editable)
 redis-server                                               # terminal 1
-uv run arq cerberus_api.worker.WorkerSettings              # terminal 2: worker
+uv run python -m cerberus_api.worker              # terminal 2: worker
 uv run uvicorn cerberus_api.main:app --reload --reload-dir backend --port 8000  # terminal 3: API (docs en /docs)
 cd frontend && npm install && npm run dev                  # terminal 4: UI en :5173
 
@@ -268,7 +268,11 @@ En modo `off`, solo `/api/auth/config` responde; las demás rutas de auth devuel
 almacén o proveedor producen 503, sin credenciales ni detalles del error en la respuesta. El callback
 descarta `code/state` del scope del servidor para los logs, incluso ante fallos de dependencias; nginx
 no escribe errores con la query del callback, también en su variante con barra final.
-Los permisos de los recursos de estudio, archivos, jobs y subidas se implementan en A3.
+Los recursos de estudio, archivos y `/api/system` requieren sesión OIDC (401 sin ella); las mutaciones y
+jobs/subidas requieren analista (403 para lector). Jobs e ingestas ajenos o sin propietario responden 404.
+Todas las mutaciones OIDC requieren CSRF y Origin autorizado. En `off` requieren `X-Cerberus: 1` y, si
+incluyen Origin, uno autorizado. Host se valida en ambos modos. JSON autenticado usa `no-store` y NIfTI
+`private, no-cache`, con permisos antes del body/I/O y ETag/304. Los modelos JSON anteriores se conservan.
 
 ## 8. Tickets
 
@@ -635,7 +639,7 @@ Ola única en paralelo (B12, F9, F10, F11) → verificación con Playwright (cap
 |---|---|---|
 | redis | redis:7.4-alpine (digest) | AOF, healthcheck |
 | api | `docker/backend.Dockerfile` (amd64) | uvicorn :8000 interno, healthcheck `/api/health` |
-| worker | misma imagen | `arq cerberus_api.worker.WorkerSettings` |
+| worker | misma imagen | `python -m cerberus_api.worker` |
 | frontend | `docker/frontend.Dockerfile` | nginx :8080 → estáticos + proxy `/api` → api:8000 |
 
 Volúmenes bind: `./Data`, `./storage`, `./models` (pesos MONAI y atlas en caché; si faltan, se descargan dentro).

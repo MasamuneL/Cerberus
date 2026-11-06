@@ -77,7 +77,7 @@ services:
 
   worker:
     <<: *backend
-    command: ["arq", "cerberus_api.worker.WorkerSettings"]
+    command: ["python", "-m", "cerberus_api.worker"]
     # Pico medido con 001/t0: ~4.2 GB (MONAI en CPU y registro ANTs SyN). El límite evita que un job sature la VM de
     # Docker Desktop (8 GB); súbelo si procesas volúmenes más grandes.
     mem_limit: "${CERBERUS_WORKER_MEM_LIMIT:-6g}"

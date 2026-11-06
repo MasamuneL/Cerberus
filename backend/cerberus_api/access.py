@@ -11,6 +11,7 @@ from arq.jobs import Job
 from fastapi import HTTPException
 from redis.asyncio import Redis
 from redis.exceptions import RedisError
+from starlette._utils import get_route_path
 from starlette.datastructures import MutableHeaders
 from starlette.requests import Request
 from starlette.responses import JSONResponse
@@ -87,7 +88,7 @@ class AccessMiddleware:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
-        path = scope["path"]
+        path = get_route_path(scope)
         is_api = path == "/api" or path.startswith("/api/")
         public = path.rstrip("/") == "/api/health" or path.startswith("/api/auth/")
         if not is_api or public or scope["method"] == "OPTIONS":

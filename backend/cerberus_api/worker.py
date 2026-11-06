@@ -1,18 +1,21 @@
 """Worker arq: jobs pesados fuera del proceso de la API (docs/PLAN_MVP.md §7 "Jobs de arq", ticket B6).
 
-Arranque: `uv run arq cerberus_api.worker.WorkerSettings` (necesita `redis-server` corriendo).
+Arranque: `uv run python -m cerberus_api.worker` (necesita `redis-server` corriendo).
 El trabajo bloqueante (MONAI, dcm2niix) se corre con `asyncio.to_thread` para no congelar el event loop.
 """
 
 import asyncio
 import logging
+import logging.config
 import shutil
 import uuid
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any, TypeVar
+from typing import Any, TypeVar, cast
 
 from arq.connections import RedisSettings
+from arq.logs import default_log_config
+from arq.worker import Worker, get_kwargs
 from redis.exceptions import RedisError
 
 from cerberus_api import catalog, runtime
@@ -256,3 +259,24 @@ class WorkerSettings:
     # Un solo job a la vez: un modelo en GPU/MPS
     max_jobs = 1
     keep_result = 3600
+
+
+class OwnedWorker(Worker):
+    """arq omite after_job_end en sus fallos previos al inicio; ambos caminos limpian propiedad."""
+
+    async def finish_failed_job(self, job_id: str, result_data: bytes | None) -> None:
+        """Primero publica el resultado de arq y después alinea el TTL de su propietario."""
+        await super().finish_failed_job(job_id, result_data)
+        await finish_owner({"redis": self.pool, "job_id": job_id})
+
+
+def run_worker() -> None:
+    """Arranca el worker con configuración arq verificada y limpieza de fallos tempranos."""
+    logging.config.dictConfig(default_log_config(False))
+    # arq 0.28 anota por error los valores de get_kwargs como NameError; son opciones del constructor.
+    options = cast(dict[str, Any], get_kwargs(cast(Any, WorkerSettings)))
+    OwnedWorker(**options).run()
+
+
+if __name__ == "__main__":
+    run_worker()

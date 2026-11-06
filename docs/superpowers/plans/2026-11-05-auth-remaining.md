@@ -75,12 +75,16 @@ transacciones una sola vez y renueva sesión al autenticar; tiempos y transporte
   y propietario. Sin metadata: 404. Archivos GET/HEAD se autentican antes de ETag/304.
 - Modo local: mutaciones requieren `X-Cerberus: 1`; `Origin`, cuando venga, debe estar autorizado.
   El cliente web añade la cabecera; los tests usan Host localhost y cabeceras legítimas, con casos negativos explícitos.
+- Revisión: Access y privacidad de callback usan `get_route_path(scope)` para seguir el `root_path` de Starlette
+  sin permitir que un prefijo omita guardas o conserve la query sensible.
 - `TrustedHostMiddleware` con origen configurado y loopbacks; nginx rechaza Host ajeno mediante servidor
   por defecto. `CallbackPrivacyMiddleware` permanece como último middleware añadido para cubrir rechazos tempranos.
 - Propietarios Redis bajo `cerberus:auth:owners:jobs:<id>` y `...:uploads:<id>`, identidad serializada
   (`issuer`, `sub`), IDs UUID hex canónicos. Registrar antes de publicar/encolar; limpiar si el encolado falla.
 - Hook arq `after_job_end` (verificado en 0.28) corre después de guardar resultados: alinear TTL de propietario
   con `arq:result:<id>`; conservarlo si hay reintento pendiente y quitarlo si desapareció el recurso.
+  Revisión: arq omite ese hook en fallos tempranos. `OwnedWorker.finish_failed_job` cubre ese camino;
+  launcher `python -m cerberus_api.worker` sustituye la CLI para ejecutar jobs (su healthcheck se conserva).
   Confirm/delete de ingesta limpia propietario después de completar la operación, con I/O en threadpool.
 - JSON autenticado `no-store`; volúmenes autenticados `private, no-cache`. Swagger/ReDoc/OpenAPI desactivados en OIDC.
 - QA: matriz completa offline, body no consumido ante rechazo, dos analistas, metadata ausente, TTL/limpieza,

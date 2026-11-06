@@ -12,7 +12,7 @@
 git checkout main && git pull --ff-only && git lfs pull
 uv sync && (cd frontend && npm install)
 redis-server                                                    # terminal 1
-uv run arq cerberus_api.worker.WorkerSettings                   # terminal 2
+uv run python -m cerberus_api.worker                   # terminal 2
 uv run uvicorn cerberus_api.main:app --reload --reload-dir backend --port 8000   # terminal 3
 cd frontend && npm run dev                                      # terminal 4 (:5173; si está ocupado: npx vite --port 5180 --strictPort)
 ```

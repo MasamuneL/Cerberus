@@ -18,7 +18,7 @@ Dice y MONAI. No lo modifiques; porta su lógica.
 ```bash
 uv sync                                                    # deps Python (incluye el paquete en modo editable)
 redis-server                                               # terminal 1
-uv run arq cerberus_api.worker.WorkerSettings              # terminal 2: worker
+uv run python -m cerberus_api.worker              # terminal 2: worker
 uv run uvicorn cerberus_api.main:app --reload --port 8000  # terminal 3: API (docs en /docs)
 cd frontend && npm install && npm run dev                  # terminal 4: UI en :5173
 

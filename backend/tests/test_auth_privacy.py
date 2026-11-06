@@ -6,9 +6,10 @@ import pytest
 from starlette.types import Message, Receive, Scope, Send
 
 
+@pytest.mark.parametrize("root_path", ["", "/prefix"])
 @pytest.mark.parametrize("fail", [False, True])
 @pytest.mark.parametrize("path", ["/api/auth/callback", "/api/auth/callback/", "/api/studies"])
-def test_callback_query_hidden_from_server_scope(path: str, fail: bool) -> None:
+def test_callback_query_hidden_from_server_scope(path: str, fail: bool, root_path: str) -> None:
     from cerberus_api.routers.auth import CallbackPrivacyMiddleware
 
     async def receive() -> Message:
@@ -22,7 +23,12 @@ def test_callback_query_hidden_from_server_scope(path: str, fail: bool) -> None:
         if fail:
             raise RuntimeError("Dependencia no disponible")
 
-    scope: Scope = {"type": "http", "path": path, "query_string": b"code=synthetic-secret&state=synthetic-state"}
+    scope: Scope = {
+        "type": "http",
+        "path": root_path + path,
+        "root_path": root_path,
+        "query_string": b"code=synthetic-secret&state=synthetic-state",
+    }
     operation = CallbackPrivacyMiddleware(application)(scope, receive, send)
     if fail:
         with pytest.raises(RuntimeError):

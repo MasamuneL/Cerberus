@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 
 from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.responses import RedirectResponse
+from starlette._utils import get_route_path
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from cerberus_api.config import Settings
@@ -31,7 +32,7 @@ class CallbackPrivacyMiddleware:
         self.app = app
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        if scope["type"] == "http" and scope.get("path", "").rstrip("/") == "/api/auth/callback":
+        if scope["type"] == "http" and get_route_path(scope).rstrip("/") == "/api/auth/callback":
             query = scope.get("query_string", b"")
             scope["query_string"] = b""
             inner = dict(scope)

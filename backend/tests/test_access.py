@@ -467,3 +467,119 @@ def test_owner_store_fails_closed_and_refuses_collisions() -> None:
         await redis.aclose()
 
     asyncio.run(scenario())
+
+
+def test_preview_and_confirm_owned_upload(guarded: Any) -> None:
+    from cerberus_api import staging
+    from cerberus_api.access import OwnerStore
+    from cerberus_api.deps import get_redis
+    from cerberus_api.schemas import SeriesInfo, UploadManifest
+
+    client, store, _ = guarded
+    principal = Principal(issuer="https://id.example", sub="one", roles=frozenset({"analyst"}))
+    owners = OwnerStore(store.redis)
+    client.portal.call(owners.register, "uploads", OWN_ID, principal)
+    staging.write_manifest(
+        store.settings.staging_dir,
+        UploadManifest(
+            upload_id=OWN_ID,
+            status="ready",
+            series=[
+                SeriesInfo(
+                    index=0,
+                    modality="MR",
+                    description="Serie sintética",
+                    n_files=1,
+                    converted=True,
+                    shape=None,
+                    spacing_mm=None,
+                    suggested_sequence=None,
+                )
+            ],
+        ),
+    )
+    path = staging.series_path(store.settings.staging_dir, OWN_ID, 0)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(b"synthetic")
+    client.app.dependency_overrides[get_redis] = lambda: store.redis
+    headers = sign_in(client, store)
+    for method in ("GET", "HEAD"):
+        response = client.request(method, f"/api/uploads/{OWN_ID}/series/0.nii.gz")
+        assert response.status_code == 200 and response.headers["cache-control"] == "private, no-cache"
+    body = {"patient": "999", "timepoint": "t0", "mapping": {"0": "t1gd"}}
+    other = sign_in(client, store, sub="two")
+    assert client.post(f"/api/uploads/{OWN_ID}/confirm", headers=other, json=body).status_code == 404
+    assert path.exists()
+    headers = sign_in(client, store)
+    response = client.post(f"/api/uploads/{OWN_ID}/confirm", headers=headers, json=body)
+    assert response.status_code == 201 and response.json()["patient"] == "999"
+    assert not client.portal.call(owners.owns, "uploads", OWN_ID, principal)
+    assert not path.exists()
+
+
+@pytest.mark.parametrize("mode", ["off", "oidc"])
+def test_root_path_cannot_bypass_access_or_csrf(guarded: Any, mode: str) -> None:
+    app = guarded[0].app if mode == "oidc" else create_app()
+    with TestClient(app, root_path="/prefix", base_url="http://localhost:8080") as client:
+        if mode == "oidc":
+            for path in READ_PATHS + OWN_PATHS:
+                assert client.get("/prefix" + path).status_code == 401
+        assert client.post("/prefix/api/uploads").status_code == (401 if mode == "oidc" else 403)
+
+
+@pytest.mark.parametrize("failure", ["expired", "corrupt", "missing_function", "max_tries", "abort"])
+def test_real_arq_early_failures_expire_owner(failure: str) -> None:
+    from arq.connections import ArqRedis
+    from arq.utils import timestamp_ms
+
+    from cerberus_api.access import OwnerStore
+    from cerberus_api.worker import OwnedWorker
+
+    async def noop(ctx: dict[str, Any]) -> None:
+        pass
+
+    async def scenario() -> None:
+        fake = FakeAsyncRedis()
+        redis = ArqRedis(connection_pool=fake.connection_pool)
+        principal = Principal(issuer="https://id", sub="one", roles=frozenset({"analyst"}))
+        owners = OwnerStore(redis)
+        await owners.register("jobs", OWN_ID, principal)
+        await redis.enqueue_job(
+            "missing" if failure == "missing_function" else "noop",
+            _job_id=OWN_ID,
+            _job_try=2 if failure == "max_tries" else 1,
+        )
+        if failure == "expired":
+            await redis.delete("arq:job:" + OWN_ID)
+        elif failure == "corrupt":
+            await redis.set("arq:job:" + OWN_ID, b"invalid")
+        elif failure == "abort":
+            await redis.zadd("arq:abort", {OWN_ID: timestamp_ms()})
+        worker = OwnedWorker(
+            [noop], redis_pool=redis, max_tries=1, keep_result=1, handle_signals=False, allow_abort_jobs=True
+        )
+        await worker.run_job(OWN_ID, timestamp_ms())
+        assert 0 < await redis.pttl("arq:result:" + OWN_ID) <= 1000
+        assert 0 < await redis.pttl(owners.key("jobs", OWN_ID)) <= 1000
+        await redis.aclose()
+
+    asyncio.run(scenario())
+
+
+def test_worker_launcher_uses_settings_and_owned_worker(monkeypatch: pytest.MonkeyPatch) -> None:
+    from cerberus_api import worker
+
+    calls: list[dict[str, Any]] = []
+
+    class Runner:
+        def __init__(self, **kwargs: Any) -> None:
+            calls.append(kwargs)
+
+        def run(self) -> None:
+            calls[0]["ran"] = True
+
+    monkeypatch.setattr(worker, "OwnedWorker", Runner)
+    worker.run_worker()
+    assert calls[0]["ran"]
+    assert calls[0]["functions"] == worker.WorkerSettings.functions
+    assert callable(calls[0]["after_job_end"])
