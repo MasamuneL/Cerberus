@@ -8,8 +8,10 @@ from contextlib import asynccontextmanager
 from urllib.parse import urlsplit
 
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.exception_handlers import http_exception_handler
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse, Response
+from starlette._utils import get_route_path
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from cerberus_api import __version__
@@ -26,6 +28,20 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Cierra el pool de Redis al apagar (el pool se crea de forma lazy en `get_redis`)."""
     yield
     await close_redis()
+
+
+def identity_response(request: Request, status: int, detail: str, code: str) -> Response:
+    """Solo códigos públicos fijos vuelven a la UI; las respuestas JSON conservan su estado."""
+    if get_route_path(request.scope).rstrip("/") in {
+        "/api/auth/login",
+        "/api/auth/callback",
+    } and "text/html" in request.headers.get("accept", ""):
+        return RedirectResponse(
+            "/?auth_error=" + code,
+            status_code=303,
+            headers={"Cache-Control": "no-store", "Referrer-Policy": "no-referrer"},
+        )
+    return JSONResponse({"detail": detail}, status_code=status, headers={"Cache-Control": "no-store"})
 
 
 def create_app(settings: Settings | None = None, *, session_factory: SessionFactory | None = None) -> FastAPI:
@@ -52,26 +68,27 @@ def create_app(settings: Settings | None = None, *, session_factory: SessionFact
     app.state.settings = settings
     app.state.auth_session_factory = session_factory or default_session_factory
 
-    async def identity_unavailable(request: Request, error: Exception) -> JSONResponse:
+    async def identity_unavailable(request: Request, error: Exception) -> Response:
         """Un fallo de Redis/proveedor no habilita acceso local ni revela detalles internos."""
-        return JSONResponse(
-            {"detail": "Servicio de identidad no disponible"}, status_code=503, headers={"Cache-Control": "no-store"}
-        )
+        return identity_response(request, 503, "Servicio de identidad no disponible", "unavailable")
 
-    async def identity_invalid(request: Request, error: Exception) -> JSONResponse:
+    async def identity_invalid(request: Request, error: Exception) -> Response:
         """Errores de firma, código y claims se presentan de forma genérica."""
-        return JSONResponse(
-            {"detail": "No se pudo validar el inicio de sesión"}, status_code=401, headers={"Cache-Control": "no-store"}
-        )
+        return identity_response(request, 401, "No se pudo validar el inicio de sesión", "failed")
 
-    async def identity_forbidden(request: Request, error: Exception) -> JSONResponse:
+    async def identity_forbidden(request: Request, error: Exception) -> Response:
         """Una identidad válida sin rol no obtiene una sesión de Cerberus."""
-        return JSONResponse(
-            {"detail": "La cuenta no tiene permisos de Cerberus"},
-            status_code=403,
-            headers={"Cache-Control": "no-store"},
-        )
+        return identity_response(request, 403, "La cuenta no tiene permisos de Cerberus", "forbidden")
 
+    async def navigation_error(request: Request, error: Exception) -> Response:
+        """Cancelación o state inválido vuelven a la UI solo en navegación HTML del callback."""
+        if not isinstance(error, HTTPException):
+            raise error
+        if get_route_path(request.scope).rstrip("/") == "/api/auth/callback" and error.status_code == 400:
+            return identity_response(request, 400, str(error.detail), "failed")
+        return await http_exception_handler(request, error)
+
+    app.add_exception_handler(HTTPException, navigation_error)
     app.add_exception_handler(SessionUnavailable, identity_unavailable)
     app.add_exception_handler(OIDCUnavailable, identity_unavailable)
     app.add_exception_handler(OIDCInvalid, identity_invalid)

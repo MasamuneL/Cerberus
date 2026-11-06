@@ -268,6 +268,10 @@ En modo `off`, solo `/api/auth/config` responde; las demás rutas de auth devuel
 almacén o proveedor producen 503, sin credenciales ni detalles del error en la respuesta. El callback
 descarta `code/state` del scope del servidor para los logs, incluso ante fallos de dependencias; nginx
 no escribe errores con la query del callback, también en su variante con barra final.
+En navegaciones con `Accept: text/html`, errores de identidad en login/callback y transacciones inválidas
+vuelven con 303 a `/?auth_error=forbidden|failed|unavailable`; estos códigos fijos no contienen identidad,
+code ni state. Las solicitudes JSON conservan los estados 400/401/403/503 descritos arriba. A4 mostrará
+el mensaje correspondiente; el estado de auth del navegador no concede permisos en la API.
 Los recursos de estudio, archivos y `/api/system` requieren sesión OIDC (401 sin ella); las mutaciones y
 jobs/subidas requieren analista (403 para lector). Jobs e ingestas ajenos o sin propietario responden 404.
 Todas las mutaciones OIDC requieren CSRF y Origin autorizado. En `off` requieren `X-Cerberus: 1` y, si
