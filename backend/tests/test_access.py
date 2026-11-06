@@ -583,3 +583,22 @@ def test_worker_launcher_uses_settings_and_owned_worker(monkeypatch: pytest.Monk
     assert calls[0]["ran"]
     assert calls[0]["functions"] == worker.WorkerSettings.functions
     assert callable(calls[0]["after_job_end"])
+
+
+def test_default_factory_fails_closed_without_redis(guarded: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+    from fastapi import HTTPException
+
+    from cerberus_api import main
+
+    settings = guarded[1].settings
+
+    async def unavailable(settings: Settings) -> Any:
+        raise HTTPException(503, "error interno sintético")
+
+    monkeypatch.setattr(main, "get_redis", unavailable)
+    with TestClient(create_app(settings), base_url="http://localhost:8080") as client:
+        client.cookies.set("cerberus_session", "x" * 43)
+        response = client.get("/api/studies")
+        assert response.status_code == 503
+        assert response.json() == {"detail": "Servicio de identidad no disponible"}
+        assert client.get("/api/auth/login").status_code == 503
