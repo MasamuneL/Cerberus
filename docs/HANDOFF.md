@@ -93,7 +93,8 @@ restaurando configuración y eliminando cuentas temporales. Smoke Docker previo 
 2026-11-06 21:30:11–21:32:50 UTC, **15/15 checks**, 11 capturas, sin pendientes y exit 0. Revisadas capturas
 de recursos a 1440×900 y volumetría a 1280×800. Logs de Uvicorn y nginx verificados con marcadores sintéticos;
 los callbacks no registran query incluso con API caída y barra final.
-**Siguiente paso:** A3 debe proteger los recursos; A4 añadirá UI.
+**Trabajo en curso:** A3 en `feat/A3-access-control`, dentro del mismo worktree `/private/tmp/cerberus-auth-A1`.
+Implementará guardas antes del body/I/O, propiedad, caché autenticada, CSRF y Host (S1/S2). A4 añadirá UI.
 Plan de ejecución: [`superpowers/plans/2026-11-05-auth-remaining.md`](superpowers/plans/2026-11-05-auth-remaining.md).
 El usuario autorizó avanzar los tickets posibles con commits/push frecuentes y QA antes de cada merge.
 A5 depende de la ola P del QA
