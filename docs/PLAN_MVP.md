@@ -896,3 +896,10 @@ declara Python ≥3.10, compatible con Python 3.11 del proyecto, y licencia
 cerrada conservando avisos y condiciones; al incorporarla se conservarán esos avisos. A0 no instala ni
 fija esta dependencia; A2 deberá comprobar versión, avisos de seguridad y APIs instaladas antes de añadirla
 a los grupos principal/runtime. No se implementará validación criptográfica propia.
+
+**Verificación de A2 (2026-11-06):** instalados Authlib 1.9.4, HTTPX2 2.15.1 y joserfc 1.8.0, con
+BSD-3-Clause declarada en sus metadatos. Se revisaron APIs en el código instalado y el
+[changelog de seguridad de Authlib](https://docs.authlib.org/en/stable/upgrades/changelog.html).
+Authlib usa HTTPX2 cuando está instalado; el cliente y el transporte de prueba comparten esa API.
+`CodeIDToken` valida claims y joserfc verifica firma RS256; se añade la opción de valor de `azp` porque
+el validador de Authlib por sí solo omite valores falsos/vacíos. No se implementa criptografía propia.

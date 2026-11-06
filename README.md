@@ -377,7 +377,8 @@ todavía no refleja estos hallazgos. Usa datos previamente anonimizados y revisa
 los nombres de archivo y el texto identificable «quemado» en los píxeles.
 
 La limpieza de DICOM crudo se intenta en un `finally`, pero un crash o ciertos casos de cancelación
-pueden dejar archivos temporales. Tampoco hay autenticación. El QA registra además CSRF, DNS rebinding
+pueden dejar archivos temporales. A2 ofrece login y sesiones, pero los recursos aún requieren la protección
+de A3. El QA registra además CSRF, DNS rebinding
 y subidas NIfTI capaces de agotar la memoria. Estas correcciones siguen pendientes; el detalle,
 las reproducciones y las prioridades están en [`QA_2026-10-29.md`](docs/QA_2026-10-29.md).
 
