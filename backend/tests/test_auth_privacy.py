@@ -7,7 +7,7 @@ from starlette.types import Message, Receive, Scope, Send
 
 
 @pytest.mark.parametrize("fail", [False, True])
-@pytest.mark.parametrize("path", ["/api/auth/callback", "/api/studies"])
+@pytest.mark.parametrize("path", ["/api/auth/callback", "/api/auth/callback/", "/api/studies"])
 def test_callback_query_hidden_from_server_scope(path: str, fail: bool) -> None:
     from cerberus_api.routers.auth import CallbackPrivacyMiddleware
 
@@ -29,5 +29,5 @@ def test_callback_query_hidden_from_server_scope(path: str, fail: bool) -> None:
             asyncio.run(operation)
     else:
         asyncio.run(operation)
-    expected = b"" if path == "/api/auth/callback" else b"code=synthetic-secret&state=synthetic-state"
+    expected = b"" if path.rstrip("/") == "/api/auth/callback" else b"code=synthetic-secret&state=synthetic-state"
     assert scope["query_string"] == expected
