@@ -55,10 +55,10 @@ antes de cada merge a `main` el 2026-11-05.
 **Interfaces:** `/api/auth/config`, `/login`, `/callback`, `/me`, `/logout` de §17.4. El almacén Redis consume
 transacciones una sola vez y renueva sesión al autenticar; tiempos y transporte inyectables en pruebas.
 
-- [ ] Verificar Authlib instalado, licencia y avisos; añadirlo a dependencias principal/runtime.
-- [ ] TDD del almacén: navegador, repetición, inactividad, máximo absoluto, renovación y Redis indisponible.
-- [ ] TDD de OIDC: firma/algoritmo/issuer/audience/exp/nonce/azp, rotación de claves y proveedor caído.
-- [ ] Rutas con errores genéricos, cookies HttpOnly/Lax y logout con CSRF/Origin; modo off conserva 404.
+- [x] Verificar Authlib instalado, licencia y avisos; añadirlo a dependencias principal/runtime.
+- [x] TDD del almacén: navegador, repetición, inactividad, máximo absoluto, renovación y Redis indisponible.
+- [x] TDD de OIDC: firma/algoritmo/issuer/audience/exp/nonce/azp, rotación de claves y proveedor caído.
+- [x] Rutas con errores genéricos, cookies HttpOnly/Lax y logout con CSRF/Origin; modo off conserva 404.
 - [ ] QA de login real con Keycloak y expiración/logout; checks, revisión, publicación/merge y checkpoint.
 
 ## A3 · Permisos y propiedad

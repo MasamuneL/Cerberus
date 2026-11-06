@@ -8,10 +8,12 @@ export type ModelChannel = "T1c" | "T1" | "T2" | "FLAIR";
 export type AuthMode = "off" | "oidc";
 export type Role = "reader" | "analyst";
 
+// GET /api/auth/config; disponible en modo local y OIDC.
 export interface AuthConfig {
   mode: AuthMode;
 }
 
+// GET /api/auth/me; solo una sesión OIDC válida, sin identidad ni tokens del proveedor.
 export interface AuthSession {
   roles: Role[];
   expires_at: string; // ISO-8601 con zona horaria

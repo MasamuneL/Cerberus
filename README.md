@@ -13,9 +13,9 @@ autoajuste de recursos y caché HTTP de volúmenes. Estado y trabajo pendiente e
 Los hallazgos del [QA de seguridad y robustez](docs/QA_2026-10-29.md) siguen pendientes de corrección.
 
 **Autenticación en desarrollo:** A0 incorpora configuración validada y contratos para OIDC, sesiones y roles
-lector/analista. A1 añade Keycloak persistente; el inicio de sesión y la protección de recursos todavía
-no están disponibles (A2–A5);
-`CERBERUS_AUTH_MODE=oidc` por sí solo aún no protege la app. El modo local conserva `off` por defecto.
+lector/analista. A1 añade Keycloak persistente y A2 login/sesiones en la API. La protección de recursos
+todavía requiere A3, y la interfaz de acceso A4; `CERBERUS_AUTH_MODE=oidc` por sí solo aún no protege el catálogo.
+El modo local conserva `off` por defecto.
 Variables, restricciones y tickets en
 [`PLAN_MVP.md` §17](docs/PLAN_MVP.md#17-autenticación-para-demo-académica--oidc--keycloak).
 
@@ -149,11 +149,11 @@ no tiempos garantizados para cualquier equipo o estudio.
 
 Smoke test de la versión Docker: `cd tools/e2e && npm ci && CERBERUS_UI=http://localhost:8080 node verify-docker.mjs`.
 
-### Proveedor de identidad de la demo (A1)
+### Identidad y sesiones de la demo (A1/A2)
 
 El overlay añade **Keycloak 26.8.1 en http://localhost:8081** y PostgreSQL 18 privado. Cerberus conserva
-**http://localhost:8080**. Esta entrega prepara el proveedor: las rutas de login, sesiones y permisos
-todavía se completan en A2/A3; el overlay de A1 por sí solo no protege los recursos.
+**http://localhost:8080**. A2 añade las rutas de login, sesión y logout; los permisos de recursos todavía
+se completan en A3 y la UI de acceso en A4. El overlay en esta etapa no protege el catálogo ni los archivos.
 
 ```bash
 uv run python tools/auth/bootstrap.py
@@ -195,6 +195,19 @@ validaciones OIDC. PostgreSQL no publica puertos y solo comparte su red privada 
 de identidad viven en volúmenes `auth-db-data` y `keycloak-data`; el catálogo y las imágenes siguen en disco.
 Para parar, usa el mismo comando de Compose con ambos archivos y `down`, sin `-v` si quieres conservar
 las cuentas. `start-dev` y HTTP pertenecen exclusivamente a esta demo local.
+
+Con el overlay activo, puedes iniciar sesión en **http://localhost:8080/api/auth/login**. FastAPI usa
+Authorization Code + PKCE S256 con Authlib y verifica firma RS256, issuer, audience, expiración, nonce
+y `azp` antes de crear la sesión. Una cuenta sin roles de Cerberus recibe 403. El navegador conserva
+solo una cookie opaca `HttpOnly`/`SameSite=Lax`, sin tokens OIDC en almacenamiento del navegador.
+
+`GET /api/auth/me` devuelve roles, vencimiento efectivo y token CSRF. `POST /api/auth/logout` requiere
+`Origin` de la app y ese token en `X-CSRF-Token`: invalida Redis y borra cookies; cierra la sesión de
+Cerberus, no la de otras aplicaciones del proveedor. La inactividad caduca a 30 minutos y la duración
+absoluta a 60; el overlay admite `CERBERUS_AUTH_IDLE_TIMEOUT_SECONDS` y
+`CERBERUS_AUTH_ABSOLUTE_TIMEOUT_SECONDS` para configurarlas. Redis caído produce 503; Keycloak caído
+impide nuevos logins, mientras las sesiones válidas continúan hasta vencer. Respuestas de auth: `no-store`.
+En modo local `off`, `/api/auth/config` informa el modo y las otras rutas de auth devuelven 404.
 
 ### Modo desarrollo: requisitos
 
@@ -364,7 +377,8 @@ todavía no refleja estos hallazgos. Usa datos previamente anonimizados y revisa
 los nombres de archivo y el texto identificable «quemado» en los píxeles.
 
 La limpieza de DICOM crudo se intenta en un `finally`, pero un crash o ciertos casos de cancelación
-pueden dejar archivos temporales. Tampoco hay autenticación. El QA registra además CSRF, DNS rebinding
+pueden dejar archivos temporales. A2 ofrece login y sesiones, pero los recursos aún requieren la protección
+de A3. El QA registra además CSRF, DNS rebinding
 y subidas NIfTI capaces de agotar la memoria. Estas correcciones siguen pendientes; el detalle,
 las reproducciones y las prioridades están en [`QA_2026-10-29.md`](docs/QA_2026-10-29.md).
 

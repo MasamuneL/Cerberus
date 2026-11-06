@@ -4,7 +4,7 @@
 > checkpoint. El historial completo está en [`PROGRESS.md`](PROGRESS.md) y el alcance y los contratos en
 > [`PLAN_MVP.md`](PLAN_MVP.md). Las reglas de trabajo están en [`../AGENTS.md`](../AGENTS.md).
 
-**Última actualización:** 2026-11-05 · último checkpoint: CP-042 · rama base: `main`
+**Última actualización:** 2026-11-06 · último checkpoint: CP-042 · rama base: `main` · A2 en curso
 
 ## 1. Arranque rápido
 
@@ -41,7 +41,7 @@ y autoajuste de recursos y caché HTTP de NIfTI (§16: D2e-back/front).
 | §13–§14 · áreas y UX/UI | ✅ integrado | Capas, cursor, atajos, pestañas, funciones en riesgo, IBM Plex y navegación con teclado; PR #1, merge `bcef409` |
 | §15 · Docker Compose | ✅ integrado | Redis, API, worker y frontend/nginx; acceso local en `http://localhost:8080`; CP-031 |
 | §16 · recursos y caché | ✅ integrado | `CERBERUS_CPU_THREADS=auto`, `GET /api/system`, indicador y estimaciones en la UI, revalidación 304; CP-034 |
-| §17 · login para demo académica | 🟡 A0/A1 integrados | PR #5/#6, `3bd8ee4`/`5470dcf`; Keycloak listo. Sesiones, permisos y UI pendientes en A2–A5 |
+| §17 · login para demo académica | 🟡 A2 en rama | A0/A1 integrados; API de login/sesión lista en A2. Recursos y UI pendientes en A3–A5 |
 | QA de seguridad y robustez | ⬜ correcciones pendientes | Hallazgos y propuesta por olas en [`QA_2026-10-29.md`](QA_2026-10-29.md); CP-035/036 |
 
 **Integración:** CP-037, CP-038 y CP-039 integrados en `main` mediante los PR #2, #3 y #4
@@ -77,7 +77,21 @@ Revisión independiente sin hallazgos. Smoke Docker de la UI completo antes de i
 11 capturas, sin pendientes; revisadas 1440×900 y 1280×800 (14:01–14:04 UTC).
 Se corrigieron URLs HTTP de Debian a HTTPS en el Dockerfile: el build limpio fallaba con HTTP 403;
 las firmas de paquetes siguen verificándose. No incluye rutas/sesiones de Cerberus ni protección todavía.
-**Siguiente paso:** A2 sobre `main`, conservando este worktree y su `.env.auth` local para el QA del proveedor.
+**Trabajo en curso:** A2 en `feat/A2-oidc-sessions`, worktree `/private/tmp/cerberus-auth-A1`.
+Se conserva `.env.auth` local para el QA real; A0/A1 ya están en `main`.
+**Avance A2 (2026-11-06):** transacciones ligadas al navegador y de un uso, sesiones opacas con renovación,
+timeouts Redis atómicos, cliente OIDC Authlib 1.9.4/HTTPX2/joserfc y rutas config/login/callback/me/logout.
+Firma RS256 y claims OIDC verificados; CSRF/Origin en logout. Callbacks excluyen query de logs de Uvicorn y
+nginx, incluida la barra final y los fallos de upstream. **649 tests rápidos aprobados, 5 slow excluidos**,
+Ruff/formato/pyright y build correctos. Cambios subidos hasta `f93acdd`.
+Revisión detectó `azp` vacío/falso: regresiones RED→GREEN y validación explícita por Authlib. QA real también
+detectó claim de roles omitido por Keycloak: ahora cuenta sin rol recibe 403. La pasada final real confirmó
+login de lector y analista, renovación, CSRF, logout, state ajeno/replay, Redis/proveedor caídos y caducidad,
+restaurando configuración y eliminando cuentas temporales. Smoke Docker previo al merge completo:
+2026-11-06 21:30:11–21:32:50 UTC, **15/15 checks**, 11 capturas, sin pendientes y exit 0. Revisadas capturas
+de recursos a 1440×900 y volumetría a 1280×800. Logs de Uvicorn y nginx verificados con marcadores sintéticos;
+los callbacks no registran query incluso con API caída y barra final.
+A3 aún debe proteger los recursos y A4 añadir UI.
 Plan de ejecución: [`superpowers/plans/2026-11-05-auth-remaining.md`](superpowers/plans/2026-11-05-auth-remaining.md).
 El usuario autorizó avanzar los tickets posibles con commits/push frecuentes y QA antes de cada merge.
 A5 depende de la ola P del QA
@@ -150,8 +164,8 @@ regeneran con [`tools/e2e/README.md`](../tools/e2e/README.md); verificar siempre
 Reporte exportable por estudio (PDF o imprimible), 3D más limpio (iluminación y orientación), subir archivos
 arrastrándolos, atajos extra. Fase 2 pendiente: skull-strip (HD-BET o SynthStrip) para DICOM sin
 `brain_mask`, registro entre series y RTSTRUCT. Docker y el autoajuste ya están implementados.
-El login para la demo tiene planificación incorporada en `PLAN_MVP.md` §17; A0 está implementado en rama,
-con A1–A5 pendientes. La evolución hospitalaria se describe aparte y no se considera aprobada para ejecución.
+El login para la demo tiene planificación incorporada en `PLAN_MVP.md` §17; A0/A1 integrados y A2 implementado
+en rama, con A3–A5 pendientes. La evolución hospitalaria se describe aparte y no se considera aprobada para ejecución.
 El plan de correcciones del QA está en [`QA_2026-10-29.md` §6](QA_2026-10-29.md#6-plan-de-corrección-propuesto-por-olas).
 
 ## 5. Protocolo de handoff (para quien trabaje, humano o IA)

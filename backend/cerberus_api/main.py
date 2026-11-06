@@ -6,13 +6,16 @@ Arranque: `uv run uvicorn cerberus_api.main:app --reload --port 8000` (docs en `
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from cerberus_api import __version__
 from cerberus_api.config import get_settings
 from cerberus_api.deps import close_redis
-from cerberus_api.routers import jobs, studies, system, uploads
+from cerberus_api.oidc import OIDCForbidden, OIDCInvalid, OIDCUnavailable
+from cerberus_api.routers import auth, jobs, studies, system, uploads
+from cerberus_api.sessions import SessionUnavailable
 
 
 @asynccontextmanager
@@ -26,6 +29,31 @@ def create_app() -> FastAPI:
     """Crea la app con CORS desde la configuración y los routers montados en `/api`."""
     settings = get_settings()
     app = FastAPI(title="Cerberus API", version=__version__, lifespan=lifespan)
+
+    async def identity_unavailable(request: Request, error: Exception) -> JSONResponse:
+        """Un fallo de Redis/proveedor no habilita acceso local ni revela detalles internos."""
+        return JSONResponse(
+            {"detail": "Servicio de identidad no disponible"}, status_code=503, headers={"Cache-Control": "no-store"}
+        )
+
+    async def identity_invalid(request: Request, error: Exception) -> JSONResponse:
+        """Errores de firma, código y claims se presentan de forma genérica."""
+        return JSONResponse(
+            {"detail": "No se pudo validar el inicio de sesión"}, status_code=401, headers={"Cache-Control": "no-store"}
+        )
+
+    async def identity_forbidden(request: Request, error: Exception) -> JSONResponse:
+        """Una identidad válida sin rol no obtiene una sesión de Cerberus."""
+        return JSONResponse(
+            {"detail": "La cuenta no tiene permisos de Cerberus"},
+            status_code=403,
+            headers={"Cache-Control": "no-store"},
+        )
+
+    app.add_exception_handler(SessionUnavailable, identity_unavailable)
+    app.add_exception_handler(OIDCUnavailable, identity_unavailable)
+    app.add_exception_handler(OIDCInvalid, identity_invalid)
+    app.add_exception_handler(OIDCForbidden, identity_forbidden)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
@@ -42,6 +70,9 @@ def create_app() -> FastAPI:
     app.include_router(jobs.router, prefix="/api")
     app.include_router(uploads.router, prefix="/api")
     app.include_router(system.router, prefix="/api")
+    app.include_router(auth.router, prefix="/api")
+    # Debe ser el último middleware añadido: cubre incluso rechazos previos a las dependencias del callback.
+    app.add_middleware(auth.CallbackPrivacyMiddleware)
     return app
 
 

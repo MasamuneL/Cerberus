@@ -5,13 +5,16 @@ En los tests se sustituyen con `app.dependency_overrides[settings_dep] = ...` (y
 
 import asyncio
 import dataclasses
+import secrets
 from typing import Annotated
 
 from arq.connections import ArqRedis, RedisSettings, create_pool
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, Request
 from redis.exceptions import RedisError
 
 from cerberus_api.config import Settings, get_settings
+from cerberus_api.oidc import OIDCClient
+from cerberus_api.sessions import SessionData, SessionStore
 
 
 def settings_dep() -> Settings:
@@ -56,3 +59,52 @@ async def close_redis() -> None:
 
 # Alias para anotar parámetros de los endpoints: `redis: RedisDep`
 RedisDep = Annotated[ArqRedis, Depends(get_redis)]
+
+SESSION_COOKIE = "cerberus_session"
+LOGIN_COOKIE = "cerberus_login"
+
+
+def require_oidc(settings: SettingsDep) -> Settings:
+    """El modo local no fabrica identidades ni expone rutas de sesión."""
+    if settings.auth_mode != "oidc":
+        raise HTTPException(404, "Autenticación no habilitada", headers={"Cache-Control": "no-store"})
+    return settings
+
+
+OIDCSettingsDep = Annotated[Settings, Depends(require_oidc)]
+
+
+def oidc_dep(settings: OIDCSettingsDep) -> OIDCClient:
+    """Cliente sustituible en pruebas; no abre conexiones al construirlo."""
+    return OIDCClient(settings)
+
+
+def session_store_dep(settings: OIDCSettingsDep, redis: RedisDep) -> SessionStore:
+    """Almacén de identidad sobre el pool compartido, con claves separadas de arq."""
+    return SessionStore(redis, settings)
+
+
+SessionStoreDep = Annotated[SessionStore, Depends(session_store_dep)]
+OIDCDep = Annotated[OIDCClient, Depends(oidc_dep)]
+
+
+async def current_session(request: Request, store: SessionStoreDep) -> SessionData:
+    """Devuelve una sesión válida; el navegador solo entrega su identificador opaco."""
+    session = await store.read_session(request.cookies.get(SESSION_COOKIE, ""))
+    if session is None:
+        raise HTTPException(401, "Inicia sesión para continuar", headers={"Cache-Control": "no-store"})
+    return session
+
+
+SessionDep = Annotated[SessionData, Depends(current_session)]
+
+
+def verify_csrf(request: Request, session: SessionData, settings: Settings) -> None:
+    """Token sincronizado y origen explícito; SameSite no sustituye estas dos comprobaciones."""
+    token = request.headers.get("x-csrf-token", "")
+    if (
+        request.headers.get("origin") not in {settings.app_origin, *settings.cors_origins}
+        or not token.isascii()
+        or not secrets.compare_digest(token, session.csrf_token)
+    ):
+        raise HTTPException(403, "Origen o token CSRF inválido", headers={"Cache-Control": "no-store"})
