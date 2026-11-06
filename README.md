@@ -231,7 +231,7 @@ Para descartar una ingesta huérfana, para primero **worker y API** para evitar 
 con sus mismas variables de rutas, ejecuta el bloque siguiente con el UUID concreto revisado por el operador:
 
 ```bash
-CERBERUS_ORPHAN_UPLOAD=<uuid-hex-de-32-caracteres> uv run python - <<'PYTHON'
+CERBERUS_ORPHAN_UPLOAD='<uuid-hex-de-32-caracteres>' uv run python - <<'PYTHON'
 import os
 import shutil
 from cerberus_api.config import get_settings

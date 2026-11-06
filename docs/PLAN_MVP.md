@@ -15,7 +15,7 @@ no implica que esos fallos estén resueltos.
 
 **Fase de autenticación en desarrollo:** OIDC con Keycloak para la demo académica (§17), con una evolución
 posterior hacia identidad y permisos hospitalarios. A0 incorpora configuración e interfaces y A1 el proveedor;
-A2 incorpora login y sesiones en la API; la protección de recursos y la UI siguen en A3–A5.
+A2 incorpora login y sesiones; A3 aplica permisos y propiedad a recursos. La UI y aceptación final siguen en A4/A5.
 
 Las secciones §1–§10 describen el MVP original y sus tickets. Los contratos iniciales de disco y API
 (§6/§7) se complementan con áreas y `Study.has_areas` en §13, dominios en §14 y recursos/caché en §16.
@@ -697,7 +697,7 @@ para todos los tamaños de volumen. Las duraciones mostradas en la UI son estima
 
 ## 17. Autenticación para demo académica · OIDC + Keycloak
 
-**Estado:** A0–A2 integrados; A3–A5 pendientes. El usuario pidió incorporar esta fase
+**Estado:** A0–A2 integrados; A3 implementado y validado en su rama, A4/A5 pendientes. El usuario pidió incorporar esta fase
 el 2026-11-03 y continuar su desarrollo el 2026-11-05.
 El alcance inmediato es una demo académica open source con datos públicos anonimizados o sintéticos;
 la visión posterior es una instalación hospitalaria. Este apartado no declara preparación para uso clínico.
