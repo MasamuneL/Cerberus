@@ -149,11 +149,13 @@ no tiempos garantizados para cualquier equipo o estudio.
 
 Smoke test de la versión Docker: `cd tools/e2e && npm ci && CERBERUS_UI=http://localhost:8080 node verify-docker.mjs`.
 
-### Identidad y sesiones de la demo (A1/A2)
+### Identidad, sesiones y permisos de la demo (A1–A3)
 
 El overlay añade **Keycloak 26.8.1 en http://localhost:8081** y PostgreSQL 18 privado. Cerberus conserva
-**http://localhost:8080**. A2 añade las rutas de login, sesión y logout; los permisos de recursos todavía
-se completan en A3 y la UI de acceso en A4. El overlay en esta etapa no protege el catálogo ni los archivos.
+**http://localhost:8080**. La API protege catálogo, archivos y mutaciones con sesiones y permisos. La UI
+de acceso llegará en A4; mientras tanto, abre `/api/auth/login` para iniciar sesión antes de usar la app.
+El lector consulta estudios; solo el analista puede subir y procesar. Jobs e ingestas pendientes son privados
+para la identidad que los creó, también tras un nuevo login; los estudios finales forman un catálogo compartido.
 
 ```bash
 uv run python tools/auth/bootstrap.py
@@ -209,6 +211,43 @@ absoluta a 60; el overlay admite `CERBERUS_AUTH_IDLE_TIMEOUT_SECONDS` y
 impide nuevos logins, mientras las sesiones válidas continúan hasta vencer. Respuestas de auth: `no-store`.
 En modo local `off`, `/api/auth/config` informa el modo y las otras rutas de auth devuelven 404.
 
+Las mutaciones OIDC requieren `Origin` autorizado y `X-CSRF-Token` de `/api/auth/me`; los permisos se
+comprueban antes de leer el body, acceder a disco o responder 304. JSON autenticado usa `no-store`;
+NIfTI usa `private, no-cache`, con sesión comprobada en cada GET/HEAD. `/docs`, `/redoc` y `/openapi.json`
+se deshabilitan en OIDC. Logout impide nuevas descargas; no borra archivos descargados ni cachés existentes.
+En modo `off`, toda mutación requiere `X-Cerberus: 1`; si llega `Origin`, debe estar autorizado. El cliente
+web lo añade automáticamente. Ejemplo CLI local: `curl -H 'X-Cerberus: 1' -X POST ...`.
+
+API y nginx solo aceptan Host de loopback (la API admite además el host de `CERBERUS_APP_ORIGIN`).
+Si Vite usa otro puerto, configura `CERBERUS_APP_ORIGIN` y `CERBERUS_CORS_ORIGINS` con ese origen real;
+por ejemplo, `http://localhost:5180` en ambos. El callback del cliente de Keycloak también debe coincidir.
+
+El worker se inicia con `uv run python -m cerberus_api.worker`: cubre también fallos tempranos de arq
+(expiración, deserialización y reintentos agotados) al alinear el TTL de propietarios con sus resultados.
+La CLI `arq --check cerberus_api.worker.WorkerSettings` sigue disponible para salud.
+
+Si Redis pierde la propiedad de una ingesta, la API devuelve 404; no la asigna a quien conozca su UUID.
+Para descartar una ingesta huérfana, para primero **worker y API** para evitar carreras. En desarrollo nativo,
+con sus mismas variables de rutas, ejecuta el bloque siguiente con el UUID concreto revisado por el operador:
+
+```bash
+CERBERUS_ORPHAN_UPLOAD='<uuid-hex-de-32-caracteres>' uv run python - <<'PYTHON'
+import os
+import shutil
+from cerberus_api.config import get_settings
+from cerberus_api.staging import upload_dir, validate_upload_id
+settings = get_settings()
+upload_id = validate_upload_id(os.environ["CERBERUS_ORPHAN_UPLOAD"])
+shutil.rmtree(upload_dir(settings.staging_dir, upload_id), ignore_errors=True)
+(settings.tmp_dir / f"{upload_id}.zip").unlink(missing_ok=True)
+PYTHON
+```
+
+En Docker, detén `api worker` con ambos archivos Compose y ejecuta el mismo Python mediante
+`docker compose --env-file .env.auth -f compose.yaml -f compose.auth.yaml run --rm --no-deps -T api python -`,
+pasando el UUID con `-e CERBERUS_ORPHAN_UPLOAD=<uuid>` antes de `api` y conservando las variables de mounts.
+Después reinicia `api worker`. No borres resultados ni estudios finales para limpiar una ingesta pendiente.
+
 ### Modo desarrollo: requisitos
 
 - Python 3.11 + [uv](https://docs.astral.sh/uv/)
@@ -221,7 +260,7 @@ En modo local `off`, `/api/auth/config` informa el modo y las otras rutas de aut
 ```bash
 uv sync                                                    # una vez: deps Python
 redis-server                                               # terminal 1
-uv run arq cerberus_api.worker.WorkerSettings              # terminal 2: worker
+uv run python -m cerberus_api.worker              # terminal 2: worker
 uv run uvicorn cerberus_api.main:app --reload --reload-dir backend --port 8000  # terminal 3: API
 cd frontend && npm install && npm run dev                  # terminal 4: UI
 ```

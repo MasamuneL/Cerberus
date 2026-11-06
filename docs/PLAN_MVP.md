@@ -15,7 +15,7 @@ no implica que esos fallos estén resueltos.
 
 **Fase de autenticación en desarrollo:** OIDC con Keycloak para la demo académica (§17), con una evolución
 posterior hacia identidad y permisos hospitalarios. A0 incorpora configuración e interfaces y A1 el proveedor;
-A2 incorpora login y sesiones en la API; la protección de recursos y la UI siguen en A3–A5.
+A2 incorpora login y sesiones; A3 aplica permisos y propiedad a recursos. La UI y aceptación final siguen en A4/A5.
 
 Las secciones §1–§10 describen el MVP original y sus tickets. Los contratos iniciales de disco y API
 (§6/§7) se complementan con áreas y `Study.has_areas` en §13, dominios en §14 y recursos/caché en §16.
@@ -130,7 +130,7 @@ Variables de entorno (prefijo `CERBERUS_`; los valores por defecto son relativos
 | `CERBERUS_CPU_THREADS` | `auto`; entero positivo para fijar los hilos del worker (§16) |
 
 La configuración de autenticación de A0 figura en §17.2. A2 monta las rutas OIDC y sesiones; la protección de
-los recursos existentes corresponde a A3. Configurar `oidc` en esta etapa todavía no protege el catálogo.
+los recursos existentes se aplica en A3, incluida la revalidación de archivos y la propiedad de jobs/ingestas.
 
 Las variables de Compose para puertos, límites de memoria y carpetas del host se documentan en el
 [README, opción Docker](../README.md#opción-rápida-docker-desktop-recomendada-para-usarla).
@@ -140,7 +140,7 @@ Comandos (todos desde la raíz):
 ```bash
 uv sync                                                    # deps Python (incluye el paquete en modo editable)
 redis-server                                               # terminal 1
-uv run arq cerberus_api.worker.WorkerSettings              # terminal 2: worker
+uv run python -m cerberus_api.worker              # terminal 2: worker
 uv run uvicorn cerberus_api.main:app --reload --reload-dir backend --port 8000  # terminal 3: API (docs en /docs)
 cd frontend && npm install && npm run dev                  # terminal 4: UI en :5173
 
@@ -268,7 +268,11 @@ En modo `off`, solo `/api/auth/config` responde; las demás rutas de auth devuel
 almacén o proveedor producen 503, sin credenciales ni detalles del error en la respuesta. El callback
 descarta `code/state` del scope del servidor para los logs, incluso ante fallos de dependencias; nginx
 no escribe errores con la query del callback, también en su variante con barra final.
-Los permisos de los recursos de estudio, archivos, jobs y subidas se implementan en A3.
+Los recursos de estudio, archivos y `/api/system` requieren sesión OIDC (401 sin ella); las mutaciones y
+jobs/subidas requieren analista (403 para lector). Jobs e ingestas ajenos o sin propietario responden 404.
+Todas las mutaciones OIDC requieren CSRF y Origin autorizado. En `off` requieren `X-Cerberus: 1` y, si
+incluyen Origin, uno autorizado. Host se valida en ambos modos. JSON autenticado usa `no-store` y NIfTI
+`private, no-cache`, con permisos antes del body/I/O y ETag/304. Los modelos JSON anteriores se conservan.
 
 ## 8. Tickets
 
@@ -635,7 +639,7 @@ Ola única en paralelo (B12, F9, F10, F11) → verificación con Playwright (cap
 |---|---|---|
 | redis | redis:7.4-alpine (digest) | AOF, healthcheck |
 | api | `docker/backend.Dockerfile` (amd64) | uvicorn :8000 interno, healthcheck `/api/health` |
-| worker | misma imagen | `arq cerberus_api.worker.WorkerSettings` |
+| worker | misma imagen | `python -m cerberus_api.worker` |
 | frontend | `docker/frontend.Dockerfile` | nginx :8080 → estáticos + proxy `/api` → api:8000 |
 
 Volúmenes bind: `./Data`, `./storage`, `./models` (pesos MONAI y atlas en caché; si faltan, se descargan dentro).
@@ -693,7 +697,7 @@ para todos los tamaños de volumen. Las duraciones mostradas en la UI son estima
 
 ## 17. Autenticación para demo académica · OIDC + Keycloak
 
-**Estado:** A0–A2 integrados; A3–A5 pendientes. El usuario pidió incorporar esta fase
+**Estado:** A0–A2 integrados; A3 implementado y validado en su rama, A4/A5 pendientes. El usuario pidió incorporar esta fase
 el 2026-11-03 y continuar su desarrollo el 2026-11-05.
 El alcance inmediato es una demo académica open source con datos públicos anonimizados o sintéticos;
 la visión posterior es una instalación hospitalaria. Este apartado no declara preparación para uso clínico.

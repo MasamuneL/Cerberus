@@ -1,5 +1,6 @@
 // Tipos de la API. DEBEN reflejar exactamente backend/cerberus_api/schemas.py y docs/PLAN_MVP.md §7.
 // Si cambias uno, actualiza también schemas.py y el §7 del plan en el mismo PR.
+// A3 conserva estos cuerpos; la API valida sesión, roles, propiedad y CSRF antes de procesarlos.
 
 export type RanoCategory = "PD" | "PR" | "MR" | "SD";
 export type JobState = "queued" | "in_progress" | "complete" | "failed" | "not_found";

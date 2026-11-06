@@ -14,10 +14,11 @@ from pydantic import ValidationError
 from redis.exceptions import RedisError
 
 from cerberus_api import catalog
+from cerberus_api.access import enqueue_owned_job
 from cerberus_api.areas import AREAS_JSON
 from cerberus_api.atlas import MOVING_PRIORITY
 from cerberus_api.config import Settings
-from cerberus_api.deps import REDIS_UNAVAILABLE, RedisDep, SettingsDep
+from cerberus_api.deps import REDIS_UNAVAILABLE, PrincipalDep, RedisDep, SettingsDep
 from cerberus_api.schemas import (
     AreasResult,
     JobCreated,
@@ -159,7 +160,9 @@ _CHANNEL_SEQS = frozenset(seq for cands in CHANNEL_MAP.values() for seq in cands
 
 
 @router.post("/studies/{patient}/{timepoint}/segmentation", status_code=202)
-async def start_segmentation(patient: str, timepoint: str, settings: SettingsDep, redis: RedisDep) -> JobCreated:
+async def start_segmentation(
+    patient: str, timepoint: str, settings: SettingsDep, redis: RedisDep, principal: PrincipalDep
+) -> JobCreated:
     """Encola `segment_study` en el worker; 404 si no existe el estudio, 422 sin secuencias de canal."""
     study = catalog.get_study(settings.data_dir, settings.results_dir, patient, timepoint)
     if study is None:
@@ -170,7 +173,7 @@ async def start_segmentation(patient: str, timepoint: str, settings: SettingsDep
             detail="El estudio no tiene ninguna secuencia MRI para el modelo (t1gd/t1eg/t1tse/t2tse/t2star/flair)",
         )
     try:
-        job = await redis.enqueue_job("segment_study", patient, timepoint)
+        job = await enqueue_owned_job(redis, principal, "segment_study", patient, timepoint)
     except (RedisError, OSError) as exc:
         raise HTTPException(status_code=503, detail=REDIS_UNAVAILABLE) from exc
     if job is None:
@@ -200,7 +203,9 @@ def get_segmentation(patient: str, timepoint: str, settings: SettingsDep) -> Seg
 
 
 @router.post("/studies/{patient}/{timepoint}/areas", status_code=202)
-async def start_area_mapping(patient: str, timepoint: str, settings: SettingsDep, redis: RedisDep) -> JobCreated:
+async def start_area_mapping(
+    patient: str, timepoint: str, settings: SettingsDep, redis: RedisDep, principal: PrincipalDep
+) -> JobCreated:
     """Encola `map_areas` en el worker; 404 si no existe el estudio, 422 sin GTV o sin secuencia T1."""
     study = catalog.get_study(settings.data_dir, settings.results_dir, patient, timepoint)
     if study is None:
@@ -212,7 +217,7 @@ async def start_area_mapping(patient: str, timepoint: str, settings: SettingsDep
             status_code=422, detail="El estudio no tiene secuencia T1 (t1gd/t1eg/t1tse) para registrar al MNI"
         )
     try:
-        job = await redis.enqueue_job("map_areas", patient, timepoint)
+        job = await enqueue_owned_job(redis, principal, "map_areas", patient, timepoint)
     except (RedisError, OSError) as exc:
         raise HTTPException(status_code=503, detail=REDIS_UNAVAILABLE) from exc
     if job is None:

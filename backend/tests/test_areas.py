@@ -277,7 +277,7 @@ def client(settings: Settings, fake_redis: FakeRedis) -> Iterator[TestClient]:
     app.dependency_overrides[settings_dep] = lambda: settings
     app.dependency_overrides[get_redis] = lambda: fake_redis
     try:
-        yield TestClient(app)
+        yield TestClient(app, base_url="http://localhost", headers={"X-Cerberus": "1"})
     finally:
         app.dependency_overrides.clear()
 

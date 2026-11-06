@@ -466,7 +466,7 @@ def client(settings: Settings, fake_redis: FakeRedis) -> Iterator[TestClient]:
     app = create_app()
     app.dependency_overrides[settings_dep] = lambda: settings
     app.dependency_overrides[get_redis] = lambda: fake_redis
-    yield TestClient(app)
+    yield TestClient(app, base_url="http://localhost", headers={"X-Cerberus": "1"})
 
 
 def _ready_upload(settings: Settings, make_nifti: MakeNifti, n: int = 3, converted: tuple[bool, ...] = ()) -> str:
@@ -532,7 +532,7 @@ def test_post_zip_too_large_413(tmp_path: Path, fake_redis: FakeRedis) -> None:
     app = create_app()
     app.dependency_overrides[settings_dep] = lambda: small
     app.dependency_overrides[get_redis] = lambda: fake_redis
-    r = TestClient(app).post(
+    r = TestClient(app, base_url="http://localhost", headers={"X-Cerberus": "1"}).post(
         "/api/uploads",
         data={"patient": "001", "timepoint": "t0"},
         files={"file": ("big.zip", b"\0" * (1024 * 1024 + 1), "application/zip")},

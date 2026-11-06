@@ -2,6 +2,7 @@
 
 `frontend/src/api/types.ts` debe reflejar exactamente estos modelos. Si cambias uno, actualiza también
 `types.ts` y el §7 del plan en el mismo PR.
+A3 conserva los cuerpos JSON; las guardas aplican sesión, roles, propiedad y CSRF antes de procesarlos.
 """
 
 from datetime import datetime

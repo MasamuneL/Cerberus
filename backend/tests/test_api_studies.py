@@ -23,7 +23,7 @@ def settings(tmp_path: Path) -> Settings:
 def client(settings: Settings) -> Iterator[TestClient]:
     app.dependency_overrides[settings_dep] = lambda: settings
     try:
-        yield TestClient(app)
+        yield TestClient(app, base_url="http://localhost", headers={"X-Cerberus": "1"})
     finally:
         app.dependency_overrides.clear()
 

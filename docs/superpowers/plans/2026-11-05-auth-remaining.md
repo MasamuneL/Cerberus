@@ -65,10 +65,36 @@ transacciones una sola vez y renueva sesión al autenticar; tiempos y transporte
 
 **Archivos:** `access.py`, middleware/dependencias, routers, worker, nginx, cliente y tests.
 
-- [ ] TDD de la matriz completa de §17.3, incluido GET/HEAD con ETag después de logout.
-- [ ] Vincular propietarios antes de publicar recursos; denegar metadata ausente y accesos cruzados.
-- [ ] Imponer CSRF/Origin y Host antes de body/I/O/jobs; proteger también el modo local (S1/S2).
-- [ ] Aplicar caché privada/no-store y deshabilitar documentación pública en modo OIDC.
+**Decisiones de implementación:**
+
+- `create_app(settings: Settings | None = None, *, session_factory: SessionFactory | None = None)` permite
+  inyectar configuración/almacén, sin modo de bypass. El estado de la app conserva ambos; `settings_dep`
+  obtiene la configuración de esa app y `session_store_dep` comparte su fábrica. El pool real sigue siendo lazy.
+- Middleware ASGI antes de parsear body o leer disco: auth OIDC para `/api`, salvo salud y rutas auth que
+  aplican sus propias guardas. Mutaciones requieren analista y CSRF/Origin; jobs/uploads requieren analista
+  y propietario. Sin metadata: 404. Archivos GET/HEAD se autentican antes de ETag/304.
+- Modo local: mutaciones requieren `X-Cerberus: 1`; `Origin`, cuando venga, debe estar autorizado.
+  El cliente web añade la cabecera; los tests usan Host localhost y cabeceras legítimas, con casos negativos explícitos.
+- Revisión: Access y privacidad de callback usan `get_route_path(scope)` para seguir el `root_path` de Starlette
+  sin permitir que un prefijo omita guardas o conserve la query sensible.
+- `TrustedHostMiddleware` con origen configurado y loopbacks; nginx rechaza Host ajeno mediante servidor
+  por defecto. `CallbackPrivacyMiddleware` permanece como último middleware añadido para cubrir rechazos tempranos.
+- Propietarios Redis bajo `cerberus:auth:owners:jobs:<id>` y `...:uploads:<id>`, identidad serializada
+  (`issuer`, `sub`), IDs UUID hex canónicos. Registrar antes de publicar/encolar; limpiar si el encolado falla.
+- Hook arq `after_job_end` (verificado en 0.28) corre después de guardar resultados: alinear TTL de propietario
+  con `arq:result:<id>`; conservarlo si hay reintento pendiente y quitarlo si desapareció el recurso.
+  Revisión: arq omite ese hook en fallos tempranos. `OwnedWorker.finish_failed_job` cubre ese camino;
+  launcher `python -m cerberus_api.worker` sustituye la CLI para ejecutar jobs (su healthcheck se conserva).
+  Confirm/delete de ingesta limpia propietario después de completar la operación, con I/O en threadpool.
+- JSON autenticado `no-store`; volúmenes autenticados `private, no-cache`. Swagger/ReDoc/OpenAPI desactivados en OIDC.
+- QA: matriz completa offline, body no consumido ante rechazo, dos analistas, metadata ausente, TTL/limpieza,
+  CSRF/Host en ambos modos y GET/HEAD condicional tras logout; luego flujo real de ingesta fallida temporal
+  para probar propiedad sin ejecutar MONAI/ANTs. Validar modo local antes de merge.
+
+- [x] TDD de la matriz completa de §17.3, incluido GET/HEAD con ETag después de logout.
+- [x] Vincular propietarios antes de publicar recursos; denegar metadata ausente y accesos cruzados.
+- [x] Imponer CSRF/Origin y Host antes de body/I/O/jobs; proteger también el modo local (S1/S2).
+- [x] Aplicar caché privada/no-store y deshabilitar documentación pública en modo OIDC.
 - [ ] QA por HTTP y Docker, revisión, checks, commit/push/merge y checkpoint.
 
 ## A4 · Interfaz de acceso

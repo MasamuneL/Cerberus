@@ -12,7 +12,7 @@
 git checkout main && git pull --ff-only && git lfs pull
 uv sync && (cd frontend && npm install)
 redis-server                                                    # terminal 1
-uv run arq cerberus_api.worker.WorkerSettings                   # terminal 2
+uv run python -m cerberus_api.worker                   # terminal 2
 uv run uvicorn cerberus_api.main:app --reload --reload-dir backend --port 8000   # terminal 3
 cd frontend && npm run dev                                      # terminal 4 (:5173; si está ocupado: npx vite --port 5180 --strictPort)
 ```
@@ -93,7 +93,19 @@ restaurando configuración y eliminando cuentas temporales. Smoke Docker previo 
 2026-11-06 21:30:11–21:32:50 UTC, **15/15 checks**, 11 capturas, sin pendientes y exit 0. Revisadas capturas
 de recursos a 1440×900 y volumetría a 1280×800. Logs de Uvicorn y nginx verificados con marcadores sintéticos;
 los callbacks no registran query incluso con API caída y barra final.
-**Siguiente paso:** A3 debe proteger los recursos; A4 añadirá UI.
+**Trabajo en curso:** A3 en `feat/A3-access-control`, dentro del mismo worktree `/private/tmp/cerberus-auth-A1`.
+Implementados guardas antes del body/I/O, propiedad antes de encolar y limpieza, caché autenticada,
+CSRF y Host (S1/S2). PR #9 listo para integrar después de QA; A4 añadirá UI. **725 tests rápidos aprobados, 5 slow excluidos**,
+Ruff/formato/pyright/build correctos. Revisión independiente cerró bypass por `root_path` y propietarios
+sin TTL en fallos tempranos de arq; regresiones reales sobre fakeredis y nuevo launcher `python -m cerberus_api.worker`.
+QA real lector/dos analistas, acceso cruzado, TTL y GET/HEAD condicional tras logout correcto. Worker Docker
+probado con función ausente/reintentos agotados; propiedad caduca. QA final real repitió permisos y la
+regresión A2 completa con el launcher nuevo: Redis/proveedor caídos, state/replay, caducidad y logout correctos;
+cuentas temporales eliminadas y timeouts restaurados. Visual Vite **33/33**, 14 auditorías axe sin violaciones
+automáticas y 27 capturas (22:01:16–22:07:03 UTC); smoke Docker **15/15**, 11 capturas, sin pendientes
+(22:08:20–22:11:07 UTC). Revisadas capturas de capas 1440×900 y tabla 005/t0 1280×800, y recursos/volumetría
+Docker en ambas resoluciones. La restauración del wrapper de QA falló por cwd; corregida y ejecutada
+manualmente: `/auth/config` informa `oidc` y catálogo anónimo devuelve 401. No es un fallo del runner ni del producto.
 Plan de ejecución: [`superpowers/plans/2026-11-05-auth-remaining.md`](superpowers/plans/2026-11-05-auth-remaining.md).
 El usuario autorizó avanzar los tickets posibles con commits/push frecuentes y QA antes de cada merge.
 A5 depende de la ola P del QA
