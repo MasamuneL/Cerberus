@@ -28,6 +28,7 @@ class Provider:
         self.key = key
         self.signing_key: RSAKey | OctKey = key
         self.algorithm = "RS256"
+        self.header_kid: str | None = None
         self.status = 200
         self.claims: dict[str, Any] = {
             "iss": ISSUER,
@@ -59,7 +60,7 @@ class Provider:
         if self.status != 200:
             return httpx.Response(self.status, json={"error": "invalid_grant"})
         signed = jwt.encode(
-            {"alg": self.algorithm, "kid": self.signing_key.as_dict()["kid"]},
+            {"alg": self.algorithm, "kid": self.header_kid or self.signing_key.as_dict()["kid"]},
             self.claims,
             self.signing_key,
             algorithms=[self.algorithm],
@@ -123,6 +124,10 @@ def test_validated_identity_ignores_unknown_roles(signing_key: RSAKey) -> None:
         {"iat": NOW + 100},
         {"aud": ["cerberus-web", "other"]},
         {"azp": "wrong"},
+        {"azp": False},
+        {"azp": ""},
+        {"azp": None},
+        {"azp": 0},
     ],
 )
 def test_invalid_claims_rejected(signing_key: RSAKey, patch: dict[str, Any]) -> None:
@@ -169,6 +174,19 @@ def test_wrong_signature_and_unapproved_algorithm(signing_key: RSAKey, algorithm
         RSAKey.generate_key(auto_kid=True) if algorithm == "RS256" else OctKey.generate_key(256, auto_kid=True)
     )
     provider.algorithm = algorithm
+    kid = signing_key.as_dict()["kid"]
+    assert isinstance(kid, str)
+    provider.header_kid = kid
+    with pytest.raises(OIDCInvalid):
+        asyncio.run(provider.client().exchange_code("code", transaction()))
+
+
+@pytest.mark.parametrize("claim", ["iss", "aud", "exp", "iat", "nonce", "sub"])
+def test_required_claim_must_be_present(signing_key: RSAKey, claim: str) -> None:
+    from cerberus_api.oidc import OIDCInvalid
+
+    provider = Provider(signing_key)
+    provider.claims.pop(claim)
     with pytest.raises(OIDCInvalid):
         asyncio.run(provider.client().exchange_code("code", transaction()))
 

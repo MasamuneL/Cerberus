@@ -151,7 +151,11 @@ class OIDCClient:
             claims = CodeIDToken(
                 decoded.claims,
                 decoded.header,
-                {"iss": {"value": self.issuer}, "aud": {"value": self.settings.oidc_client_id}},
+                {
+                    "iss": {"value": self.issuer},
+                    "aud": {"value": self.settings.oidc_client_id},
+                    "azp": {"value": self.settings.oidc_client_id},
+                },
                 {
                     "nonce": transaction.nonce,
                     "client_id": self.settings.oidc_client_id,
