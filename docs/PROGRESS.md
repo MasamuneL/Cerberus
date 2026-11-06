@@ -44,7 +44,7 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 | A0 · contratos y configuración de auth (§17) | ✅ | feat/A0-auth-config | 3bd8ee4 | 2026-11-05 | Vikingo / Codex | PR #5 integrado tras QA completo; CP-041 |
 | A1 · Keycloak reproducible (§17) | ✅ | feat/A1-keycloak | 5470dcf | 2026-11-05 | Vikingo / Codex | PR #6 integrado tras QA real y smoke Docker; CP-042 |
 | A2 · OIDC y sesiones (§17) | ✅ | feat/A2-oidc-sessions | 7635e58 | 2026-11-06 | Vikingo / Codex | PR #8 integrado tras QA real y smoke Docker; CP-044 |
-| A3 · permisos y propiedad (§17) | 🟡 | feat/A3-access-control | — | 2026-11-06 | Vikingo / Codex | PR #9 listo; 725 tests, visual 33/33 y Docker 15/15; revisión/QA real completos |
+| A3 · permisos y propiedad (§17) | ✅ | feat/A3-access-control | 9674ee4 | 2026-11-06 | Vikingo / Codex | PR #9 integrado; 725 tests, visual 33/33 y Docker 15/15; CP-045 |
 | A4 · UI de acceso (§17) | ⬜ | — | — | — | — | Depende de A2 y A3 |
 | A5 · E2E y documentación de auth (§17) | ⬜ | — | — | — | — | Depende de A1–A4 y ola P del QA |
 
@@ -635,3 +635,30 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
   por la limpieza en PR #7, aún pendiente; este checkpoint no modifica ni integra ese trabajo.
 - **Siguiente paso:** A3 para imponer permisos/propiedad/CSRF/Host en recursos, después A4 UI. A2 todavía no
   protege catálogo, archivos, jobs ni subidas; A5 requiere ola P. Worktree `/private/tmp/cerberus-auth-A1` conservado.
+
+
+### CP-045 · 2026-11-06 · A3 · Permisos y propiedad integrados
+- **Hecho:** middleware antes del body/I/O para sesión, lector/analista y propiedad Redis por (`issuer`, `sub`).
+  Registra propietarios antes de encolar, limpia errores/confirmación/descarte y alinea TTL con resultados arq.
+  Recursos ajenos o sin metadata devuelven 404. Catálogo final compartido; JSON `no-store`, NIfTI `private, no-cache`
+  y permisos antes de GET/HEAD/304. Swagger/ReDoc/OpenAPI deshabilitados en OIDC.
+- **S1/S2:** CSRF y Origin en OIDC; `X-Cerberus: 1` y Origin autorizado cuando venga en modo local. Host validado
+  por API/nginx. CLI web añade cabecera local automáticamente. La privacidad y las reglas DICOM previas se conservan.
+- **Revisión:** cerrados bypass por `root_path` y propietarios permanentes por fallos tempranos de arq.
+  `OwnedWorker.finish_failed_job` cubre expiración, deserialización, función ausente, retries y abort. Nuevo comando
+  `uv run python -m cerberus_api.worker`; healthcheck oficial `arq --check` conservado. Regresiones con arq real
+  sobre fakeredis; revisión independiente sin hallazgos pendientes.
+- **Checks:** Ruff/formato/pyright y build correctos; **725 tests rápidos aprobados, 5 slow excluidos**. Comprobados
+  39 enlaces locales. Aviso conocido de bundles grandes, sin fallo de build.
+- **QA real:** Keycloak/Redis, lector y dos analistas, mutaciones/CSRF, acceso cruzado, ingesta sintética fallida,
+  TTL de job, propiedad tras nuevo login, descarte y GET/HEAD condicional después de logout (401). Repetida regresión
+  A2 completa con nuevo launcher: state/replay, proveedor/Redis caídos e idle/absoluta bajo actividad. Cuentas temporales
+  eliminadas y timeouts restaurados. Worker Docker también verificado con función ausente/retries agotados.
+- **QA visual:** Vite, 22:01:16–22:07:03 UTC: **33/33 checks**, 14 auditorías axe sin violaciones automáticas,
+  27 capturas y exit 0. Smoke Docker, 22:08:20–22:11:07 UTC: **15/15**, 11 capturas, sin pendientes. Revisadas
+  ambas resoluciones. El wrapper falló al restaurar por cwd; corregido y restaurado manualmente: modo OIDC y
+  catálogo anónimo 401 verificados. El runner aprobó todas sus comprobaciones.
+- **Integración:** PR #9, merge `9674ee4`; árbol idéntico al commit validado `e3345c2`. CP-043/PR #7 siguen en
+  la rama de limpieza ajena. Worktree `/private/tmp/cerberus-auth-A1` y `.env.auth` local ignorado se conservan.
+- **Siguiente paso:** A4 (UI de acceso), luego dependencias de ola P y A5. La interfaz aún no refleja roles ni incluye
+  login/logout: el acceso se inicia manualmente en `/api/auth/login`. S1/S2 cerrados; resto de ola P pendiente.

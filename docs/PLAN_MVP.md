@@ -10,7 +10,7 @@ la entrada **DICOM** mediante conversión a NIfTI.
 **Estado de implementación:** MVP y extensiones §13–§16 integrados en `main`: áreas de Brodmann, dominios
 funcionales, UX/UI, Docker Compose, autoajuste de recursos y caché HTTP. El tablero y los checkpoints
 están en [`PROGRESS.md`](PROGRESS.md), y el estado vivo en [`HANDOFF.md`](HANDOFF.md).
-Los [hallazgos del QA de seguridad y robustez](QA_2026-10-29.md) siguen pendientes; implementar el alcance
+S1/S2 del [QA de seguridad y robustez](QA_2026-10-29.md) están corregidos por A3; el resto sigue pendiente; implementar el alcance
 no implica que esos fallos estén resueltos.
 
 **Fase de autenticación en desarrollo:** OIDC con Keycloak para la demo académica (§17), con una evolución
@@ -697,7 +697,7 @@ para todos los tamaños de volumen. Las duraciones mostradas en la UI son estima
 
 ## 17. Autenticación para demo académica · OIDC + Keycloak
 
-**Estado:** A0–A2 integrados; A3 implementado y validado en su rama, A4/A5 pendientes. El usuario pidió incorporar esta fase
+**Estado:** A0–A3 integrados; A4/A5 pendientes. El usuario pidió incorporar esta fase
 el 2026-11-03 y continuar su desarrollo el 2026-11-05.
 El alcance inmediato es una demo académica open source con datos públicos anonimizados o sintéticos;
 la visión posterior es una instalación hospitalaria. Este apartado no declara preparación para uso clínico.

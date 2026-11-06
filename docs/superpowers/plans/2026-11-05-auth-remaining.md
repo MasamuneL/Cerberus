@@ -95,7 +95,7 @@ transacciones una sola vez y renueva sesión al autenticar; tiempos y transporte
 - [x] Vincular propietarios antes de publicar recursos; denegar metadata ausente y accesos cruzados.
 - [x] Imponer CSRF/Origin y Host antes de body/I/O/jobs; proteger también el modo local (S1/S2).
 - [x] Aplicar caché privada/no-store y deshabilitar documentación pública en modo OIDC.
-- [ ] QA por HTTP y Docker, revisión, checks, commit/push/merge y checkpoint.
+- [x] QA por HTTP y Docker, revisión, checks, commit/push/merge y checkpoint (PR #9, CP-045).
 
 ## A4 · Interfaz de acceso
 

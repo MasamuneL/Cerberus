@@ -4,7 +4,7 @@
 > checkpoint. El historial completo está en [`PROGRESS.md`](PROGRESS.md) y el alcance y los contratos en
 > [`PLAN_MVP.md`](PLAN_MVP.md). Las reglas de trabajo están en [`../AGENTS.md`](../AGENTS.md).
 
-**Última actualización:** 2026-11-06 · último checkpoint: CP-044 · rama base: `main`
+**Última actualización:** 2026-11-06 · último checkpoint: CP-045 · rama base: `main`
 
 ## 1. Arranque rápido
 
@@ -41,7 +41,7 @@ y autoajuste de recursos y caché HTTP de NIfTI (§16: D2e-back/front).
 | §13–§14 · áreas y UX/UI | ✅ integrado | Capas, cursor, atajos, pestañas, funciones en riesgo, IBM Plex y navegación con teclado; PR #1, merge `bcef409` |
 | §15 · Docker Compose | ✅ integrado | Redis, API, worker y frontend/nginx; acceso local en `http://localhost:8080`; CP-031 |
 | §16 · recursos y caché | ✅ integrado | `CERBERUS_CPU_THREADS=auto`, `GET /api/system`, indicador y estimaciones en la UI, revalidación 304; CP-034 |
-| §17 · login para demo académica | 🟡 A0–A2 integrados | PR #8, merge `7635e58`; login/sesión API verificados. Recursos y UI pendientes en A3–A5 |
+| §17 · login para demo académica | 🟡 A0–A3 integrados | PR #9, merge `9674ee4`; API protegida y propiedad verificada. UI/A5 pendientes |
 | QA de seguridad y robustez | ⬜ correcciones pendientes | Hallazgos y propuesta por olas en [`QA_2026-10-29.md`](QA_2026-10-29.md); CP-035/036 |
 
 **Integración:** CP-037, CP-038 y CP-039 integrados en `main` mediante los PR #2, #3 y #4
@@ -93,9 +93,9 @@ restaurando configuración y eliminando cuentas temporales. Smoke Docker previo 
 2026-11-06 21:30:11–21:32:50 UTC, **15/15 checks**, 11 capturas, sin pendientes y exit 0. Revisadas capturas
 de recursos a 1440×900 y volumetría a 1280×800. Logs de Uvicorn y nginx verificados con marcadores sintéticos;
 los callbacks no registran query incluso con API caída y barra final.
-**Trabajo en curso:** A3 en `feat/A3-access-control`, dentro del mismo worktree `/private/tmp/cerberus-auth-A1`.
+**A3 integrado (CP-045):** PR #9, merge `9674ee4`, rama `feat/A3-access-control`, dentro del mismo worktree `/private/tmp/cerberus-auth-A1`.
 Implementados guardas antes del body/I/O, propiedad antes de encolar y limpieza, caché autenticada,
-CSRF y Host (S1/S2). PR #9 listo para integrar después de QA; A4 añadirá UI. **725 tests rápidos aprobados, 5 slow excluidos**,
+CSRF y Host (S1/S2). Integrado tras QA completo; A4 añadirá UI. **725 tests rápidos aprobados, 5 slow excluidos**,
 Ruff/formato/pyright/build correctos. Revisión independiente cerró bypass por `root_path` y propietarios
 sin TTL en fallos tempranos de arq; regresiones reales sobre fakeredis y nuevo launcher `python -m cerberus_api.worker`.
 QA real lector/dos analistas, acceso cruzado, TTL y GET/HEAD condicional tras logout correcto. Worker Docker
@@ -106,6 +106,7 @@ automáticas y 27 capturas (22:01:16–22:07:03 UTC); smoke Docker **15/15**, 11
 (22:08:20–22:11:07 UTC). Revisadas capturas de capas 1440×900 y tabla 005/t0 1280×800, y recursos/volumetría
 Docker en ambas resoluciones. La restauración del wrapper de QA falló por cwd; corregida y ejecutada
 manualmente: `/auth/config` informa `oidc` y catálogo anónimo devuelve 401. No es un fallo del runner ni del producto.
+**Siguiente trabajo:** A4, interfaz de acceso; después ola P pendiente y A5.
 Plan de ejecución: [`superpowers/plans/2026-11-05-auth-remaining.md`](superpowers/plans/2026-11-05-auth-remaining.md).
 El usuario autorizó avanzar los tickets posibles con commits/push frecuentes y QA antes de cada merge.
 A5 depende de la ola P del QA
@@ -138,7 +139,7 @@ aunque su petición condicional con curl devolvió 304. No se garantiza que el n
 volúmenes grandes en su caché. Evidencia y mediciones completas en [`PROGRESS.md`](PROGRESS.md).
 
 **Seguridad y datos:** el QA posterior encontró P1 (metadatos personales en la conversión DICOM), Q1/S3
-(subidas que agotan la memoria), CSRF y DNS rebinding, entre otros fallos. Siguen sin corregirse. No se debe
+(subidas que agotan la memoria), entre otros fallos. S1/S2 (CSRF/DNS rebinding) están corregidos por A3; el resto sigue pendiente. No se debe
 presentar la ingesta como anonimización completa ni la limpieza temporal como garantizada ante un crash.
 
 **Límites:** 12 auditorías conservan resultados incompletos de axe; no se certifica WCAG completa ni se hizo
@@ -148,7 +149,7 @@ regeneran con [`tools/e2e/README.md`](../tools/e2e/README.md); verificar siempre
 
 ### Cómo retomar con Claude u otra herramienta
 
-1. `git checkout main && git pull --ff-only`; A0–A2 integrados. Continuar A3 según el tablero.
+1. `git checkout main && git pull --ff-only`; A0–A3 integrados. Continuar A4 según el tablero.
 2. Leer este archivo, `PROGRESS.md`, `QA_2026-10-29.md` y `PLAN_MVP.md` §13–§17.
    **No volver a implementar UX/UI, Docker, autoajuste ni 304.**
 3. Para desarrollo, usar el arranque de la sección 1. Para Docker: `docker compose up -d --build`,
