@@ -16,6 +16,7 @@ from arq.connections import RedisSettings
 from redis.exceptions import RedisError
 
 from cerberus_api import catalog, runtime
+from cerberus_api.access import OwnerStore
 from cerberus_api.areas import run_area_mapping
 from cerberus_api.config import get_settings
 from cerberus_api.dicom import convert_series, group_series, safe_extract, suggest_sequence
@@ -225,6 +226,23 @@ async def ingest_dicom(ctx: dict[str, Any], upload_id: str, zip_path: str) -> di
     return manifest.model_dump(mode="json")
 
 
+async def finish_owner(ctx: dict[str, Any]) -> None:
+    """Después de guardar el resultado arq, alinea la propiedad con su vida útil; conserva reintentos."""
+    redis = ctx["redis"]
+    job_id = ctx["job_id"]
+    try:
+        owner_key = OwnerStore.key("jobs", job_id)
+    except ValueError:
+        return  # Jobs antiguos del modo local no tienen metadata de identidad.
+    ttl = await redis.pttl(f"arq:result:{job_id}")
+    if ttl >= 0:
+        await redis.pexpire(owner_key, ttl)
+    elif ttl == -1:
+        await redis.persist(owner_key)
+    elif not await redis.exists(f"arq:job:{job_id}"):
+        await redis.delete(owner_key)
+
+
 class WorkerSettings:
     """Configuración del worker que lee `arq` (atributos de clase)."""
 
@@ -232,6 +250,7 @@ class WorkerSettings:
     # staticmethod: arq lee los hooks del atributo de clase y los llama con `ctx`
     on_startup = staticmethod(startup)
     on_shutdown = staticmethod(shutdown)
+    after_job_end = staticmethod(finish_owner)
     redis_settings = RedisSettings.from_dsn(get_settings().redis_url)
     job_timeout = 1800
     # Un solo job a la vez: un modelo en GPU/MPS

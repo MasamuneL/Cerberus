@@ -12,14 +12,15 @@ from arq.connections import ArqRedis, RedisSettings, create_pool
 from fastapi import Depends, HTTPException, Request
 from redis.exceptions import RedisError
 
-from cerberus_api.config import Settings, get_settings
+from cerberus_api.config import Settings
+from cerberus_api.identity import Principal
 from cerberus_api.oidc import OIDCClient
 from cerberus_api.sessions import SessionData, SessionStore
 
 
-def settings_dep() -> Settings:
+def settings_dep(request: Request) -> Settings:
     """Ajustes de la app; dependencia separada de `get_settings` para poder sobreescribirla en tests."""
-    return get_settings()
+    return request.app.state.settings
 
 
 # Alias para anotar parámetros de los endpoints: `settings: SettingsDep`
@@ -79,9 +80,9 @@ def oidc_dep(settings: OIDCSettingsDep) -> OIDCClient:
     return OIDCClient(settings)
 
 
-def session_store_dep(settings: OIDCSettingsDep, redis: RedisDep) -> SessionStore:
+async def session_store_dep(request: Request, settings: OIDCSettingsDep) -> SessionStore:
     """Almacén de identidad sobre el pool compartido, con claves separadas de arq."""
-    return SessionStore(redis, settings)
+    return await request.app.state.auth_session_factory()
 
 
 SessionStoreDep = Annotated[SessionStore, Depends(session_store_dep)]
@@ -108,3 +109,12 @@ def verify_csrf(request: Request, session: SessionData, settings: Settings) -> N
         or not secrets.compare_digest(token, session.csrf_token)
     ):
         raise HTTPException(403, "Origen o token CSRF inválido", headers={"Cache-Control": "no-store"})
+
+
+def current_principal(request: Request) -> Principal | None:
+    """Identidad ya comprobada por la guarda; en modo local no se fabrica propietario."""
+    session: SessionData | None = request.scope.get("cerberus_session")
+    return session.principal if session is not None else None
+
+
+PrincipalDep = Annotated[Principal | None, Depends(current_principal)]

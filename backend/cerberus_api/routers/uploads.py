@@ -27,8 +27,9 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse, JSONResponse
 
 from cerberus_api import catalog, staging
+from cerberus_api.access import OwnerStore, enqueue_owned_job
 from cerberus_api.config import Settings
-from cerberus_api.deps import SettingsDep, get_redis
+from cerberus_api.deps import PrincipalDep, SettingsDep, get_redis
 from cerberus_api.nifti import load_nifti
 from cerberus_api.schemas import ConfirmUpload, Study, UploadCreated, UploadManifest
 from cerberus_api.sequences import validate_patient, validate_sequence, validate_timepoint
@@ -175,6 +176,7 @@ def _cleanup_upload(settings: Settings, upload_id: str, zip_path: Path) -> None:
 async def post_upload(
     request: Request,
     settings: SettingsDep,
+    principal: PrincipalDep,
     file: Annotated[UploadFile, File()],
     patient: Annotated[str, Form()],
     timepoint: Annotated[str, Form()],
@@ -197,15 +199,22 @@ async def post_upload(
     if name.endswith(".zip"):
         upload_id = staging.new_upload_id()
         zip_path = await run_in_threadpool(_receive_zip, settings, file.file, upload_id)
+        owners: OwnerStore | None = None
+        registered = False
         try:
             redis = await _resolve_redis(request, settings)
-            job = await redis.enqueue_job("ingest_dicom", upload_id, str(zip_path))
+            if principal is not None:
+                owners = OwnerStore(redis)
+                await owners.register("uploads", upload_id, principal)
+                registered = True
+            job = await enqueue_owned_job(redis, principal, "ingest_dicom", upload_id, str(zip_path))
+            if job is None:
+                raise HTTPException(status_code=500, detail="No se pudo encolar la ingesta DICOM")
         except BaseException:
             _cleanup_upload(settings, upload_id, zip_path)
+            if owners is not None and registered:
+                await owners.delete("uploads", upload_id)
             raise
-        if job is None:  # pragma: no cover - arq solo devuelve None si el job_id ya existe
-            _cleanup_upload(settings, upload_id, zip_path)
-            raise HTTPException(status_code=500, detail="No se pudo encolar la ingesta DICOM")
         created = UploadCreated(upload_id=upload_id, job_id=job.job_id)
         return JSONResponse(status_code=status.HTTP_202_ACCEPTED, content=created.model_dump())
 
@@ -310,21 +319,28 @@ def _confirm_sync(settings: Settings, upload_id: str, body: ConfirmUpload) -> St
 
 
 @router.post("/uploads/{upload_id}/confirm", status_code=status.HTTP_201_CREATED)
-def confirm_upload(upload_id: str, body: ConfirmUpload, settings: SettingsDep) -> Study:
+async def confirm_upload(
+    upload_id: str, body: ConfirmUpload, settings: SettingsDep, request: Request, principal: PrincipalDep
+) -> Study:
     """Mueve las series elegidas (`mapping`: índice → secuencia) a `Data/` y borra el staging → 201 `Study`.
 
     404 si la subida no existe; 409 si no está `ready`, hay secuencias repetidas o algún destino ya existe
     (en ese caso no se mueve nada); 422 si algún ID, índice o secuencia es inválido.
     """
-    return _confirm_sync(settings, upload_id, body)
+    result = await run_in_threadpool(_confirm_sync, settings, upload_id, body)
+    if principal is not None:
+        await OwnerStore(await _resolve_redis(request, settings)).delete("uploads", upload_id)
+    return result
 
 
 @router.delete("/uploads/{upload_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_upload(upload_id: str, settings: SettingsDep) -> Response:
+async def delete_upload(upload_id: str, settings: SettingsDep, request: Request, principal: PrincipalDep) -> Response:
     """Descarta una subida (borra su staging). Idempotente: 204 aunque ya no exista; 404 si el id es inválido."""
     try:
         path = staging.upload_dir(settings.staging_dir, upload_id)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=UPLOAD_NOT_FOUND) from exc
-    shutil.rmtree(path, ignore_errors=True)
+    await run_in_threadpool(shutil.rmtree, path, ignore_errors=True)
+    if principal is not None:
+        await OwnerStore(await _resolve_redis(request, settings)).delete("uploads", upload_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

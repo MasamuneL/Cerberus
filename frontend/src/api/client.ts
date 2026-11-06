@@ -31,7 +31,11 @@ export class ApiError extends Error {
 const enc = encodeURIComponent;
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API}${path}`, init);
+  const headers = new Headers(init?.headers);
+  if (init?.method && !["GET", "HEAD", "OPTIONS"].includes(init.method.toUpperCase())) {
+    headers.set("X-Cerberus", "1");
+  }
+  const res = await fetch(`${API}${path}`, { ...init, headers });
   if (!res.ok) {
     let detail = res.statusText;
     try {

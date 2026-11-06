@@ -56,7 +56,7 @@ def _worker_info() -> SystemInfo:
 def make_client() -> Iterator[MakeClient]:
     def _make(redis: FakeRedis | None) -> TestClient:
         app.dependency_overrides[optional_redis] = lambda: redis
-        return TestClient(app)
+        return TestClient(app, base_url="http://localhost", headers={"X-Cerberus": "1"})
 
     try:
         yield _make

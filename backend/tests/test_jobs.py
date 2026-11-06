@@ -51,7 +51,7 @@ def client(settings: Settings, fake_redis: FakeRedis) -> Iterator[TestClient]:
     app.dependency_overrides[settings_dep] = lambda: settings
     app.dependency_overrides[get_redis] = lambda: fake_redis
     try:
-        yield TestClient(app)
+        yield TestClient(app, base_url="http://localhost", headers={"X-Cerberus": "1"})
     finally:
         app.dependency_overrides.clear()
 
@@ -190,7 +190,7 @@ def test_job_status_result_expired(client: TestClient, monkeypatch: pytest.Monke
 
 def test_app_starts_without_redis(settings: Settings) -> None:
     """La app arranca (lifespan incluido) y /api/health responde aunque Redis no esté corriendo."""
-    with TestClient(app) as c:
+    with TestClient(app, base_url="http://localhost", headers={"X-Cerberus": "1"}) as c:
         assert c.get("/api/health").json() == {"status": "ok"}
 
 
@@ -200,7 +200,7 @@ def test_redis_down_returns_503(settings: Settings, make_study: MakeStudy, monke
     make_study(settings.data_dir)
     app.dependency_overrides[settings_dep] = lambda: down
     try:
-        with TestClient(app) as c:
+        with TestClient(app, base_url="http://localhost", headers={"X-Cerberus": "1"}) as c:
             r = c.post("/api/studies/001/t0/segmentation")
             assert r.status_code == 503
             assert r.json()["detail"] == "Redis no disponible: inicia redis-server y el worker"
