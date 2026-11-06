@@ -79,6 +79,15 @@ Se corrigieron URLs HTTP de Debian a HTTPS en el Dockerfile: el build limpio fal
 las firmas de paquetes siguen verificándose. No incluye rutas/sesiones de Cerberus ni protección todavía.
 **Trabajo en curso:** A2 en `feat/A2-oidc-sessions`, worktree `/private/tmp/cerberus-auth-A1`.
 Se conserva `.env.auth` local para el QA real; A0/A1 ya están en `main`.
+**Avance A2 (2026-11-06):** transacciones ligadas al navegador y de un uso, sesiones opacas con renovación,
+timeouts Redis atómicos, cliente OIDC Authlib 1.9.4/HTTPX2/joserfc y rutas config/login/callback/me/logout.
+Firma RS256 y claims OIDC verificados; CSRF/Origin en logout. Callbacks excluyen query de logs de Uvicorn y
+nginx, incluida la barra final y los fallos de upstream. **649 tests rápidos aprobados, 5 slow excluidos**,
+Ruff/formato/pyright y build correctos. Cambios subidos hasta `f93acdd`.
+Revisión detectó `azp` vacío/falso: regresiones RED→GREEN y validación explícita por Authlib. QA real también
+detectó claim de roles omitido por Keycloak: ahora cuenta sin rol recibe 403. Casos reales de login lector/
+analista, renovación, CSRF, logout, state ajeno/replay, Redis/proveedor caídos y caducidad confirmados; se está
+ejecutando la pasada final y el smoke Docker antes del PR/merge. A3 aún debe proteger los recursos y A4 añadir UI.
 Plan de ejecución: [`superpowers/plans/2026-11-05-auth-remaining.md`](superpowers/plans/2026-11-05-auth-remaining.md).
 El usuario autorizó avanzar los tickets posibles con commits/push frecuentes y QA antes de cada merge.
 A5 depende de la ola P del QA
