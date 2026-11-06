@@ -87,7 +87,10 @@ Ruff/formato/pyright y build correctos. Cambios subidos hasta `f93acdd`.
 Revisión detectó `azp` vacío/falso: regresiones RED→GREEN y validación explícita por Authlib. QA real también
 detectó claim de roles omitido por Keycloak: ahora cuenta sin rol recibe 403. La pasada final real confirmó
 login de lector y analista, renovación, CSRF, logout, state ajeno/replay, Redis/proveedor caídos y caducidad,
-restaurando configuración y eliminando cuentas temporales. Smoke Docker en curso antes del PR/merge.
+restaurando configuración y eliminando cuentas temporales. Smoke Docker previo al merge completo:
+2026-11-06 21:30:11–21:32:50 UTC, **15/15 checks**, 11 capturas, sin pendientes y exit 0. Revisadas capturas
+de recursos a 1440×900 y volumetría a 1280×800. Logs de Uvicorn y nginx verificados con marcadores sintéticos;
+los callbacks no registran query incluso con API caída y barra final.
 A3 aún debe proteger los recursos y A4 añadir UI.
 Plan de ejecución: [`superpowers/plans/2026-11-05-auth-remaining.md`](superpowers/plans/2026-11-05-auth-remaining.md).
 El usuario autorizó avanzar los tickets posibles con commits/push frecuentes y QA antes de cada merge.
