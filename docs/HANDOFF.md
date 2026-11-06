@@ -94,7 +94,12 @@ restaurando configuración y eliminando cuentas temporales. Smoke Docker previo 
 de recursos a 1440×900 y volumetría a 1280×800. Logs de Uvicorn y nginx verificados con marcadores sintéticos;
 los callbacks no registran query incluso con API caída y barra final.
 **Trabajo en curso:** A3 en `feat/A3-access-control`, dentro del mismo worktree `/private/tmp/cerberus-auth-A1`.
-Implementará guardas antes del body/I/O, propiedad, caché autenticada, CSRF y Host (S1/S2). A4 añadirá UI.
+Implementados guardas antes del body/I/O, propiedad antes de encolar y limpieza, caché autenticada,
+CSRF y Host (S1/S2). PR #9 en borrador; A4 añadirá UI. **725 tests rápidos aprobados, 5 slow excluidos**,
+Ruff/formato/pyright/build correctos. Revisión independiente cerró bypass por `root_path` y propietarios
+sin TTL en fallos tempranos de arq; regresiones reales sobre fakeredis y nuevo launcher `python -m cerberus_api.worker`.
+QA real lector/dos analistas, acceso cruzado, TTL y GET/HEAD condicional tras logout correcto. Worker Docker
+probado con función ausente/reintentos agotados; propiedad caduca. QA visual Vite y smoke final pendientes.
 Plan de ejecución: [`superpowers/plans/2026-11-05-auth-remaining.md`](superpowers/plans/2026-11-05-auth-remaining.md).
 El usuario autorizó avanzar los tickets posibles con commits/push frecuentes y QA antes de cada merge.
 A5 depende de la ola P del QA
