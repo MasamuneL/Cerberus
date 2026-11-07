@@ -1,11 +1,23 @@
 .auth-page { min-height: 100%; display: grid; place-items: center; padding: var(--space-6); }
-.auth-card { width: min(100%, 30rem); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: var(--space-6); }
-.auth-brand { color: var(--accent); font: 500 0.8rem var(--font-mono); letter-spacing: 0.12em; margin: 0 0 var(--space-5); }
+.auth-card { width: min(100%, 34rem); background: var(--surface); border: 1px solid var(--border); border-top: 3px solid var(--accent); border-radius: var(--radius-lg); padding: var(--space-6); }
+.auth-brand { display: flex; justify-content: space-between; flex-wrap: wrap; gap: var(--space-2); color: var(--accent); font: 500 0.8rem var(--font-mono); letter-spacing: 0.12em; margin: 0 0 var(--space-5); }
+.auth-brand span { color: var(--text-muted); font: 400 0.8rem var(--font-sans); letter-spacing: normal; }
 .auth-card h1 { font-size: 1.6rem; line-height: 1.2; margin: 0 0 var(--space-4); }
 .auth-card p:not(.auth-brand) { color: var(--text-muted); line-height: 1.6; }
-.auth-actions { display: flex; gap: var(--space-3); align-items: center; flex-wrap: wrap; }
+.auth-actions { display: flex; gap: var(--space-3); align-items: center; flex-wrap: wrap; margin-top: var(--space-5); }
 .auth-login { display: inline-block; background: var(--accent); color: var(--text-on-accent); padding: 0.65rem 1rem; border-radius: var(--radius); font-weight: 600; text-decoration: none; }
 .auth-login:hover { filter: brightness(1.1); }
+.auth-help { border-top: 1px solid var(--border); margin-top: var(--space-6); padding-top: var(--space-5); }
+.auth-help h2 { font-size: 1rem; margin: 0; }
+.auth-help p { font-size: 0.9rem; margin-bottom: 0; }
 .auth-header-actions { display: flex; align-items: center; gap: var(--space-3); margin-left: auto; }
 .auth-header-actions .header-btn { margin-left: 0; }
 .auth-role { color: var(--text-muted); font-size: 0.85rem; white-space: nowrap; }
+.auth-expiry-notice { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space-3); padding: var(--space-3) var(--space-5); border-bottom: 1px solid var(--accent); background: var(--accent-soft); color: var(--text); }
+.auth-expiry-notice p { margin: 0; flex: 1 1 20rem; }
+.auth-expiry-notice button { flex-shrink: 0; }
+@media (max-width: 480px) {
+  .auth-page { padding: var(--space-4); }
+  .auth-card { padding: var(--space-5); }
+  .auth-header-actions { gap: var(--space-2); }
+}

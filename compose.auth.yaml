@@ -41,6 +41,7 @@ services:
     volumes:
       - keycloak-data:/opt/keycloak/data
       - ./docker/keycloak/realm.json:/opt/keycloak/data/import/cerberus-realm.json:ro
+      - ./docker/keycloak/themes/cerberus:/opt/keycloak/themes/cerberus:ro
     networks: [default, identity-db]
     depends_on:
       auth-db:

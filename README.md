@@ -149,17 +149,19 @@ no tiempos garantizados para cualquier equipo o estudio.
 
 Smoke test de la versión Docker: `cd tools/e2e && npm ci && CERBERUS_UI=http://localhost:8080 node verify-docker.mjs`.
 
-### Identidad, sesiones y permisos de la demo (A1–A3)
+### Identidad, sesiones y permisos de la demo (A1–A4)
 
 El overlay añade **Keycloak 26.8.1 en http://localhost:8081** y PostgreSQL 18 privado. Cerberus conserva
-**http://localhost:8080**. La API protege catálogo, archivos y mutaciones con sesiones y permisos. La UI
-de acceso llegará en A4; mientras tanto, abre `/api/auth/login` para iniciar sesión antes de usar la app.
+**http://localhost:8080**. La API protege catálogo, archivos y mutaciones con sesiones y permisos. La pantalla
+de acceso permite iniciar sesión, muestra errores recuperables y explica la política de la demo.
 El lector consulta estudios; solo el analista puede subir y procesar. Jobs e ingestas pendientes son privados
 para la identidad que los creó, también tras un nuevo login; los estudios finales forman un catálogo compartido.
 
 ```bash
 uv run python tools/auth/bootstrap.py
 docker compose --env-file .env.auth -f compose.yaml -f compose.auth.yaml up -d --build
+# Cuando Keycloak esté listo, aplica también los cambios a un realm existente:
+uv run python tools/auth/sync_realm.py
 docker compose --env-file .env.auth -f compose.yaml -f compose.auth.yaml ps
 ```
 
@@ -183,6 +185,23 @@ En desarrollo, **5173** sigue siendo Vite y **8000** la API nativa; para registr
 instalación nueva usa `CERBERUS_APP_ORIGIN=http://localhost:5173` al ejecutar el overlay. La importación de
 un realm existente se omite para conservar sus cuentas: los cambios posteriores de redirect URIs se hacen
 explícitamente desde la consola, sin recrear el realm.
+
+El tema `cerberus` hereda los formularios de `keycloak.v2`: conserva sus controles, validación y flujo de
+contraseñas, con presentación Cerberus y ayuda en español. El overlay monta el tema en modo lectura.
+Tras actualizar el overlay, vuelve a ejecutar `up -d` para incorporar el montaje antes de sincronizar.
+`uv run python tools/auth/sync_realm.py` lee `.env.auth` (o `--env-file RUTA`) y permite que el entorno
+sobrescriba el usuario administrativo, su contraseña o `CERBERUS_KEYCLOAK_HTTP_PORT`. No acepta contraseñas
+en argumentos ni imprime credenciales. Repetirlo no produce cambios adicionales: solo actualiza nombre de
+la demo, tema, `rememberMe`, activación de idiomas, español por defecto y la unión de idiomas existentes
+con español/inglés. No toca cuentas, contraseñas, roles, clientes, redirect URIs ni límites de sesión,
+incluidos los de «Recordarme» configurados por el administrador. Si falla, comprueba que Keycloak esté
+listo y repite el comando; no borres el realm ni sus volúmenes.
+
+«Recordarme» conserva la sesión de Keycloak en ese navegador según sus límites de proveedor. El login de
+Cerberus mantiene `prompt=login`, por lo que volver a entrar sigue exigiendo credenciales aunque se marque
+la casilla. Esta opción no amplía la sesión de Cerberus: sus límites predeterminados siguen siendo
+**1800 s sin actividad y 3600 s en total**. Cerrar Cerberus invalida su sesión local; no promete cerrar
+las sesiones de Keycloak o de otras aplicaciones.
 
 | Variable del overlay | Default |
 |---|---|
