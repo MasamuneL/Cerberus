@@ -122,9 +122,9 @@ transacciones una sola vez y renueva sesión al autenticar; tiempos y transporte
 - QA UI con respuestas HTTP controladas para RED→GREEN; luego cuentas temporales reales/Keycloak,
   lector/analista/sin rol, caducidad, descarga pendiente cancelada, logout, teclado/axe y regresiones off.
 
-- [ ] Implementar carga, anónimo, lector, analista, sin permisos y expiración, con textos españoles.
-- [ ] Login por redirección y logout con CSRF; 401 detiene polling/descargas y desmonta datos/visor.
-- [ ] Reflejar permisos en todos los controles; 403 no debe fingir expiración.
+- [x] Implementar carga, anónimo, lector, analista, sin permisos y expiración, con textos españoles.
+- [x] Login por redirección y logout con CSRF; 401 detiene polling/descargas y desmonta datos/visor.
+- [x] Reflejar permisos en todos los controles; 403 no debe fingir expiración.
 - [ ] QA real con teclado y ambos roles, modo off y sesión caducada; build, revisión, publicación/merge.
 
 ### Ampliación aprobada · 2026-11-07
@@ -141,20 +141,22 @@ PR de A4 y un coordinador de commits/QA; cada implementador tiene archivos exclu
 | A4.5 · pruebas e integración | Coordinador | Regresiones RED→GREEN, teclado/axe y cuentas reales; revisar errores cruzados, persistencia, timeouts y reinicios |
 | A4.6 · entrega | Coordinador + revisor independiente | Checks obligatorios, visual Vite y Docker, revisión final, PR/merge después de QA y checkpoint |
 
-- [ ] Corregir 401 de NIfTI y aborto de descargas pendientes.
-- [ ] Recuperar CSRF tras rotación entre pestañas y diferenciar logout403/503.
-- [ ] Sincronizar sesión entre pestañas sin datos de identidad ni tokens.
-- [ ] Limitar esperas HTTP de configuración/me/logout y permitir recuperación.
-- [ ] Avisar antes de caducar sin sondeo que mantenga viva la sesión.
-- [ ] Recuperar solo referencias opacas propias; limitar tamaño/edad y descartar 403/404.
-- [ ] Explicar y probar rememberMe con prompt=login y límites fijos de Cerberus.
-- [ ] Unificar presentación/español y aplicar cambios del proveedor idempotentemente.
+- [x] Corregir 401 de NIfTI y aborto de descargas pendientes.
+- [x] Recuperar CSRF tras rotación entre pestañas y diferenciar logout403/503.
+- [x] Sincronizar sesión entre pestañas sin datos de identidad ni tokens.
+- [x] Limitar esperas HTTP de configuración/me/logout y permitir recuperación.
+- [x] Avisar antes de caducar sin sondeo que mantenga viva la sesión.
+- [x] Recuperar solo referencias opacas propias; limitar tamaño/edad y descartar 403/404.
+- [x] Explicar y probar rememberMe con prompt=login y límites fijos de Cerberus.
+- [x] Unificar presentación/español y aplicar cambios del proveedor idempotentemente.
 
 **Decisiones:** mantener `prompt=login` del commit 000c958 y la persistencia del proveedor, sin aumentar tiempos
 Cerberus ni introducir refresh tokens. La continuidad usa únicamente UUID opacos en sessionStorage y valida
 acceso antes de mostrar información; no añade endpoints ni permite adoptar recursos sin propietario.
 La notificación entre pestañas solo nace de un login real (`/?auth_event=login`, señal pública fija que
 se consume/borra) o de logout. Abrir otra pestaña normal no retira datos ni aborta trabajo de las existentes.
+Respuestas concurrentes no pueden reducir el deadline de la misma generación: se conserva el mayor plazo,
+con reinicio al autenticar otra sesión. Regresión de respuestas invertidas y cambio de generación incluida.
 Los subagentes no comparten commits ni ejecutan Chrome simultáneamente: el coordinador publica y corre QA.
 
 ## Dependencias de A5 · Ola P

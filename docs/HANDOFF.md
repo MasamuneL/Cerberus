@@ -115,8 +115,13 @@ No se integró A4 ni se declaró completo. La revisión posterior detectó 401 d
 común y logout403 con CSRF viejo tras rotación en otra pestaña; ambos reproducidos. `c7a0544` añade la UI
 inicial y `000c958` conserva prompt=login/rememberMe. El 2026-11-07 el usuario autorizó añadir todos los
 criterios pendientes al plan y ejecutar subagentes; A4.1–A4.6 del plan de ejecución detallan responsables.
-La UI ampliada tiene siete casos aprobados y una regresión NIfTI en rojo pendiente de corrección; el QA de
-`QA_AUTH_2026-11-06.md` corresponde al código anterior 93620fc y no aprueba la UI nueva. Después, ola P pendiente y A5.
+La implementación ampliada está subida hasta `3515f72`: 401 de NIfTI y aborto, logout403/CSRF vigente,
+coordinación entre pestañas, timeout, aviso/caducidad por deadline del servidor, continuidad UUID y tema/sync
+idempotente. Medios y proveedor revisados independientemente. La revisión global detectó retroceso del plazo
+por respuestas concurrentes: corregido con regresión RED→GREEN y revisión adicional. **759 tests backend**,
+Node **5 medios + 10 sesión**, UI controlada **12 generales + 8 sesión** y build aprobados. QA real Keycloak,
+visual Vite y smoke Docker están siendo ejecutados por subagentes; todavía no se autoriza merge de A4.
+El QA de `QA_AUTH_2026-11-06.md` corresponde al código anterior 93620fc y no aprueba la UI nueva. Después, ola P pendiente y A5.
 Plan de ejecución: [`superpowers/plans/2026-11-05-auth-remaining.md`](superpowers/plans/2026-11-05-auth-remaining.md).
 El usuario autorizó avanzar los tickets posibles con commits/push frecuentes y QA antes de cada merge.
 A5 depende de la ola P del QA
