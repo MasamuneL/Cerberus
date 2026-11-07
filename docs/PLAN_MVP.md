@@ -45,8 +45,8 @@ y httpx como dependencias de desarrollo.
 **Extensiones ya implementadas:** áreas de Brodmann (§13), dominios y UX/UI (§14), Docker Compose (§15),
 autoajuste de recursos y caché HTTP (§16).
 
-**Autenticación en desarrollo:** login y sesiones en la API desde A2 (§17). La protección del catálogo,
-los archivos y los trabajos requiere A3; la interfaz de acceso requiere A4. La aceptación final corresponde a A5.
+**Autenticación en desarrollo:** login y sesiones desde A2 (§17); A3 protege catálogo, archivos y trabajos.
+La interfaz de acceso requiere A4. La aceptación final corresponde a A5.
 
 **Fuera del alcance implementado:** auth/usuarios, base de datos, Otsu/K-Means en la app, edema FLAIR,
 skull-stripping automático, registro entre series, RTSTRUCT (rt-utils), exportar DICOM SEG y Mayavi en la app web.
@@ -260,7 +260,7 @@ se define en `identity.py` y no se publica como respuesta de la API.
 |---|---|
 | `GET /api/auth/config` | Público, 200 `AuthConfig` |
 | `GET /api/auth/login` | 302 al proveedor con PKCE/state/nonce; cookie temporal opaca de 300 s |
-| `GET /api/auth/callback` | 303 a `/` tras consumir transacción y validar OIDC; 400 transacción inválida, 401 token inválido, 403 sin rol |
+| `GET /api/auth/callback` | 303 a `/?auth_event=login` tras consumir transacción y validar OIDC; 400 transacción inválida, 401 token inválido, 403 sin rol |
 | `GET /api/auth/me` | 200 `AuthSession`; 401 sin sesión válida |
 | `POST /api/auth/logout` | 204 tras invalidar Redis y borrar cookies; 401 sin sesión, 403 sin CSRF/Origin válidos |
 
@@ -268,11 +268,21 @@ En modo `off`, solo `/api/auth/config` responde; las demás rutas de auth devuel
 almacén o proveedor producen 503, sin credenciales ni detalles del error en la respuesta. El callback
 descarta `code/state` del scope del servidor para los logs, incluso ante fallos de dependencias; nginx
 no escribe errores con la query del callback, también en su variante con barra final.
+En navegaciones con `Accept: text/html`, errores de identidad en login/callback y transacciones inválidas
+vuelven con 303 a `/?auth_error=forbidden|failed|unavailable`; estos códigos fijos no contienen identidad,
+code ni state. El callback correcto vuelve a `/?auth_event=login`; la UI consume/borra esa señal fija y
+notifica el cambio de sesión a otras pestañas sin identidad ni tokens. Abrir una pestaña normal no emite
+un cambio ni cancela trabajo de otras pestañas. Las solicitudes JSON conservan los estados 400/401/403/503 descritos arriba. A4 mostrará
+el mensaje correspondiente; el estado de auth del navegador no concede permisos en la API.
 Los recursos de estudio, archivos y `/api/system` requieren sesión OIDC (401 sin ella); las mutaciones y
 jobs/subidas requieren analista (403 para lector). Jobs e ingestas ajenos o sin propietario responden 404.
 Todas las mutaciones OIDC requieren CSRF y Origin autorizado. En `off` requieren `X-Cerberus: 1` y, si
 incluyen Origin, uno autorizado. Host se valida en ambos modos. JSON autenticado usa `no-store` y NIfTI
 `private, no-cache`, con permisos antes del body/I/O y ETag/304. Los modelos JSON anteriores se conservan.
+Los recursos autenticados OIDC añaden `X-Cerberus-Session-Expires-At`, milisegundos Unix del vencimiento
+inactividad/absoluto calculado por Redis para esa petición, también en GET/HEAD/206/304. No aparece en
+salud/config ni rechazos previos a autenticar. El cliente aplica ese límite solo a su generación de sesión
+vigente para avisar/caducar sin sondeos de renovación automática.
 
 ## 8. Tickets
 
@@ -823,7 +833,7 @@ el resto de API y archivos adquiere protección en A3, y la UI de acceso en A4.
 |---|---|
 | `GET /api/auth/config` | Público, 200 `AuthConfig = {"mode":"off"\|"oidc"}`; sin secretos |
 | `GET /api/auth/login` | 302 al proveedor; callback y regreso a `/` fijados por configuración, sin `return_to` arbitrario |
-| `GET /api/auth/callback` | Consume code/state; valida OIDC, crea cookie y devuelve 303 a `/`; error genérico 400/401, o 403 sin rol |
+| `GET /api/auth/callback` | Consume code/state; valida OIDC, crea cookie y devuelve 303 a `/?auth_event=login`; error genérico 400/401, o 403 sin rol |
 | `GET /api/auth/me` | 200 `AuthSession = {"roles":["reader"\|"analyst"],"expires_at":"ISO-8601","csrf_token":"…"}`; 401 sin sesión válida |
 | `POST /api/auth/logout` | 204 tras invalidar sesión; requiere sesión y CSRF |
 
@@ -865,6 +875,21 @@ indican destinos previstos; las firmas de librerías se verificarán en su códi
 - **A4:** estados de carga, anónimo, lector, analista, sin permisos y sesión expirada; al recibir 401, detener
   polling, abortar descargas y desmontar el visor/limpiar datos visibles. 403 se muestra como falta de permiso,
   no como sesión caducada. El modo off conserva el flujo local; login, logout y avisos se operan con teclado.
+  La ampliación autorizada el 2026-11-07 añade criterios explícitos:
+  - Un 401 de NIfTI también retira el visor y aborta descargas pendientes; ningún cargador evita el cliente común.
+  - Tras rotar sesión en otra pestaña, logout recupera el CSRF vigente y ofrece un reintento acotado; 403 no se
+    presenta como una caída del proveedor. Login/logout/cambio de sesión se sincronizan sin transmitir tokens.
+  - Configuración, comprobación de sesión y logout tienen un límite de espera de red y una acción recuperable.
+  - Se avisa antes del vencimiento efectivo conocido y solo una acción del usuario comprueba/continúa la sesión;
+    no se añade sondeo que renueve indefinidamente la inactividad.
+  - Tras reingresar pueden recuperarse trabajos e ingestas propios. Solo se conservan referencias UUID opacas,
+    acotadas y con caducidad en sessionStorage; nunca identidad, roles, CSRF, tokens ni datos de estudios.
+    La API vuelve a comprobar propietario antes de mostrar o reanudar; referencias ajenas o expiradas se eliminan.
+  - «Recordarme» persiste la sesión del proveedor en ese navegador. `prompt=login` sigue exigiendo credenciales;
+    no amplía los límites 1800/3600 s de Cerberus. La UI y la documentación explican esa política.
+  - Cerberus y el formulario de Keycloak comparten presentación y español, conservando el formulario seguro
+    del proveedor. Los cambios de tema/rememberMe se aplican de forma idempotente a realms existentes,
+    preservando usuarios, contraseñas, roles y configuración ajena.
 - **A5:** navegador real en 8080 con Keycloak en 8081: login lector/analista, prohibiciones, volumen protegido,
   expiración, logout y acceso directo posterior denegado; probar también Vite en 5173 con callback por su proxy.
   Los runners previos reciben sesión cuando auth está activa, nunca un bypass de permisos. Pasan checks §5,

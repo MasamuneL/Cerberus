@@ -1,0 +1,83 @@
+/* Tema Cerberus sobre keycloak.v2: no sustituye formularios ni su validación. */
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../fonts/ibm-plex-sans-latin-400-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("../fonts/ibm-plex-sans-latin-600-normal.woff2") format("woff2");
+}
+:root {
+  color-scheme: dark;
+  --pf-v5-global--FontFamily--text: "IBM Plex Sans", system-ui, sans-serif;
+  --pf-v5-global--FontFamily--heading: "IBM Plex Sans", system-ui, sans-serif;
+  --pf-v5-global--Color--100: #e6edf3;
+  --pf-v5-global--Color--200: #9ba7b4;
+  --pf-v5-global--BackgroundColor--100: #151b23;
+  --pf-v5-global--BackgroundColor--200: #0d1117;
+  --pf-v5-global--BorderColor--100: #2d3640;
+  --pf-v5-global--primary-color--100: #58a6ff;
+  --pf-v5-global--primary-color--200: #7cc4ff;
+  --keycloak-card-top-color: #58a6ff;
+}
+html, .login-pf body {
+  background: #0d1117;
+  color: #e6edf3;
+  font-family: "IBM Plex Sans", system-ui, sans-serif;
+}
+.pf-v5-c-login {
+  min-height: 100dvh;
+  padding: 2rem 1rem;
+  background: #0d1117;
+}
+.pf-v5-c-login__container { width: min(100%, 34rem); grid-template-columns: minmax(0, 1fr); }
+.pf-v5-c-login__main {
+  background: #151b23;
+  border: 1px solid #2d3640;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: none;
+}
+#kc-header-wrapper {
+  color: #58a6ff !important;
+  font-family: "IBM Plex Sans", system-ui, sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+.pf-v5-c-login__main-header { border-top-width: 3px; }
+.pf-v5-c-title { color: #e6edf3; font-size: 1.6rem; font-weight: 600; }
+.pf-v5-c-form__label, .pf-v5-c-check__label { color: #e6edf3; }
+.pf-v5-c-form-control {
+  background: #0d1117;
+  border-radius: 4px;
+  --pf-v5-c-form-control--after--BorderBottomColor: #9ba7b4;
+}
+.pf-v5-c-form-control > input { color: #e6edf3; }
+.pf-v5-c-button.pf-m-primary {
+  background: #58a6ff;
+  color: #0b1220;
+  font-weight: 600;
+  border-radius: 4px;
+}
+.pf-v5-c-button.pf-m-primary:hover { background: #7cc4ff; }
+.pf-v5-c-button.pf-m-control { color: #e6edf3; background: #1d242e; }
+a { color: #58a6ff; }
+a:hover { color: #7cc4ff; }
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible {
+  outline: 2px solid #7cc4ff;
+  outline-offset: 3px;
+}
+.cerberus-login-help { margin: 0 2rem 2rem; border-top: 1px solid #2d3640; padding-top: 1.5rem; }
+.cerberus-login-help h2 { color: #e6edf3; font-size: 1rem; font-weight: 600; }
+.cerberus-login-help p { color: #9ba7b4; font-size: 0.9rem; line-height: 1.6; margin-top: 0.75rem; }
+@media (max-width: 480px) {
+  .pf-v5-c-login { padding: 1rem 0.75rem; }
+  .cerberus-login-help { margin: 0 1rem 1.5rem; }
+}

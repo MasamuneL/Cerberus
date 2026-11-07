@@ -13,6 +13,10 @@
   "defaultLocale": "es",
   "ssoSessionIdleTimeout": 1800,
   "ssoSessionMaxLifespan": 3600,
+  "rememberMe": true,
+  "ssoSessionIdleTimeoutRememberMe": 0,
+  "ssoSessionMaxLifespanRememberMe": 0,
+  "loginTheme": "cerberus",
   "eventsEnabled": false,
   "adminEventsEnabled": false,
   "roles": {

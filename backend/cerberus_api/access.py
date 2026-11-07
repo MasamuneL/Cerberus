@@ -20,7 +20,8 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from cerberus_api.config import Settings
 from cerberus_api.deps import SESSION_COOKIE, verify_csrf
 from cerberus_api.identity import Principal
-from cerberus_api.sessions import SessionStore, SessionUnavailable
+from cerberus_api.schemas import SESSION_EXPIRY_HEADER
+from cerberus_api.sessions import SessionData, SessionStore, SessionUnavailable
 
 SessionFactory = Callable[[], Awaitable[SessionStore]]
 ResourceKind = Literal["jobs", "uploads"]
@@ -95,6 +96,7 @@ class AccessMiddleware:
             await self.app(scope, receive, send)
             return
         request = Request(scope)
+        session: SessionData | None = None
         try:
             if self.settings.auth_mode == "off":
                 if scope["method"] not in _SAFE_METHODS and (
@@ -136,8 +138,9 @@ class AccessMiddleware:
 
         async def cache_policy(message: Message) -> None:
             """La revalidación de archivos ocurre después de autenticar cada GET/HEAD."""
-            if self.settings.auth_mode == "oidc" and message["type"] == "http.response.start":
+            if self.settings.auth_mode == "oidc" and session is not None and message["type"] == "http.response.start":
                 headers = MutableHeaders(scope=message)
+                headers[SESSION_EXPIRY_HEADER] = str(int(session.expires_at * 1000))
                 headers["Cache-Control"] = (
                     "private, no-cache"
                     if path.endswith(".nii.gz") and message["status"] in {200, 206, 304}

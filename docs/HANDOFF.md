@@ -4,7 +4,7 @@
 > checkpoint. El historial completo está en [`PROGRESS.md`](PROGRESS.md) y el alcance y los contratos en
 > [`PLAN_MVP.md`](PLAN_MVP.md). Las reglas de trabajo están en [`../AGENTS.md`](../AGENTS.md).
 
-**Última actualización:** 2026-11-06 · último checkpoint: CP-045 · rama base: `main`
+**Última actualización:** 2026-11-07 · último checkpoint: CP-045 · rama base: `main`
 
 ## 1. Arranque rápido
 
@@ -106,11 +106,26 @@ automáticas y 27 capturas (22:01:16–22:07:03 UTC); smoke Docker **15/15**, 11
 (22:08:20–22:11:07 UTC). Revisadas capturas de capas 1440×900 y tabla 005/t0 1280×800, y recursos/volumetría
 Docker en ambas resoluciones. La restauración del wrapper de QA falló por cwd; corregida y ejecutada
 manualmente: `/auth/config` informa `oidc` y catálogo anónimo devuelve 401. No es un fallo del runner ni del producto.
-**Siguiente trabajo:** A4, interfaz de acceso; después ola P pendiente y A5.
+**Trabajo en curso:** A4 en `feat/A4-auth-ui`, mismo worktree. Navegación de errores implementada y subida
+hasta `93620fc`; UI aún pendiente. El usuario pidió QA durante esta fase: **732 tests rápidos**, visual
+**33/33**, 14 axe sin violaciones automáticas, 27 capturas y smoke Docker **15/15** con 11 capturas,
+sin pendientes. Regresión Keycloak/Redis y permisos reales aprobados, incluida navegación HTML; cuentas
+eliminadas, timeouts y OIDC restaurados. Informe: [`QA_AUTH_2026-11-06.md`](QA_AUTH_2026-11-06.md).
+No se integró A4 ni se declaró completo. La revisión posterior detectó 401 de NIfTI fuera del cliente
+común y logout403 con CSRF viejo tras rotación en otra pestaña; ambos reproducidos. `c7a0544` añade la UI
+inicial y `000c958` conserva prompt=login/rememberMe. El 2026-11-07 el usuario autorizó añadir todos los
+criterios pendientes al plan y ejecutar subagentes; A4.1–A4.6 del plan de ejecución detallan responsables.
+La implementación ampliada está subida hasta `3515f72`: 401 de NIfTI y aborto, logout403/CSRF vigente,
+coordinación entre pestañas, timeout, aviso/caducidad por deadline del servidor, continuidad UUID y tema/sync
+idempotente. Medios y proveedor revisados independientemente. La revisión global detectó retroceso del plazo
+por respuestas concurrentes: corregido con regresión RED→GREEN y revisión adicional. **759 tests backend**,
+Node **5 medios + 10 sesión**, UI controlada **12 generales + 8 sesión** y build aprobados. QA real Keycloak,
+visual Vite y smoke Docker están siendo ejecutados por subagentes; todavía no se autoriza merge de A4.
+El QA de `QA_AUTH_2026-11-06.md` corresponde al código anterior 93620fc y no aprueba la UI nueva. Después, ola P pendiente y A5.
 Plan de ejecución: [`superpowers/plans/2026-11-05-auth-remaining.md`](superpowers/plans/2026-11-05-auth-remaining.md).
 El usuario autorizó avanzar los tickets posibles con commits/push frecuentes y QA antes de cada merge.
 A5 depende de la ola P del QA
-(P1–P3, P5, S1–S3 y Q1–Q4); S1/S2 se coordinan con A3.
+(P1–P3, P5, S1–S3 y Q1–Q4); S1/S2 están cerrados por A3.
 
 **Verificación visual de CP-040:** `CERBERUS_UI=http://localhost:5180 node verify.mjs` se ejecutó contra
 API/Vite de esta rama. Completó 10 comprobaciones a 1440×900 y generó 9 capturas nuevas; quedó sin avanzar
@@ -179,7 +194,7 @@ regeneran con [`tools/e2e/README.md`](../tools/e2e/README.md); verificar siempre
 Reporte exportable por estudio (PDF o imprimible), 3D más limpio (iluminación y orientación), subir archivos
 arrastrándolos, atajos extra. Fase 2 pendiente: skull-strip (HD-BET o SynthStrip) para DICOM sin
 `brain_mask`, registro entre series y RTSTRUCT. Docker y el autoajuste ya están implementados.
-El login para la demo tiene planificación incorporada en `PLAN_MVP.md` §17; A0–A2 integrados, con A3–A5
+El login para la demo tiene planificación incorporada en `PLAN_MVP.md` §17; A0–A3 integrados, con A4/A5
 pendientes. La evolución hospitalaria se describe aparte y no se considera aprobada para ejecución.
 El plan de correcciones del QA está en [`QA_2026-10-29.md` §6](QA_2026-10-29.md#6-plan-de-corrección-propuesto-por-olas).
 

@@ -99,6 +99,8 @@ def test_authorization_url_has_pkce_state_nonce_and_fixed_redirect(signing_key: 
     assert params["code_challenge"] != ["verifier"]
     assert params["redirect_uri"] == ["https://cerberus.example/api/auth/callback"]
     assert params["ui_locales"] == ["es"]
+    # El logout es local: exigir credenciales evita reutilizar la sesión SSO del proveedor.
+    assert params["prompt"] == ["login"]
 
 
 def test_validated_identity_ignores_unknown_roles(signing_key: RSAKey) -> None:

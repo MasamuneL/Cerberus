@@ -45,9 +45,10 @@ const fmt = (xs: number[] | null, digits = 0) =>
 interface Props {
   onUploaded: (study: Study) => void;
   onClose?: () => void;
+  resumeId?: string | null;
 }
 
-export default function UploadPanel({ onUploaded, onClose }: Props) {
+export default function UploadPanel({ onUploaded, onClose, resumeId = null }: Props) {
   const [file, setFile] = useState<File | null>(null);
   const [patient, setPatient] = useState("");
   const [timepoint, setTimepoint] = useState("");
@@ -55,7 +56,8 @@ export default function UploadPanel({ onUploaded, onClose }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [uploadId, setUploadId] = useState<string | null>(null);
+  const [uploadId, setUploadId] = useState<string | null>(resumeId);
+  const [resumed, setResumed] = useState(!!resumeId);
   const [manifest, setManifest] = useState<UploadManifest | null>(null);
   const [mapping, setMapping] = useState<Record<number, string>>({});
   const fileInput = useRef<HTMLInputElement>(null);
@@ -87,7 +89,13 @@ export default function UploadPanel({ onUploaded, onClose }: Props) {
           setMapping(init);
         }
       } catch (e) {
-        if (!cancelled) setError(`Error consultando la subida: ${errText(e)}`);
+        if (!cancelled) {
+          if (e instanceof ApiError && [403, 404].includes(e.status)) {
+            setUploadId(null);
+            setManifest(null);
+          }
+          setError(`Error consultando la subida: ${errText(e)}`);
+        }
       }
     };
     void tick();
@@ -98,6 +106,7 @@ export default function UploadPanel({ onUploaded, onClose }: Props) {
   }, [uploadId]);
 
   const reset = () => {
+    setResumed(false);
     setFile(null);
     setSequence("");
     setUploadId(null);
@@ -136,7 +145,7 @@ export default function UploadPanel({ onUploaded, onClose }: Props) {
     for (const v of Object.values(mapping)) if (v) count.set(v, (count.get(v) ?? 0) + 1);
     return [...count].filter(([, n]) => n > 1).map(([k]) => k);
   }, [mapping]);
-  const canConfirm = selected.length > 0 && duplicates.length === 0 && !busy;
+  const canConfirm = selected.length > 0 && duplicates.length === 0 && PATIENT_RE.test(patient) && TIMEPOINT_RE.test(timepoint) && !busy;
 
   const confirm = async () => {
     if (!uploadId || !canConfirm) return;
@@ -189,6 +198,7 @@ export default function UploadPanel({ onUploaded, onClose }: Props) {
         identificable quemado.
       </p>
 
+      {resumed && <p role="status">Ingesta recuperada tras comprobar tus permisos. Introduce de nuevo paciente y timepoint para confirmar el destino.</p>}
       <form className="upload-form" onSubmit={submit}>
         <label>
           Archivo (.nii, .nii.gz o .zip DICOM)
@@ -206,7 +216,7 @@ export default function UploadPanel({ onUploaded, onClose }: Props) {
             value={patient}
             placeholder="001"
             maxLength={3}
-            disabled={inZipFlow || busy}
+            disabled={(inZipFlow && !resumed) || busy}
             onChange={(e) => setPatient(e.target.value.trim())}
           />
         </label>
@@ -216,7 +226,7 @@ export default function UploadPanel({ onUploaded, onClose }: Props) {
             value={timepoint}
             placeholder="t0"
             maxLength={3}
-            disabled={inZipFlow || busy}
+            disabled={(inZipFlow && !resumed) || busy}
             onChange={(e) => setTimepoint(e.target.value.trim())}
           />
         </label>
