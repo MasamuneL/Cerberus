@@ -260,7 +260,7 @@ se define en `identity.py` y no se publica como respuesta de la API.
 |---|---|
 | `GET /api/auth/config` | Público, 200 `AuthConfig` |
 | `GET /api/auth/login` | 302 al proveedor con PKCE/state/nonce; cookie temporal opaca de 300 s |
-| `GET /api/auth/callback` | 303 a `/` tras consumir transacción y validar OIDC; 400 transacción inválida, 401 token inválido, 403 sin rol |
+| `GET /api/auth/callback` | 303 a `/?auth_event=login` tras consumir transacción y validar OIDC; 400 transacción inválida, 401 token inválido, 403 sin rol |
 | `GET /api/auth/me` | 200 `AuthSession`; 401 sin sesión válida |
 | `POST /api/auth/logout` | 204 tras invalidar Redis y borrar cookies; 401 sin sesión, 403 sin CSRF/Origin válidos |
 
@@ -270,7 +270,9 @@ descarta `code/state` del scope del servidor para los logs, incluso ante fallos 
 no escribe errores con la query del callback, también en su variante con barra final.
 En navegaciones con `Accept: text/html`, errores de identidad en login/callback y transacciones inválidas
 vuelven con 303 a `/?auth_error=forbidden|failed|unavailable`; estos códigos fijos no contienen identidad,
-code ni state. Las solicitudes JSON conservan los estados 400/401/403/503 descritos arriba. A4 mostrará
+code ni state. El callback correcto vuelve a `/?auth_event=login`; la UI consume/borra esa señal fija y
+notifica el cambio de sesión a otras pestañas sin identidad ni tokens. Abrir una pestaña normal no emite
+un cambio ni cancela trabajo de otras pestañas. Las solicitudes JSON conservan los estados 400/401/403/503 descritos arriba. A4 mostrará
 el mensaje correspondiente; el estado de auth del navegador no concede permisos en la API.
 Los recursos de estudio, archivos y `/api/system` requieren sesión OIDC (401 sin ella); las mutaciones y
 jobs/subidas requieren analista (403 para lector). Jobs e ingestas ajenos o sin propietario responden 404.
@@ -831,7 +833,7 @@ el resto de API y archivos adquiere protección en A3, y la UI de acceso en A4.
 |---|---|
 | `GET /api/auth/config` | Público, 200 `AuthConfig = {"mode":"off"\|"oidc"}`; sin secretos |
 | `GET /api/auth/login` | 302 al proveedor; callback y regreso a `/` fijados por configuración, sin `return_to` arbitrario |
-| `GET /api/auth/callback` | Consume code/state; valida OIDC, crea cookie y devuelve 303 a `/`; error genérico 400/401, o 403 sin rol |
+| `GET /api/auth/callback` | Consume code/state; valida OIDC, crea cookie y devuelve 303 a `/?auth_event=login`; error genérico 400/401, o 403 sin rol |
 | `GET /api/auth/me` | 200 `AuthSession = {"roles":["reader"\|"analyst"],"expires_at":"ISO-8601","csrf_token":"…"}`; 401 sin sesión válida |
 | `POST /api/auth/logout` | 204 tras invalidar sesión; requiere sesión y CSRF |
 

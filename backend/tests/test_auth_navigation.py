@@ -39,3 +39,12 @@ def test_invalid_transaction_navigation_and_provider_down(auth_client: AuthClien
     response = client.get("/api/auth/login", headers={"Accept": "text/html"})
     assert response.status_code == 303
     assert response.headers["location"] == "/?auth_error=unavailable"
+
+
+def test_successful_callback_marks_only_fixed_login_event(auth_client: AuthClient) -> None:
+    client, _, _, _, _ = auth_client
+    state, _ = login(client)
+    response = client.get("/api/auth/callback", params={"code": "synthetic", "state": state})
+    assert response.status_code == 303
+    assert response.headers["location"] == "/?auth_event=login"
+    assert "code=" not in response.headers["location"] and "state=" not in response.headers["location"]

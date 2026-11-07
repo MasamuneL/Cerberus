@@ -93,7 +93,7 @@ async def callback(
             raise HTTPException(400, "Inicio de sesión inválido o caducado", headers=_HEADERS)
         principal = await provider.exchange_code(query["code"], transaction)
         token, _ = await store.create_session(principal, previous_token=request.cookies.get(SESSION_COOKIE))
-        response = RedirectResponse("/", status_code=303, headers=_HEADERS)
+        response = RedirectResponse("/?auth_event=login", status_code=303, headers=_HEADERS)
         _set_cookie(response, SESSION_COOKIE, token, settings.auth_absolute_timeout_seconds, settings)
         _delete_cookie(response, LOGIN_COOKIE, settings)
         return response

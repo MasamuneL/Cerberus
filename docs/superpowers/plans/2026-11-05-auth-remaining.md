@@ -153,6 +153,8 @@ PR de A4 y un coordinador de commits/QA; cada implementador tiene archivos exclu
 **Decisiones:** mantener `prompt=login` del commit 000c958 y la persistencia del proveedor, sin aumentar tiempos
 Cerberus ni introducir refresh tokens. La continuidad usa únicamente UUID opacos en sessionStorage y valida
 acceso antes de mostrar información; no añade endpoints ni permite adoptar recursos sin propietario.
+La notificación entre pestañas solo nace de un login real (`/?auth_event=login`, señal pública fija que
+se consume/borra) o de logout. Abrir otra pestaña normal no retira datos ni aborta trabajo de las existentes.
 Los subagentes no comparten commits ni ejecutan Chrome simultáneamente: el coordinador publica y corre QA.
 
 ## Dependencias de A5 · Ola P
