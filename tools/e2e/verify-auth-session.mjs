@@ -136,3 +136,19 @@ test('confirmar ingesta elimina referencia 403/404 y conserva en fallo recuperab
   await assert.rejects(api.confirmUpload(id,body),error=>error.status===503);
   assert.equal(JSON.parse(storage.get(pendingKey)).length,1);
 });
+
+test('deadline no retrocede con respuestas invertidas y se reinicia al reautenticar',async()=>{
+  api.clearAuthContext();const deadlines=[],release=[];
+  api.setAuthContext('session-one',()=>{},value=>deadlines.push(value));
+  globalThis.fetch=()=>new Promise(resolve=>release.push(resolve));
+  const earlier=api.listStudies(),later=api.listStudies();
+  release[1](new Response('[]',{headers:{'X-Cerberus-Session-Expires-At':'2000000120000'}}));
+  await later;
+  release[0](new Response('[]',{headers:{'X-Cerberus-Session-Expires-At':'2000000001000'}}));
+  await earlier;
+  assert.deepEqual(deadlines,[2000000120000]);
+  api.setAuthContext('session-two',()=>{},value=>deadlines.push(value));
+  globalThis.fetch=async()=>new Response('[]',{headers:{'X-Cerberus-Session-Expires-At':'2000000001000'}});
+  await api.listStudies();
+  assert.deepEqual(deadlines,[2000000120000,2000000001000]);api.clearAuthContext();
+});

@@ -49,12 +49,14 @@ let csrfToken: string | null = null;
 let unauthorized: (() => void) | null = null;
 let generation = 0;
 let sessionExpiry: ((expiresAt: number) => void) | null = null;
+let latestExpiry = 0;
 const pending = new Set<AbortController>();
 
 export function clearAuthContext(): void {
   csrfToken = null;
   unauthorized = null;
   sessionExpiry = null;
+  latestExpiry = 0;
   generation += 1;
   for (const controller of pending) controller.abort();
   pending.clear();
@@ -91,7 +93,9 @@ async function exchange<T>(
     const signal = init?.signal ? AbortSignal.any([init.signal, controller.signal]) : controller.signal;
     const res = await fetch(`${API}${path}`, { ...init, headers, signal, credentials: "same-origin" });
     const expiresAt = Number(res.headers.get("X-Cerberus-Session-Expires-At"));
-    if (requestGeneration === generation && !controller.signal.aborted && Number.isFinite(expiresAt) && expiresAt > 0) {
+    if (requestGeneration === generation && !controller.signal.aborted && Number.isFinite(expiresAt) && expiresAt > latestExpiry && expiresAt <= 8.64e15) {
+      // Respuestas lentas pueden contener un deadline anterior; nunca acortan la sesión vigente.
+      latestExpiry = expiresAt;
       sessionExpiry?.(expiresAt);
     }
     if (!res.ok) {

@@ -39,7 +39,7 @@ export function useAuth() {
     const session = current.current;
     if (!session || !mounted.current || !Number.isFinite(expiresAt) || expiresAt <= 0 || expiresAt > 8.64e15) return;
     const expires_at = new Date(expiresAt).toISOString();
-    if (session.expires_at === expires_at) return;
+    if (expiresAt <= Date.parse(session.expires_at)) return;
     const updated = { ...session, expires_at };
     current.current = updated;
     setState(previous => previous.status === "authenticated" ? { ...previous, session: updated } : previous);
