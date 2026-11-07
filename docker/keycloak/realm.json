@@ -13,6 +13,7 @@
   "defaultLocale": "es",
   "ssoSessionIdleTimeout": 1800,
   "ssoSessionMaxLifespan": 3600,
+  "rememberMe": true,
   "eventsEnabled": false,
   "adminEventsEnabled": false,
   "roles": {

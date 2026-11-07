@@ -102,7 +102,12 @@ class OIDCClient:
         )
 
     async def authorization_url(self, transaction: LoginTransaction) -> str:
-        """Authlib calcula PKCE; callback fijo y proveedor en español, sin return_to arbitrario."""
+        """Authlib calcula PKCE; callback fijo, proveedor en español y sin return_to arbitrario.
+
+        `prompt=login` fuerza credenciales en cada entrada: el logout de Cerberus es local y no
+        cierra la sesión SSO del proveedor, así que sin este parámetro el siguiente login
+        reutilizaría la cookie de Keycloak y devolvería un código sin pedir contraseña.
+        """
         metadata = await self._metadata()
         client = self._oauth_client()
         try:
@@ -112,6 +117,7 @@ class OIDCClient:
                 nonce=transaction.nonce,
                 code_verifier=transaction.code_verifier,
                 ui_locales="es",
+                prompt="login",
             )
         finally:
             await cast(httpx.AsyncClient, client).aclose()
