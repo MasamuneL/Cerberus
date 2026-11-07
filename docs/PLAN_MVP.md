@@ -869,6 +869,21 @@ indican destinos previstos; las firmas de librerías se verificarán en su códi
 - **A4:** estados de carga, anónimo, lector, analista, sin permisos y sesión expirada; al recibir 401, detener
   polling, abortar descargas y desmontar el visor/limpiar datos visibles. 403 se muestra como falta de permiso,
   no como sesión caducada. El modo off conserva el flujo local; login, logout y avisos se operan con teclado.
+  La ampliación autorizada el 2026-11-07 añade criterios explícitos:
+  - Un 401 de NIfTI también retira el visor y aborta descargas pendientes; ningún cargador evita el cliente común.
+  - Tras rotar sesión en otra pestaña, logout recupera el CSRF vigente y ofrece un reintento acotado; 403 no se
+    presenta como una caída del proveedor. Login/logout/cambio de sesión se sincronizan sin transmitir tokens.
+  - Configuración, comprobación de sesión y logout tienen un límite de espera de red y una acción recuperable.
+  - Se avisa antes del vencimiento efectivo conocido y solo una acción del usuario comprueba/continúa la sesión;
+    no se añade sondeo que renueve indefinidamente la inactividad.
+  - Tras reingresar pueden recuperarse trabajos e ingestas propios. Solo se conservan referencias UUID opacas,
+    acotadas y con caducidad en sessionStorage; nunca identidad, roles, CSRF, tokens ni datos de estudios.
+    La API vuelve a comprobar propietario antes de mostrar o reanudar; referencias ajenas o expiradas se eliminan.
+  - «Recordarme» persiste la sesión del proveedor en ese navegador. `prompt=login` sigue exigiendo credenciales;
+    no amplía los límites 1800/3600 s de Cerberus. La UI y la documentación explican esa política.
+  - Cerberus y el formulario de Keycloak comparten presentación y español, conservando el formulario seguro
+    del proveedor. Los cambios de tema/rememberMe se aplican de forma idempotente a realms existentes,
+    preservando usuarios, contraseñas, roles y configuración ajena.
 - **A5:** navegador real en 8080 con Keycloak en 8081: login lector/analista, prohibiciones, volumen protegido,
   expiración, logout y acceso directo posterior denegado; probar también Vite en 5173 con callback por su proxy.
   Los runners previos reciben sesión cuando auth está activa, nunca un bypass de permisos. Pasan checks §5,

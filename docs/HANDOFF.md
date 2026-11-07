@@ -4,7 +4,7 @@
 > checkpoint. El historial completo está en [`PROGRESS.md`](PROGRESS.md) y el alcance y los contratos en
 > [`PLAN_MVP.md`](PLAN_MVP.md). Las reglas de trabajo están en [`../AGENTS.md`](../AGENTS.md).
 
-**Última actualización:** 2026-11-06 · último checkpoint: CP-045 · rama base: `main`
+**Última actualización:** 2026-11-07 · último checkpoint: CP-045 · rama base: `main`
 
 ## 1. Arranque rápido
 
@@ -111,7 +111,12 @@ hasta `93620fc`; UI aún pendiente. El usuario pidió QA durante esta fase: **73
 **33/33**, 14 axe sin violaciones automáticas, 27 capturas y smoke Docker **15/15** con 11 capturas,
 sin pendientes. Regresión Keycloak/Redis y permisos reales aprobados, incluida navegación HTML; cuentas
 eliminadas, timeouts y OIDC restaurados. Informe: [`QA_AUTH_2026-11-06.md`](QA_AUTH_2026-11-06.md).
-No se integró A4 ni se declaró completo. Después, ola P pendiente y A5.
+No se integró A4 ni se declaró completo. La revisión posterior detectó 401 de NIfTI fuera del cliente
+común y logout403 con CSRF viejo tras rotación en otra pestaña; ambos reproducidos. `c7a0544` añade la UI
+inicial y `000c958` conserva prompt=login/rememberMe. El 2026-11-07 el usuario autorizó añadir todos los
+criterios pendientes al plan y ejecutar subagentes; A4.1–A4.6 del plan de ejecución detallan responsables.
+La UI ampliada tiene siete casos aprobados y una regresión NIfTI en rojo pendiente de corrección; el QA de
+`QA_AUTH_2026-11-06.md` corresponde al código anterior 93620fc y no aprueba la UI nueva. Después, ola P pendiente y A5.
 Plan de ejecución: [`superpowers/plans/2026-11-05-auth-remaining.md`](superpowers/plans/2026-11-05-auth-remaining.md).
 El usuario autorizó avanzar los tickets posibles con commits/push frecuentes y QA antes de cada merge.
 A5 depende de la ola P del QA
