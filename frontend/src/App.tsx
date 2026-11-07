@@ -3,6 +3,7 @@ import { ApiError, getStudy, listStudies } from "./api/client";
 import type { AreasResult, Study, StudyDetail } from "./api/types";
 import SidePanel, { SIDE_TABS, type SideTab } from "./components/SidePanel";
 import UploadPanel from "./components/UploadPanel";
+import ContinuityPanel from "./components/ContinuityPanel";
 import StudyList, { type StudyKey } from "./components/StudyList";
 import Viewer from "./components/Viewer";
 import LoginPanel from "./components/LoginPanel";
@@ -39,6 +40,7 @@ function Workspace({ auth }: { auth: AuthControl }) {
   // No se reinicia al cambiar de estudio para que nunca se repita una URL ya cacheada.
   const [segVersion, setSegVersion] = useState(0);
   const [showUpload, setShowUpload] = useState(false);
+  const [resumeUploadId, setResumeUploadId] = useState<string | null>(null);
   // Áreas de Brodmann (§13): resultado del estudio abierto, versión monótona (cache-busting de
   // brodmann.nii.gz, igual que segVersion) y etiqueta enfocada desde la tabla.
   const [areas, setAreas] = useState<AreasResult | null>(null);
@@ -166,14 +168,22 @@ function Workspace({ auth }: { auth: AuthControl }) {
         <p>Visor y volumetría de glioblastoma (CFB-GBM)</p>
         <div className="auth-header-actions">
           {auth.status === "authenticated" && <span className="auth-role">{auth.canAnalyze ? "Analista" : "Lector"}</span>}
-          {auth.canAnalyze && <button type="button" className="header-btn" onClick={() => setShowUpload((v) => !v)}>
+          {auth.canAnalyze && <button type="button" className="header-btn" onClick={() => { setResumeUploadId(null); setShowUpload((v) => !v); }}>
             {showUpload ? "Cerrar subida" : "Subir estudio"}
           </button>}
           {auth.status === "authenticated" && <button type="button" className="btn-secondary" onClick={() => void auth.logout()}>Cerrar sesión</button>}
         </div>
       </header>
+      {auth.warning && <div className="auth-expiry-notice" role="status">
+        <p>La sesión está por vencer. Comprueba la sesión para continuar; los trabajos en curso siguen en el servidor.</p>
+        <button type="button" className="btn-secondary" onClick={auth.refresh}>Comprobar y continuar sesión</button>
+      </div>}
       <div className="app-body">
         <aside className="sidebar">
+          {auth.canAnalyze && <ContinuityPanel onCompleted={refreshStudies} onResumeUpload={id => {
+            setResumeUploadId(id);
+            setShowUpload(true);
+          }} />}
           <h2>Estudios</h2>
           <StudyList
             studies={studies}
@@ -186,7 +196,7 @@ function Workspace({ auth }: { auth: AuthControl }) {
         <main className="viewer">
           {showUpload && auth.canAnalyze && (
             <div className="upload-overlay">
-              <UploadPanel onUploaded={(st) => void onUploaded(st)} onClose={() => setShowUpload(false)} />
+              <UploadPanel key={resumeUploadId ?? "new"} resumeId={resumeUploadId} onUploaded={(st) => void onUploaded(st)} onClose={() => setShowUpload(false)} />
             </div>
           )}
           {!selected && <p className="placeholder">Selecciona un estudio para visualizarlo.</p>}
