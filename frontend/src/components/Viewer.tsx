@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Niivue, SLICE_TYPE, type NiiVueLocation } from "@niivue/niivue";
-import { fileUrl } from "../api/client";
+import { Niivue, NVImage, SLICE_TYPE, type NiiVueLocation } from "@niivue/niivue";
+import { fetchVolume, fileUrl } from "../api/client";
 import type { AreaLabel, AreasResult, StudyDetail } from "../api/types";
 import { areaColor, areaColorCss } from "./areaColors";
 import { LayerChip, LayerSettings, LayersPanel } from "./viewer/LayersPanel";
@@ -303,7 +303,11 @@ export default function Viewer({
     return () => {
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
+      nv.onLocationChange = () => {};
+      nv.volumes = [];
+      nv.mediaUrlMap.clear();
       nv.cleanup();
+      if (import.meta.env.DEV && (window as any).__nv === nv) delete (window as any).__nv;
       nvRef.current = null;
       readyRef.current = null;
     };
@@ -334,6 +338,7 @@ export default function Viewer({
     const ready = readyRef.current;
     if (!ready || !sequence) return;
     let cancelled = false;
+    const controller = new AbortController();
     const { patient: p, timepoint: t } = study;
 
     const list: Parameters<Niivue["loadVolumes"]>[0] = [
@@ -388,14 +393,37 @@ export default function Viewer({
     // Las cargas se encadenan: loadVolumes vacía nv.volumes y luego agrega los nuevos de forma
     // asíncrona, así que dos llamadas solapadas (p. ej. llega el reporte de áreas a media carga)
     // dejaban volúmenes duplicados y los índices de GTV/áreas apuntando al volumen equivocado.
+    // Niivue no propaga AbortSignal: el cliente común descarga y observa 401; NVImage solo decodifica.
     const prev = loadChainRef.current;
     const run = (async () => {
       try {
         await prev;
         const nv = await ready;
         if (cancelled) return;
-        await nv.loadVolumes(list);
+        const volumes = await Promise.all(list.map(async (item) => {
+          const buffer = await fetchVolume(item.url, controller.signal);
+          controller.signal.throwIfAborted();
+          return NVImage.loadFromUrl({
+            ...item,
+            url: buffer,
+            trustCalMinMax: nv.opts.trustCalMinMax,
+            limitFrames4D: item.limitFrames4D || nv.opts.limitFrames4D,
+          });
+        }));
+        controller.signal.throwIfAborted();
         if (cancelled) return;
+        // La decodificación no modifica GL. Solo se publica un lote completo y aún vigente.
+        nv.volumes = [];
+        nv.mediaUrlMap.clear();
+        nv.closePAQD();
+        volumes.forEach((volume, index) => {
+          const item = list[index];
+          volume.url = item.url;
+          volume.onColormapChange = nv.onColormapChange;
+          nv.document.addImageOptions(volume, item);
+          nv.mediaUrlMap.set(volume, item.url);
+          nv.addVolume(volume);
+        });
         gtvIdxRef.current = gtvIdx;
         segIdxRef.current = segIdx;
         areasIdxRef.current = areasIdx;
@@ -436,7 +464,10 @@ export default function Viewer({
         loadingRef.current = false;
         readCrosshair();
       } catch (e) {
-        if (!cancelled) {
+        const aborted = controller.signal.aborted;
+        // Si falla una capa, se cancelan también las descargas hermanas del mismo lote.
+        controller.abort();
+        if (!cancelled && !aborted) {
           setError(`No se pudieron cargar los volúmenes: ${e instanceof Error ? e.message : String(e)}`);
         }
       } finally {
@@ -449,6 +480,7 @@ export default function Viewer({
     loadChainRef.current = run;
     return () => {
       cancelled = true;
+      controller.abort();
     };
     // gtvOpacity y view se aplican en sus propios efectos sin recargar.
     // eslint-disable-next-line react-hooks/exhaustive-deps
