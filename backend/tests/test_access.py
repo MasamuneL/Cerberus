@@ -254,10 +254,14 @@ def test_files_revalidated_only_while_session_valid(guarded: Any) -> None:
     path = "/api/studies/001/t0/files/gtv.nii.gz"
     first = client.get(path)
     assert first.status_code == 200 and first.headers["cache-control"] == "private, no-cache"
+    assert int(first.headers["X-Cerberus-Session-Expires-At"]) > 0
     etag = first.headers["etag"]
     for method in ("GET", "HEAD"):
         response = client.request(method, path, headers={"If-None-Match": etag})
         assert response.status_code == 304 and response.headers["cache-control"] == "private, no-cache"
+        assert int(response.headers["X-Cerberus-Session-Expires-At"]) > 0
+    ranged = client.get(path, headers={"Range": "bytes=0-1"})
+    assert ranged.status_code == 206 and int(ranged.headers["X-Cerberus-Session-Expires-At"]) > 0
     token = client.cookies.get("cerberus_session")
     client.portal.call(store.delete_session, token)
     for method in ("GET", "HEAD"):
@@ -602,3 +606,28 @@ def test_default_factory_fails_closed_without_redis(guarded: Any, monkeypatch: p
         assert response.status_code == 503
         assert response.json() == {"detail": "Servicio de identidad no disponible"}
         assert client.get("/api/auth/login").status_code == 503
+
+
+def test_session_deadline_header_tracks_server_idle_and_absolute(guarded: Any) -> None:
+    from test_sessions import Clock
+
+    client, store, _ = guarded
+    clock = Clock()
+    store.clock = clock
+    started = clock.now
+    sign_in(client, store)
+    header = "X-Cerberus-Session-Expires-At"
+    first = client.get("/api/probe")
+    assert first.status_code == 200
+    assert int(first.headers[header]) == int((started + store.settings.auth_idle_timeout_seconds) * 1000)
+    clock.now += 1700
+    active = client.get("/api/probe")
+    assert int(active.headers[header]) == int((clock.now + store.settings.auth_idle_timeout_seconds) * 1000)
+    clock.now += 1700
+    limited = client.get("/api/probe")
+    assert int(limited.headers[header]) == int((started + store.settings.auth_absolute_timeout_seconds) * 1000)
+    clock.now = started + store.settings.auth_absolute_timeout_seconds
+    denied = client.get("/api/probe")
+    assert denied.status_code == 401 and header not in denied.headers
+    assert header not in client.get("/api/health").headers
+    assert header not in client.get("/api/auth/config").headers

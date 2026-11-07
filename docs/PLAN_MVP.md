@@ -277,6 +277,10 @@ jobs/subidas requieren analista (403 para lector). Jobs e ingestas ajenos o sin 
 Todas las mutaciones OIDC requieren CSRF y Origin autorizado. En `off` requieren `X-Cerberus: 1` y, si
 incluyen Origin, uno autorizado. Host se valida en ambos modos. JSON autenticado usa `no-store` y NIfTI
 `private, no-cache`, con permisos antes del body/I/O y ETag/304. Los modelos JSON anteriores se conservan.
+Los recursos autenticados OIDC añaden `X-Cerberus-Session-Expires-At`, milisegundos Unix del vencimiento
+inactividad/absoluto calculado por Redis para esa petición, también en GET/HEAD/206/304. No aparece en
+salud/config ni rechazos previos a autenticar. El cliente aplica ese límite solo a su generación de sesión
+vigente para avisar/caducar sin sondeos de renovación automática.
 
 ## 8. Tickets
 

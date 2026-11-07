@@ -111,7 +111,8 @@ transacciones una sola vez y renueva sesión al autenticar; tiempos y transporte
   decodificar mediante `NVImage.loadFromUrl({url: ArrayBuffer, name, ...})` verificado y añadir volúmenes
   con `addVolume`. Conservar URL HTTP para ETag; no reemplazar fetch global ni cachear tokens/datos en storage.
 - Temporizador al vencimiento efectivo con margen y comprobación `/me`; revalidación al volver a ventana,
-  sin sondeo periódico que mantenga sesiones vivas. Logout retira workspace al empezar y no afirma cierre
+  sin sondeo periódico que mantenga sesiones vivas. La caducidad local toma `X-Cerberus-Session-Expires-At`
+  de las respuestas protegidas (milisegundos Unix); el cliente ignora generaciones anteriores. Logout retira workspace al empezar y no afirma cierre
   confirmado si Redis/red fallan; permite reintentar con CSRF conservado únicamente en memoria.
 - Lector ve resultados y controles del visor; no subida ni botones de segmentación/mapeo. Analista y modo
   local conservan mutaciones. Quitar listener/caché de recursos al desmontar último consumidor.
