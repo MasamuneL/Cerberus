@@ -189,6 +189,10 @@ regeneran con [`tools/e2e/README.md`](../tools/e2e/README.md); verificar siempre
 - Un subagente o IA puede reportar éxito sin haberlo logrado (pasó en F8). Verifica siempre con capturas.
 
 ## 4. Mejoras posteriores (propuestas, sin aprobar)
+Adaptación de MONAI a CFB-GBM: discusión conservada en
+[`NOTA_FINETUNING_MONAI.md`](NOTA_FINETUNING_MONAI.md) para generar después el plan con Astra.
+No se ha aprobado ni iniciado entrenamiento; falta decidir GTV binario frente a etiquetas TC/WT/ET.
+
 Reporte exportable por estudio (PDF o imprimible), 3D más limpio (iluminación y orientación), subir archivos
 arrastrándolos, atajos extra. Fase 2 pendiente: skull-strip (HD-BET o SynthStrip) para DICOM sin
 `brain_mask`, registro entre series y RTSTRUCT. Docker y el autoajuste ya están implementados.
