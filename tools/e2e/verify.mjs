@@ -310,7 +310,11 @@ try {
           const panel = page.getByRole("tabpanel");
           await panel.getByRole("heading").first().waitFor();
           if (tab === "Volumetría") await panel.getByText("Fracción GTV/cerebro", { exact: true }).waitFor();
-          if (tab === "Segmentación") await panel.getByText("Dice vs GTV", { exact: true }).waitFor();
+          if (tab === "Segmentación") {
+            await panel.getByRole("heading", { name: "Métricas de concordancia con GTV" }).waitFor();
+            await panel.getByText("Cómo leer las métricas", { exact: true }).click();
+            await panel.getByText("Recall (0–1):", { exact: true }).waitFor();
+          }
           if (tab === "Longitudinal") await panel.getByText(/Se necesitan al menos dos tiempos/).waitFor();
           await shot(tab.toLowerCase()); await axe(tab);
         });

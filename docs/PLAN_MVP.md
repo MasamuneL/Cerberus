@@ -210,6 +210,7 @@ actualizas: `schemas.py`, `types.ts` y esta sección.
 { "device": "mps", "created_at": "2026-10-27T18:00:00Z",
   "channels": [ { "model_channel": "T1c", "sequence": "t1gd" }, { "model_channel": "T2", "sequence": null } ],
   "volumes_cm3": { "wt": 80.3, "tc": 40.1, "et": 22.0 },
+  "metrics_vs_gtv": null, // ampliación B13: objeto {tc: MaskMetrics, wt: MaskMetrics}; null sin GTV o resultado antiguo
   "dice_vs_gtv": { "tc": 0.71, "wt": 0.55 },          // null si no hay gtv
   "warnings": ["Canal T2 faltante: se usaron ceros", "Sin brain_mask: no hay skull-strip"] }
 
@@ -885,3 +886,33 @@ declara Python ≥3.10, compatible con Python 3.11 del proyecto, y licencia
 cerrada conservando avisos y condiciones; al incorporarla se conservarán esos avisos. A0 no instala ni
 fija esta dependencia; A2 deberá comprobar versión, avisos de seguridad y APIs instaladas antes de añadirla
 a los grupos principal/runtime. No se implementará validación criptográfica propia.
+
+
+## 18. B13 · Métricas de concordancia de segmentación
+
+Solicitud del usuario (2026-11-10): apartado de métricas con guía de interpretación.
+Depende de B5/F5, ya integrados. No incluye evaluación agregada del modelo ni ejecución de inferencia real.
+
+`SegmentationResult` añade `metrics_vs_gtv`, opcional al leer JSON anteriores, con valor por defecto null.
+Cuando hay GTV, contiene `tc` y `wt`, cada uno con `MaskMetrics`:
+`dice: float`, `recall: float|null`, `precision: float|null`, `hd95_mm: float|null`,
+`volume_error_cm3: float`, `volume_error_pct: float|null`.
+El campo anterior `dice_vs_gtv` se conserva. Los archivos nuevos siguen usando las rutas de §6.
+
+Cálculo sobre máscaras binarias del mismo grid ortogonal de 1 mm; predicción con probabilidad > 0.5,
+GTV remuestreado con vecino más cercano. Dice = 2TP/(2TP+FP+FN), recall = TP/(TP+FN),
+precisión = TP/(TP+FP). HD95: máximo de los percentiles 95 de las distancias euclidianas dirigidas
+entre superficies de conectividad 1, con spacing físico. Error de volumen firmado = predicción menos
+GTV, en cm³; porcentaje relativo al volumen GTV. Dice conserva 1 si ambas máscaras están vacías.
+Recall, precisión y error porcentual son null si su denominador es cero; HD95 es null si alguna
+máscara está vacía. No se serializan infinitos ni NaN.
+
+UI: apartado dentro de Segmentación, columnas TC/GTV y WT/GTV, guía desplegable, unidades y
+explicación de valores indefinidos. Resultados anteriores conservan Dice e invitan a volver a segmentar.
+Sin GTV no se presentan métricas de referencia. GTV excluye edema, WT lo incluye y TC no equivale
+necesariamente a GTV: las cifras son concordancia exploratoria por estudio, no validación de clases
+WT/TC/ET ni certeza clínica. Accuracy no es indicador principal por el predominio del fondo.
+No se muestran umbrales universales de aprobación ni cifras de interobservador sin fuente.
+
+Referencias metodológicas: [MONAI](https://monai.readthedocs.io/en/stable/metrics.html),
+[Metrics Reloaded](https://pmc.ncbi.nlm.nih.gov/articles/PMC11182665/).

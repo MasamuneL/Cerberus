@@ -7,6 +7,7 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 
 | Ticket | Estado | Rama | Commit | Fecha | Responsable / herramienta | Notas |
 |---|---|---|---|---|---|---|
+| B13 · Métricas y guía de segmentación | 🟡 | feat/B13-segmentation-metrics | pendiente | 2026-11-10 | Codex | 582 tests y QA visual 33/33; pendiente de integración |
 | B0 · Bootstrap | ✅ | feat/B0-bootstrap | 31d619a | 2026-10-27 | Vikingo / Claude Code (orquestador) | |
 | B1 · config + sequences | ✅ | feat/B1-config-sequences | bad8563 | 2026-10-27 | Vikingo / Claude Code (subagente) | |
 | B2 · catalog | ✅ | feat/B2-catalog | 0f0927f | 2026-10-27 | Vikingo / Claude Code (subagente) | |
@@ -646,3 +647,17 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
   sin regresiones observadas. Sin modificar el runner ni ejecutar modelos o subidas reales.
 - **Publicación:** rama `chore/repo-cleanup`, pendiente de revisión/integración. Siguiente paso: revisar
   e integrar el PR de mantenimiento; el desarrollo de A2 sigue en su worktree independiente.
+
+
+### B13 · Métricas de concordancia y guía (2026-11-10, pendiente de merge)
+
+- Rama `feat/B13-segmentation-metrics`, basada en `chore/repo-cleanup`.
+- Backend: Dice/F1, recall, precisión, HD95 simétrico y error de volumen firmado para TC/WT frente a GTV;
+  casos vacíos explícitos, JSON antiguos compatibles. Contrato ampliado en §7/§18 del plan.
+- UI: apartado de métricas y guía desplegable; distingue concordancia por estudio de validación del
+  modelo y certeza clínica. Resultados anteriores solicitan volver a segmentar.
+- Validación: 582 tests rápidos aprobados, 5 slow excluidos; Ruff, formato, pyright y build correctos.
+  QA visual: 33/33 checks, 14 auditorías axe sin violaciones automáticas, 27 capturas; revisadas
+  capturas de Segmentación a 1440×900 y 1280×800. El primer intento de Chrome falló por sandbox;
+  la ejecución autorizada fuera del sandbox completó correctamente. Sin inferencia ni subidas reales.
+- Pendiente: revisar/integrar PR y registrar checkpoint posterior al merge. No se modifica autenticación.

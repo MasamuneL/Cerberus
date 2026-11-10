@@ -9,7 +9,7 @@ from nibabel.processing import resample_from_to, resample_to_output
 from cerberus_api.config import REPO_ROOT
 from cerberus_api.nifti import load_nifti
 from cerberus_api.schemas import SegmentationResult
-from cerberus_api.segmentation import normalize_nonzero, run_segmentation
+from cerberus_api.segmentation import mask_metrics, normalize_nonzero, run_segmentation
 from conftest import MakeStudy
 
 
@@ -105,3 +105,67 @@ def test_real_model_on_data(tmp_path: Path) -> None:
     res = run_segmentation(_files(study), tmp_path, REPO_ROOT / "models")
     assert res.volumes_cm3.wt > 0
     assert res.dice_vs_gtv is not None and res.dice_vs_gtv.tc > 0.3
+
+
+def test_metrics_known_overlap() -> None:
+    pred = np.zeros((5, 5, 5), bool)
+    ref = pred.copy()
+    pred[1:4, 2, 2] = True
+    ref[1:3, 2, 2] = True
+    m = mask_metrics(pred, ref, (2.0, 1.0, 1.0))
+    assert m.dice == pytest.approx(0.8)
+    assert m.recall == 1
+    assert m.precision == pytest.approx(2 / 3)
+    assert m.hd95_mm == pytest.approx(1.8)
+    assert m.volume_error_cm3 == pytest.approx(0.002)
+    assert m.volume_error_pct == 50
+
+
+def test_metrics_distance_and_undersegmentation() -> None:
+    pred = np.zeros((4, 4, 4), bool)
+    ref = pred.copy()
+    pred[1, 1, 1] = True
+    ref[2, 1, 1] = True
+    m = mask_metrics(pred, ref, (3.0, 1.0, 1.0))
+    assert m.dice == m.recall == m.precision == 0
+    assert m.hd95_mm == 3
+    ref[1, 1, 1] = True
+    m = mask_metrics(pred, ref, (3.0, 1.0, 1.0))
+    assert m.recall == 0.5 and m.precision == 1
+    assert m.volume_error_pct == -50
+    assert m.volume_error_cm3 == pytest.approx(-0.003)
+
+
+@pytest.mark.parametrize("pred_positive,ref_positive", [(False, False), (True, False), (False, True)])
+def test_metrics_empty_masks(pred_positive: bool, ref_positive: bool) -> None:
+    pred = np.full((2, 2, 2), pred_positive)
+    ref = np.full((2, 2, 2), ref_positive)
+    m = mask_metrics(pred, ref, (1.0, 1.0, 1.0))
+    assert m.hd95_mm is None
+    assert m.dice == (1 if not pred_positive and not ref_positive else 0)
+    assert m.recall == (0 if ref_positive else None)
+    assert m.precision == (0 if pred_positive else None)
+    assert m.volume_error_pct == (-100 if ref_positive else None)
+    assert "NaN" not in m.model_dump_json()
+
+
+def test_metrics_perfect_and_old_results(tmp_path: Path, make_study: MakeStudy) -> None:
+    mask = np.ones((3, 3, 3), bool)
+    m = mask_metrics(mask, mask, (1.0, 1.0, 1.0))
+    assert m.dice == m.recall == m.precision == 1
+    assert m.hd95_mm == m.volume_error_cm3 == m.volume_error_pct == 0
+    study = make_study(tmp_path / "Data", seqs=("t1gd", "gtv"))
+    result = run_segmentation(_files(study), tmp_path / "out", tmp_path / "models", predictor=_cube_predictor)
+    assert result.metrics_vs_gtv is not None
+    assert result.dice_vs_gtv is not None
+    assert round(result.metrics_vs_gtv.tc.dice, 3) == result.dice_vs_gtv.tc
+    old = result.model_dump(exclude={"metrics_vs_gtv"})
+    assert SegmentationResult.model_validate(old).metrics_vs_gtv is None
+
+
+def test_metrics_reject_invalid_grid() -> None:
+    mask = np.ones((2, 2, 2), bool)
+    with pytest.raises(ValueError):
+        mask_metrics(mask, mask[:1], (1.0, 1.0, 1.0))
+    with pytest.raises(ValueError):
+        mask_metrics(mask, mask, (0.0, 1.0, 1.0))

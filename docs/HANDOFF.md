@@ -32,6 +32,16 @@ Abre las PNG y revísalas: **no te fíes solo de los ✅**. Leer píxeles del ca
 
 ## 2. Estado actual
 
+**En revisión · B13 (2026-11-10):** rama `feat/B13-segmentation-metrics`, basada en
+`chore/repo-cleanup`. Añade concordancia TC/WT contra GTV (Dice, recall, precisión, HD95 y
+error de volumen), compatibilidad con JSON antiguos y apartado con guía de lectura en Segmentación.
+Contrato ampliado en §7/§18 del plan. No ejecuta evaluación agregada ni implica validación clínica.
+Resultados antiguos requieren volver a segmentar para obtener las métricas nuevas.
+Checks: 582 tests rápidos aprobados, 5 slow excluidos; Ruff, formato, pyright y build correctos.
+QA visual completo: 33/33 checks, 14 auditorías axe sin violaciones automáticas y 27 capturas;
+revisado el apartado a 1440×900 y 1280×800. No se ejecutó inferencia real. Pendiente de integración; no sustituye el trabajo de autenticación A2.
+
+
 **CP-043 · limpieza del repositorio:** preparada en `chore/repo-cleanup`, basada en A0/A1 ya integrados.
 Notebook y auxiliar Mayavi archivados sin modificar en `../Cerberus-archivo-2026-11-05/referencia/`;
 el ejemplo `main.py` y las cachés del notebook están en cuarentena. Recuperación desde Git, hashes y

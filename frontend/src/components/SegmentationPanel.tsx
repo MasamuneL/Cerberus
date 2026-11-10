@@ -4,6 +4,7 @@ import type { JobStatus, SegmentationResult, StudyDetail } from "../api/types";
 import { useJob } from "../hooks/useJob";
 import { segEstimateText, useSystemInfo } from "../hooks/useSystemInfo";
 import SystemBadge from "./SystemBadge";
+import SegmentationMetrics from "./SegmentationMetrics";
 
 interface Props {
   study: StudyDetail;
@@ -182,20 +183,7 @@ export default function SegmentationPanel({ study, onCompleted, onBusyChange }: 
             </tbody>
           </table>
 
-          <h3>Dice vs GTV</h3>
-          {result.dice_vs_gtv ? (
-            <>
-              <table className="data-table">
-                <tbody>
-                  <tr><th>TC</th><td>{fmt(result.dice_vs_gtv.tc, 3)}</td></tr>
-                  <tr><th>WT</th><td>{fmt(result.dice_vs_gtv.wt, 3)}</td></tr>
-                </tbody>
-              </table>
-              <p className="note">Dice inter-observador típico en GBM: 0.72–0.88</p>
-            </>
-          ) : (
-            <p className="placeholder">Sin GTV: no se calcula Dice.</p>
-          )}
+          <SegmentationMetrics result={result} />
 
           <h3>Canales usados</h3>
           <table className="data-table">

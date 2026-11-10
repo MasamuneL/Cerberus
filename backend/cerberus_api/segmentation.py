@@ -11,9 +11,17 @@ from pathlib import Path
 import nibabel as nib
 import numpy as np
 from nibabel.processing import resample_from_to, resample_to_output
+from scipy import ndimage
 
 from cerberus_api.nifti import load_nifti
-from cerberus_api.schemas import ChannelUsed, DiceVsGtv, SegmentationResult, SegmentationVolumes
+from cerberus_api.schemas import (
+    ChannelUsed,
+    DiceVsGtv,
+    MaskMetrics,
+    MetricsVsGtv,
+    SegmentationResult,
+    SegmentationVolumes,
+)
 
 # Canal del modelo → secuencias candidatas en orden de preferencia (cerberus_eda.py:755)
 CHANNEL_MAP: dict[str, tuple[str, ...]] = {
@@ -35,6 +43,43 @@ def dice(a: np.ndarray, b: np.ndarray) -> float:
     a, b = a.astype(bool), b.astype(bool)
     den = a.sum() + b.sum()
     return float(2 * (a & b).sum() / den) if den else 1.0
+
+
+def mask_metrics(prediction: np.ndarray, reference: np.ndarray, spacing: tuple[float, float, float]) -> MaskMetrics:
+    """Compara máscaras binarias en el mismo grid ortogonal.
+
+    Dice portado de cerberus_eda.py:178-181. Métricas adicionales: sensibilidad TP/(TP+FN),
+    precisión TP/(TP+FP), HD95 simétrico (máximo de percentiles dirigidos) sobre superficies
+    de conectividad 1 y error de volumen firmado (predicción menos referencia).
+    Sin denominador, recall/precisión/error porcentual son null. HD95 es null si alguna
+    máscara está vacía; Dice conserva 1 cuando ambas están vacías.
+    """
+    pred, ref = prediction.astype(bool), reference.astype(bool)
+    if pred.shape != ref.shape or pred.ndim != 3:
+        raise ValueError("Las máscaras deben ser 3D y compartir el mismo grid")
+    if len(spacing) != 3 or not all(np.isfinite(s) and s > 0 for s in spacing):
+        raise ValueError("El spacing debe contener tres valores positivos finitos")
+    n_pred, n_ref = int(pred.sum()), int(ref.sum())
+    tp = int((pred & ref).sum())
+    hd95 = None
+    if n_pred and n_ref:
+        # Recortar al soporte conjunto reduce memoria sin alterar las distancias entre superficies.
+        occupied = np.where(pred | ref)
+        box = tuple(slice(int(v.min()), int(v.max()) + 1) for v in occupied)
+        p, r = pred[box], ref[box]
+        p_surface = p & ~np.asarray(ndimage.binary_erosion(p, border_value=0), dtype=bool)
+        r_surface = r & ~np.asarray(ndimage.binary_erosion(r, border_value=0), dtype=bool)
+        to_ref = np.asarray(ndimage.distance_transform_edt(~r_surface, sampling=spacing))[p_surface]
+        to_pred = np.asarray(ndimage.distance_transform_edt(~p_surface, sampling=spacing))[r_surface]
+        hd95 = float(max(np.percentile(to_ref, 95), np.percentile(to_pred, 95)))
+    return MaskMetrics(
+        dice=dice(pred, ref),
+        recall=tp / n_ref if n_ref else None,
+        precision=tp / n_pred if n_pred else None,
+        hd95_mm=hd95,
+        volume_error_cm3=(n_pred - n_ref) * float(np.prod(spacing)) / 1000,
+        volume_error_pct=100 * (n_pred - n_ref) / n_ref if n_ref else None,
+    )
 
 
 def normalize_nonzero(x: np.ndarray) -> np.ndarray:
@@ -157,9 +202,16 @@ def run_segmentation(
         return round(int(m.sum()) * vox_mm3 / 1000, 2)
 
     dice_vs_gtv = None
+    metrics_vs_gtv = None
     if "gtv" in study_files:
         gtv = _to_grid(load_nifti(study_files["gtv"]), ref_img, 0) > 0.5
         dice_vs_gtv = DiceVsGtv(tc=round(dice(tc, gtv), 3), wt=round(dice(wt, gtv), 3))
+        # resample_to_output fija este grid a 1 mm isotrópico.
+        spacing = (1.0, 1.0, 1.0)
+        metrics_vs_gtv = MetricsVsGtv(
+            tc=mask_metrics(tc, gtv, spacing),
+            wt=mask_metrics(wt, gtv, spacing),
+        )
 
     result = SegmentationResult(
         device=device,
@@ -167,6 +219,7 @@ def run_segmentation(
         channels=used,
         volumes_cm3=SegmentationVolumes(wt=cm3(wt), tc=cm3(tc), et=cm3(et)),
         dice_vs_gtv=dice_vs_gtv,
+        metrics_vs_gtv=metrics_vs_gtv,
         warnings=warnings,
     )
     (out_dir / "monai_seg.json").write_text(result.model_dump_json(indent=2), encoding="utf-8")

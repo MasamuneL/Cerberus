@@ -83,7 +83,17 @@ export interface SegmentationResult {
   channels: ChannelUsed[];
   volumes_cm3: SegmentationVolumes;
   dice_vs_gtv: DiceVsGtv | null;
+  metrics_vs_gtv?: { tc: MaskMetrics; wt: MaskMetrics } | null;
   warnings: string[];
+}
+
+export interface MaskMetrics {
+  dice: number;
+  recall: number | null;
+  precision: number | null;
+  hd95_mm: number | null;
+  volume_error_cm3: number;
+  volume_error_pct: number | null;
 }
 
 export interface JobCreated {
