@@ -33,15 +33,19 @@ Abre las PNG y revísalas: **no te fíes solo de los ✅**. Leer píxeles del ca
 ## 2. Estado actual
 
 **Docker local · 2026-11-10:** imágenes en ejecución construidas desde
-`/private/tmp/cerberus-metrics-docker-20261110`: snapshot de `origin/main` (`c36ba58`) más
-código B13 y fuentes de UI de autenticación preservadas en `/private/tmp/cerberus-auth-A1/frontend/src`.
-La UI de login A4 no estaba integrada en main: reconstruir solo desde main o B13 la elimina.
-Se restauró tras detectar esa regresión; conservar estas fuentes al reconstruir hasta integrar A4.
+`/private/tmp/cerberus-a4-metrics-docker-20261110`: snapshot completo de `feat/A4-auth-ui`
+(`52ebb0b`) más código B13 (`2c48e71`, adaptando SegmentationPanel al control de sesión de A4).
+Esta construcción sustituye la mezcla anterior de main y archivos sueltos. A4 conserva tanto
+la pantalla de login como `prompt=login`: reconstruir solo desde main o B13 elimina esos cambios.
 Compose y `.env.auth` de ejecución siguen en `/private/tmp/cerberus-auth-A1`.
-Verificado en Chrome con contexto nuevo: pantalla de login y enlace a formulario Keycloak;
-API `/api/studies` sin cookie devuelve 401, modo OIDC activo y bundle con métricas presente.
-No se probó autenticación con credenciales ni métricas tras inferencia en esta restauración.
-
+Tests sobre el snapshot combinado con su entorno: **766 rápidos aprobados, 5 slow excluidos**.
+QA real en Chrome con cuenta temporal eliminada al terminar: logout devuelve API a 401;
+la siguiente entrada exige contraseña vacía con «Recordarme» activado y desactivado;
+la cookie persistente KEYCLOAK_REMEMBER_ME solo aparece con la opción activada.
+Durante la recreación de API hubo un 504 al consultar un job; arq recuperó la segmentación
+001/t0 en el segundo intento y completó el 2026-11-10 a las 15:43:44 UTC, con métricas nuevas.
+TC/GTV: Dice 0.856827, recall 0.829519, precisión 0.885993, HD95 3.741657 mm.
+Los resultados están en storage/results/001/t0/monai_seg.json; no requieren nueva inferencia.
 
 **En revisión · B13 (2026-11-10):** rama `feat/B13-segmentation-metrics`, basada en
 `chore/repo-cleanup`. Añade concordancia TC/WT contra GTV (Dice, recall, precisión, HD95 y
