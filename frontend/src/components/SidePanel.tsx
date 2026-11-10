@@ -24,6 +24,7 @@ export const SIDE_TABS: { id: SideTab; label: string }[] = [
 ];
 
 interface Props {
+  canAnalyze: boolean;
   study: StudyDetail;
   tab: SideTab;
   onTabChange: (tab: SideTab) => void;
@@ -36,6 +37,7 @@ interface Props {
 }
 
 export default function SidePanel({
+  canAnalyze,
   study,
   tab,
   onTabChange,
@@ -110,11 +112,12 @@ export default function SidePanel({
         <VolumetryPanel patient={study.patient} timepoint={study.timepoint} />
       </div>
       <div {...panelProps("segmentacion")}>
-        <SegmentationPanel study={study} onCompleted={onSegmentationCompleted} onBusyChange={setSegBusy} />
+        <SegmentationPanel canAnalyze={canAnalyze} study={study} onCompleted={onSegmentationCompleted} onBusyChange={setSegBusy} />
       </div>
       <div {...panelProps("areas")}>
         <RiskSummary result={areas} focusedLabel={focusedLabel} onFocusLabel={onFocusLabel} />
         <AreasPanel
+          canAnalyze={canAnalyze}
           study={study}
           onCompleted={onAreasCompleted}
           onLoaded={onAreasLoaded}

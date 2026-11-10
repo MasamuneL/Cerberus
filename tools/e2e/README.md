@@ -87,3 +87,14 @@ docker rm -f cerberus-fe-test cerberus-fe-relay && docker network rm cerberus-fe
 `docker exec <contenedor> nginx -T` muestra `client_max_body_size`: se genera al arrancar como
 `CERBERUS_MAX_UPLOAD_MB` + 64 MiB (2112m por defecto) para el margen del multipart; la API aplica el
 límite exacto.
+
+### Estados de autenticación (A4)
+
+Desde `tools/e2e`, `npm run test:auth` ejecuta regresiones sin navegador del visor, cancelación, cliente HTTP,
+CSRF y referencias opacas de continuidad. `npm run verify:auth-ui` prueba estados con HTTP controlado contra
+Vite (`CERBERUS_UI=http://localhost:5173`): anónimo/roles, 401 de JSON/NIfTI, aborto, logout/reintentos,
+expiración y coordinación entre pestañas. Solo un Chrome/SwiftShader de QA a la vez.
+
+Estas pruebas de UI no validan Keycloak ni sustituyen el QA real con cuentas temporales. Los reportes y
+capturas se guardan bajo `shots/auth-ui/` y `shots/auth-session-ui/`, ignorados por Git. La entrega requiere
+además `verify.mjs`, smoke Docker y el flujo real con el proveedor, revisando capturas y fechas actuales.

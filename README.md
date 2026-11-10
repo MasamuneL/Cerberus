@@ -2,7 +2,7 @@
 
 Análisis exploratorio, visualización 3D y segmentación de glioblastoma sobre el dataset **CFB-GBM** (The Cancer Imaging Archive).
 
-Además del notebook, Cerberus es ahora una **app web**: backend **FastAPI + arq/Redis + MONAI** y frontend
+Cerberus es una **app web**: backend **FastAPI + arq/Redis + MONAI** y frontend
 **React + Vite + TypeScript + [Niivue](https://github.com/niivue/niivue)** como visor de imagen médica.
 
 Proyecto de Big Data — UDG, 5.º semestre.
@@ -12,23 +12,21 @@ autoajuste de recursos y caché HTTP de volúmenes. Estado y trabajo pendiente e
 [`docs/HANDOFF.md`](docs/HANDOFF.md); historial en [`docs/PROGRESS.md`](docs/PROGRESS.md).
 Los hallazgos del [QA de seguridad y robustez](docs/QA_2026-10-29.md) siguen pendientes de corrección.
 
-**Autenticación en desarrollo:** A0 incorpora configuración validada y contratos para OIDC, sesiones y roles
-lector/analista. A1 añade Keycloak persistente y A2 login/sesiones en la API. La protección de recursos
-todavía requiere A3, y la interfaz de acceso A4; `CERBERUS_AUTH_MODE=oidc` por sí solo aún no protege el catálogo.
-El modo local conserva `off` por defecto.
+**Autenticación de la demo:** A0–A4 incorporan Keycloak persistente, sesiones OIDC, protección de recursos,
+roles lector/analista e interfaz de inicio y cierre de sesión. En modo `oidc`, el catálogo exige sesión;
+la entrada vuelve a pedir contraseña después del logout. El modo local conserva `off` por defecto.
 Variables, restricciones y tickets en
 [`PLAN_MVP.md` §17](docs/PLAN_MVP.md#17-autenticación-para-demo-académica--oidc--keycloak).
 
 ## Qué incluye
 
-- **`cerberus_eda.py`** — notebook [marimo](https://marimo.io) con:
-  - Inventario de la data (secuencias, shape, spacing, dtype).
-  - Cortes axial / coronal / sagital sincronizados con máscara GTV superpuesta.
-  - Volumetría tumoral (planimetría vs ABC/2, umbrales RANO 2.0).
-  - Líneas base clásicas de segmentación (Otsu, K-Means).
-  - Segmentación con **MONAI Model Zoo `brats_mri_segmentation`** (SegResNet).
-  - Iso-superficies 3D con **Mayavi** (offscreen) y Plotly interactivo.
-- **`cerberus_mayavi.py`** — escena Mayavi reutilizable; también abre una ventana Qt interactiva a partir de un `.npz` exportado por el notebook.
+- Backend FastAPI con volumetría GTV, seguimiento RANO, segmentación MONAI y mapeo de áreas.
+- Frontend React con visor Niivue, capas, funciones en riesgo y subidas NIfTI/DICOM.
+- Docker Compose, pruebas y documentación de contratos y trabajo pendiente.
+
+El notebook marimo original y su auxiliar Mayavi están archivados fuera del repo, en
+`../Cerberus-archivo-2026-11-05/referencia/`. Siguen disponibles como referencia de fórmulas;
+[ubicación, recuperación desde Git y ejecución](docs/ARCHIVO.md).
 
 > ⚠️ La máscara de referencia del dataset es el **GTV de radioterapia** (puede incluir cavidad de resección y excluye edema), no el "volumen tumoral" genérico.
 
@@ -36,8 +34,6 @@ Variables, restricciones y tickets en
 
 ```
 Cerberus/
-├── cerberus_eda.py        # notebook marimo principal
-├── cerberus_mayavi.py     # escena 3D Mayavi
 ├── backend/
 │   ├── cerberus_api/      # FastAPI (main, routers/, servicios, worker arq)
 │   └── tests/             # pytest
@@ -46,6 +42,7 @@ Cerberus/
 │   ├── PLAN_MVP.md        # plan, contratos y tickets del MVP
 │   ├── PROGRESS.md        # bitácora de checkpoints
 │   ├── HANDOFF.md         # estado actual y cómo continuar
+│   ├── ARCHIVO.md         # referencias archivadas, cuarentena y recuperación
 │   ├── QA_UX_UI.md        # evidencia y límites del QA visual
 │   └── QA_2026-10-29.md   # hallazgos pendientes de seguridad y robustez
 ├── compose.yaml           # redis, api, worker y frontend
@@ -84,20 +81,8 @@ Si clonaste sin LFS, los `.nii.gz` serán punteros de texto; descárgalos con:
 git lfs pull
 ```
 
-## Uso
-
-```bash
-# Editar / explorar el notebook
-uv run marimo edit cerberus_eda.py
-
-# Modo app (solo lectura)
-uv run marimo run cerberus_eda.py
-
-# Ventana Mayavi interactiva con una escena exportada desde el notebook
-uv run python cerberus_mayavi.py escena.npz
-```
-
-La primera ejecución de la celda MONAI descarga el bundle `brats_mri_segmentation` en `models/`.
+La instalación normal incluye la app web. Para el notebook histórico se habilita el grupo opcional
+`notebook`; los comandos y las rutas figuran en [`docs/ARCHIVO.md`](docs/ARCHIVO.md).
 
 ## App web
 
@@ -149,17 +134,23 @@ no tiempos garantizados para cualquier equipo o estudio.
 
 Smoke test de la versión Docker: `cd tools/e2e && npm ci && CERBERUS_UI=http://localhost:8080 node verify-docker.mjs`.
 
-### Identidad, sesiones y permisos de la demo (A1–A3)
+### Identidad, sesiones y permisos de la demo (A1–A4)
+
+**Acceso a la demo local:** usuario `demo`, contraseña `demo`.
+Estas credenciales corresponden a la instancia de demostración; el bootstrap y el realm del repositorio
+no crean esa cuenta automáticamente. No son credenciales administrativas de Keycloak.
 
 El overlay añade **Keycloak 26.8.1 en http://localhost:8081** y PostgreSQL 18 privado. Cerberus conserva
-**http://localhost:8080**. La API protege catálogo, archivos y mutaciones con sesiones y permisos. La UI
-de acceso llegará en A4; mientras tanto, abre `/api/auth/login` para iniciar sesión antes de usar la app.
+**http://localhost:8080**. La API protege catálogo, archivos y mutaciones con sesiones y permisos. La pantalla
+de acceso permite iniciar sesión, muestra errores recuperables y explica la política de la demo.
 El lector consulta estudios; solo el analista puede subir y procesar. Jobs e ingestas pendientes son privados
 para la identidad que los creó, también tras un nuevo login; los estudios finales forman un catálogo compartido.
 
 ```bash
 uv run python tools/auth/bootstrap.py
 docker compose --env-file .env.auth -f compose.yaml -f compose.auth.yaml up -d --build
+# Cuando Keycloak esté listo, aplica también los cambios a un realm existente:
+uv run python tools/auth/sync_realm.py
 docker compose --env-file .env.auth -f compose.yaml -f compose.auth.yaml ps
 ```
 
@@ -183,6 +174,23 @@ En desarrollo, **5173** sigue siendo Vite y **8000** la API nativa; para registr
 instalación nueva usa `CERBERUS_APP_ORIGIN=http://localhost:5173` al ejecutar el overlay. La importación de
 un realm existente se omite para conservar sus cuentas: los cambios posteriores de redirect URIs se hacen
 explícitamente desde la consola, sin recrear el realm.
+
+El tema `cerberus` hereda los formularios de `keycloak.v2`: conserva sus controles, validación y flujo de
+contraseñas, con presentación Cerberus y ayuda en español. El overlay monta el tema en modo lectura.
+Tras actualizar el overlay, vuelve a ejecutar `up -d` para incorporar el montaje antes de sincronizar.
+`uv run python tools/auth/sync_realm.py` lee `.env.auth` (o `--env-file RUTA`) y permite que el entorno
+sobrescriba el usuario administrativo, su contraseña o `CERBERUS_KEYCLOAK_HTTP_PORT`. No acepta contraseñas
+en argumentos ni imprime credenciales. Repetirlo no produce cambios adicionales: solo actualiza nombre de
+la demo, tema, `rememberMe`, activación de idiomas, español por defecto y la unión de idiomas existentes
+con español/inglés. No toca cuentas, contraseñas, roles, clientes, redirect URIs ni límites de sesión,
+incluidos los de «Recordarme» configurados por el administrador. Si falla, comprueba que Keycloak esté
+listo y repite el comando; no borres el realm ni sus volúmenes.
+
+«Recordarme» conserva la sesión de Keycloak en ese navegador según sus límites de proveedor. El login de
+Cerberus mantiene `prompt=login`, por lo que volver a entrar sigue exigiendo credenciales aunque se marque
+la casilla. Esta opción no amplía la sesión de Cerberus: sus límites predeterminados siguen siendo
+**1800 s sin actividad y 3600 s en total**. Cerrar Cerberus invalida su sesión local; no promete cerrar
+las sesiones de Keycloak o de otras aplicaciones.
 
 | Variable del overlay | Default |
 |---|---|

@@ -4,7 +4,7 @@
 > checkpoint. El historial completo está en [`PROGRESS.md`](PROGRESS.md) y el alcance y los contratos en
 > [`PLAN_MVP.md`](PLAN_MVP.md). Las reglas de trabajo están en [`../AGENTS.md`](../AGENTS.md).
 
-**Última actualización:** 2026-11-06 · último checkpoint: CP-045 · rama base: `main`
+**Última actualización:** 2026-11-10 · último checkpoint: CP-045 · rama base: `main`
 
 ## 1. Arranque rápido
 
@@ -31,6 +31,29 @@ Abre las PNG y revísalas: **no te fíes solo de los ✅**. Leer píxeles del ca
 (`preserveDrawingBuffer=false`), así que esos chequeos de píxeles no son confiables.
 
 ## 2. Estado actual
+
+**Docker local · 2026-11-10:** imágenes en ejecución construidas desde
+`/private/tmp/cerberus-a4-metrics-docker-20261110`: snapshot completo de `feat/A4-auth-ui`
+(`52ebb0b`) más código B13 (`2c48e71`, adaptando SegmentationPanel al control de sesión de A4).
+Esta construcción sustituye la mezcla anterior de main y archivos sueltos. A4 conserva tanto
+la pantalla de login como `prompt=login`: reconstruir solo desde main o B13 elimina esos cambios.
+Compose y `.env.auth` de ejecución siguen en `/private/tmp/cerberus-auth-A1`.
+Tests sobre el snapshot combinado con su entorno: **766 rápidos aprobados, 5 slow excluidos**.
+QA real en Chrome con cuenta temporal eliminada al terminar: logout devuelve API a 401;
+la siguiente entrada exige contraseña vacía con «Recordarme» activado y desactivado;
+la cookie persistente KEYCLOAK_REMEMBER_ME solo aparece con la opción activada.
+Durante la recreación de API hubo un 504 al consultar un job; arq recuperó la segmentación
+001/t0 en el segundo intento y completó el 2026-11-10 a las 15:43:44 UTC, con métricas nuevas.
+TC/GTV: Dice 0.856827, recall 0.829519, precisión 0.885993, HD95 3.741657 mm.
+Los resultados están en storage/results/001/t0/monai_seg.json; no requieren nueva inferencia.
+
+**Integración preparada · 2026-11-10:** rama `feat/B13-segmentation-metrics` incorpora A4 completa,
+B13, limpieza CP-043 y nota de fine-tuning para Astra. README documenta el acceso local `demo` / `demo`,
+verificado en Docker. Sin cambios de versiones al resolver el lockfile; dependencias del notebook
+conservadas como opcionales. Checks: 766 tests rápidos, Ruff, formato, pyright y build correctos;
+15 pruebas Node y 20 escenarios de UI de autenticación aprobados. QA visual final: 33/33 checks,
+14 auditorías axe sin violaciones automáticas y 27 capturas; revisadas las de Segmentación en ambos tamaños.
+El usuario autorizó integrar estos cambios en main. A5 y la ola P siguen pendientes.
 
 **Implementación integrada en `main`:** MVP completo (B0–B8, F0–F6, D1, E2E), áreas de Brodmann
 (§13: B9–B11, F7, F8), dominios funcionales y UX/UI (§14: B12, F9–F11), Docker Compose (§15: D2a–D2c)
@@ -106,11 +129,26 @@ automáticas y 27 capturas (22:01:16–22:07:03 UTC); smoke Docker **15/15**, 11
 (22:08:20–22:11:07 UTC). Revisadas capturas de capas 1440×900 y tabla 005/t0 1280×800, y recursos/volumetría
 Docker en ambas resoluciones. La restauración del wrapper de QA falló por cwd; corregida y ejecutada
 manualmente: `/auth/config` informa `oidc` y catálogo anónimo devuelve 401. No es un fallo del runner ni del producto.
-**Siguiente trabajo:** A4, interfaz de acceso; después ola P pendiente y A5.
+**Trabajo en curso:** A4 en `feat/A4-auth-ui`, mismo worktree. Navegación de errores implementada y subida
+hasta `93620fc`; UI aún pendiente. El usuario pidió QA durante esta fase: **732 tests rápidos**, visual
+**33/33**, 14 axe sin violaciones automáticas, 27 capturas y smoke Docker **15/15** con 11 capturas,
+sin pendientes. Regresión Keycloak/Redis y permisos reales aprobados, incluida navegación HTML; cuentas
+eliminadas, timeouts y OIDC restaurados. Informe: [`QA_AUTH_2026-11-06.md`](QA_AUTH_2026-11-06.md).
+No se integró A4 ni se declaró completo. La revisión posterior detectó 401 de NIfTI fuera del cliente
+común y logout403 con CSRF viejo tras rotación en otra pestaña; ambos reproducidos. `c7a0544` añade la UI
+inicial y `000c958` conserva prompt=login/rememberMe. El 2026-11-07 el usuario autorizó añadir todos los
+criterios pendientes al plan y ejecutar subagentes; A4.1–A4.6 del plan de ejecución detallan responsables.
+La implementación ampliada está subida hasta `3515f72`: 401 de NIfTI y aborto, logout403/CSRF vigente,
+coordinación entre pestañas, timeout, aviso/caducidad por deadline del servidor, continuidad UUID y tema/sync
+idempotente. Medios y proveedor revisados independientemente. La revisión global detectó retroceso del plazo
+por respuestas concurrentes: corregido con regresión RED→GREEN y revisión adicional. **759 tests backend**,
+Node **5 medios + 10 sesión**, UI controlada **12 generales + 8 sesión** y build aprobados. QA real Keycloak,
+visual Vite y smoke Docker están siendo ejecutados por subagentes; todavía no se autoriza merge de A4.
+El QA de `QA_AUTH_2026-11-06.md` corresponde al código anterior 93620fc y no aprueba la UI nueva. Después, ola P pendiente y A5.
 Plan de ejecución: [`superpowers/plans/2026-11-05-auth-remaining.md`](superpowers/plans/2026-11-05-auth-remaining.md).
 El usuario autorizó avanzar los tickets posibles con commits/push frecuentes y QA antes de cada merge.
 A5 depende de la ola P del QA
-(P1–P3, P5, S1–S3 y Q1–Q4); S1/S2 se coordinan con A3.
+(P1–P3, P5, S1–S3 y Q1–Q4); S1/S2 están cerrados por A3.
 
 **Verificación visual de CP-040:** `CERBERUS_UI=http://localhost:5180 node verify.mjs` se ejecutó contra
 API/Vite de esta rama. Completó 10 comprobaciones a 1440×900 y generó 9 capturas nuevas; quedó sin avanzar
@@ -176,10 +214,14 @@ regeneran con [`tools/e2e/README.md`](../tools/e2e/README.md); verificar siempre
 - Un subagente o IA puede reportar éxito sin haberlo logrado (pasó en F8). Verifica siempre con capturas.
 
 ## 4. Mejoras posteriores (propuestas, sin aprobar)
+Adaptación de MONAI a CFB-GBM: discusión conservada en
+[`NOTA_FINETUNING_MONAI.md`](NOTA_FINETUNING_MONAI.md) para generar después el plan con Astra.
+No se ha aprobado ni iniciado entrenamiento; falta decidir GTV binario frente a etiquetas TC/WT/ET.
+
 Reporte exportable por estudio (PDF o imprimible), 3D más limpio (iluminación y orientación), subir archivos
 arrastrándolos, atajos extra. Fase 2 pendiente: skull-strip (HD-BET o SynthStrip) para DICOM sin
 `brain_mask`, registro entre series y RTSTRUCT. Docker y el autoajuste ya están implementados.
-El login para la demo tiene planificación incorporada en `PLAN_MVP.md` §17; A0–A2 integrados, con A3–A5
+El login para la demo tiene planificación incorporada en `PLAN_MVP.md` §17; A0–A3 integrados, con A4/A5
 pendientes. La evolución hospitalaria se describe aparte y no se considera aprobada para ejecución.
 El plan de correcciones del QA está en [`QA_2026-10-29.md` §6](QA_2026-10-29.md#6-plan-de-corrección-propuesto-por-olas).
 

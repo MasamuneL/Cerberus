@@ -73,7 +73,7 @@ def login(client: TestClient) -> tuple[str, str]:
 def authenticate(client: TestClient) -> dict[str, Any]:
     state, _ = login(client)
     response = client.get("/api/auth/callback", params={"code": "code", "state": state})
-    assert response.status_code == 303 and response.headers["location"] == "/"
+    assert response.status_code == 303 and response.headers["location"] == "/?auth_event=login"
     me = client.get("/api/auth/me")
     assert me.status_code == 200
     return me.json()

@@ -11,7 +11,9 @@ Backend FastAPI + arq/Redis + MONAI; frontend React + Vite + TypeScript + Niivue
 Léelo antes de escribir código. Las secciones §6 (disco) y §7 (API) son contratos.
 
 `cerberus_eda.py` (notebook marimo) es la implementación de referencia de las fórmulas: volumetría, RANO,
-Dice y MONAI. No lo modifiques; porta su lógica.
+Dice y MONAI. Está archivado fuera del repo; ubicación, recuperación desde Git y hashes en
+[`docs/ARCHIVO.md`](docs/ARCHIVO.md). Las citas de archivo y líneas conservan su significado histórico.
+No modifiques el original; porta su lógica.
 
 ## Comandos
 

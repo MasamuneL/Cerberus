@@ -6,6 +6,7 @@ dist/
 wheels/
 *.egg-info
 .pytest_cache/
+.ruff_cache/
 .ipynb_checkpoints/
 
 # Entornos virtuales
@@ -19,7 +20,7 @@ venv/
 Data/*
 !Data/001/
 
-# Pesos MONAI: se descargan solos al ejecutar el notebook
+# Pesos MONAI y atlas: se descargan al usarlos
 models/
 
 # Marimo (sesiones/caché locales)
@@ -40,3 +41,6 @@ frontend/node_modules/
 frontend/dist/
 frontend/*.tsbuildinfo
 storage-docker/
+
+# Graphify: artefactos locales regenerables
+graphify-out/

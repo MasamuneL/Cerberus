@@ -7,6 +7,7 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 
 | Ticket | Estado | Rama | Commit | Fecha | Responsable / herramienta | Notas |
 |---|---|---|---|---|---|---|
+| B13 · Métricas y guía de segmentación | 🟡 | feat/B13-segmentation-metrics | pendiente | 2026-11-10 | Codex | 582 tests y QA visual 33/33; pendiente de integración |
 | B0 · Bootstrap | ✅ | feat/B0-bootstrap | 31d619a | 2026-10-27 | Vikingo / Claude Code (orquestador) | |
 | B1 · config + sequences | ✅ | feat/B1-config-sequences | bad8563 | 2026-10-27 | Vikingo / Claude Code (subagente) | |
 | B2 · catalog | ✅ | feat/B2-catalog | 0f0927f | 2026-10-27 | Vikingo / Claude Code (subagente) | |
@@ -45,8 +46,9 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 | A1 · Keycloak reproducible (§17) | ✅ | feat/A1-keycloak | 5470dcf | 2026-11-05 | Vikingo / Codex | PR #6 integrado tras QA real y smoke Docker; CP-042 |
 | A2 · OIDC y sesiones (§17) | ✅ | feat/A2-oidc-sessions | 7635e58 | 2026-11-06 | Vikingo / Codex | PR #8 integrado tras QA real y smoke Docker; CP-044 |
 | A3 · permisos y propiedad (§17) | ✅ | feat/A3-access-control | 9674ee4 | 2026-11-06 | Vikingo / Codex | PR #9 integrado; 725 tests, visual 33/33 y Docker 15/15; CP-045 |
-| A4 · UI de acceso (§17) | ⬜ | — | — | — | — | Depende de A2 y A3 |
+| A4 · UI de acceso (§17) | 🟡 | feat/A4-auth-ui | — | 2026-11-06 | Vikingo / Codex | PR #10 draft; 3515f72, 759 tests y UI controlada verde; QA real/visual por subagentes en curso |
 | A5 · E2E y documentación de auth (§17) | ⬜ | — | — | — | — | Depende de A1–A4 y ola P del QA |
+| Mantenimiento · limpieza del repositorio | 🟡 | chore/repo-cleanup | — | 2026-11-05 | Vikingo / Codex | Archivos archivados, dependencias opcionales y ramas integradas retiradas; CP-043 |
 
 ## Bitácora de checkpoints
 
@@ -614,6 +616,52 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
   los recursos de Cerberus; A5 y ola P pendientes. Trabajo aislado en `/private/tmp/cerberus-auth-A1`; secretos
   locales en `.env.auth`, ignorados por Git. Se conservan cambios ajenos de limpieza en el checkout principal.
 
+### CP-043 · 2026-11-05 · limpieza reversible del repositorio
+- **Pedido del usuario:** retirar archivos de menor utilidad, mover el notebook a otra carpeta de BigData,
+  poner en cuarentena lo dudoso, eliminar ramas obsoletas y actualizar Graphify tras cada bloque importante.
+- **Archivo:** `cerberus_eda.py` y `cerberus_mayavi.py` conservados byte por byte fuera del repo, con SHA-256;
+  enlaces a `Data/` y `models/` mantienen sus rutas. El `main.py` de ejemplo y las cachés raíz se conservan
+  en cuarentena. No se retiran datos, modelos, resultados, configuraciones del IDE ni evidencias de QA.
+  [`ARCHIVO.md`](ARCHIVO.md) documenta ubicación, integridad, recuperación desde Git y ejecución.
+- **Dependencias:** diez requisitos específicos del notebook pasan a un grupo opcional; `runtime` y todas
+  las versiones del lockfile se conservan. Sincronización normal retira 41 paquetes exclusivos del entorno
+  anterior; `.venv` baja aproximadamente de 2.1 GB a 1.1 GB. `marimo check` del original archivado correcto.
+- **Ramas:** 30 locales y 29 remotas integradas eliminadas inicialmente, con bundle completo verificado,
+  inventario de SHA y borrado remoto atómico condicionado al SHA. A0/A1 se integraron durante esta sesión;
+  tras un respaldo adicional se retiraron sus ramas, sin worktrees activos: total **32 locales y 31 remotas**.
+  Se conservan `main`, la limpieza, A2 activo y los dos borradores `wip` con commits no integrados.
+- **Concurrencia:** limpieza actualizada sobre `ec34d25` (A1 integrado), conservando las entregas de la otra
+  sesión. Sin cambios en código de backend/frontend, Compose ni contratos de disco/API.
+- **Graphify:** CLI 0.9.102 temporal, extracción AST local sin LLM; configuración en `.graphifyignore`.
+  Regenerado tras archivar, limpiar ramas e incorporar A1; `graph.json`, `graph.html` y `GRAPH_REPORT.md`
+  locales, ignorados por Git. Después el usuario autorizó instalarlo: disponible de forma persistente
+  en `~/.local/bin/graphify`, con entorno aislado de uv; sin dependencias nuevas en Cerberus.
+  Los documentos no se indexan en este modo.
+- **Checks:** Ruff y formato correctos, pyright sin errores, **575 tests rápidos aprobados, 5 slow excluidos**;
+  build correcto con el aviso conocido de bundles grandes. Versiones del lockfile, grupo `runtime`, hashes
+  de originales, enlaces de datos y 50 enlaces Markdown locales comprobados. Tests slow no ejecutados.
+- **QA visual:** primer intento 13/17 checks, exit 1, por detenerse Vite compartido durante la ejecución;
+  conexión rechazada al seleccionar 005/t0 y abrir el segundo tamaño. Repetición completa con API/Vite propios
+  en 5182, 14:09:00–14:14:44 UTC: **33/33 checks**, 14 auditorías axe sin violaciones automáticas,
+  27 capturas y exit 0. Revisadas capas y segmentación a 1440×900 y tabla 005/t0 a 1280×800,
+  sin regresiones observadas. Sin modificar el runner ni ejecutar modelos o subidas reales.
+- **Publicación:** rama `chore/repo-cleanup`, pendiente de revisión/integración. Siguiente paso: revisar
+  e integrar el PR de mantenimiento; el desarrollo de A2 sigue en su worktree independiente.
+
+
+### B13 · Métricas de concordancia y guía (2026-11-10, pendiente de merge)
+
+- Rama `feat/B13-segmentation-metrics`, basada en `chore/repo-cleanup`.
+- Backend: Dice/F1, recall, precisión, HD95 simétrico y error de volumen firmado para TC/WT frente a GTV;
+  casos vacíos explícitos, JSON antiguos compatibles. Contrato ampliado en §7/§18 del plan.
+- UI: apartado de métricas y guía desplegable; distingue concordancia por estudio de validación del
+  modelo y certeza clínica. Resultados anteriores solicitan volver a segmentar.
+- Validación: 582 tests rápidos aprobados, 5 slow excluidos; Ruff, formato, pyright y build correctos.
+  QA visual: 33/33 checks, 14 auditorías axe sin violaciones automáticas, 27 capturas; revisadas
+  capturas de Segmentación a 1440×900 y 1280×800. El primer intento de Chrome falló por sandbox;
+  la ejecución autorizada fuera del sandbox completó correctamente. Sin inferencia ni subidas reales.
+- Pendiente: revisar/integrar PR y registrar checkpoint posterior al merge. No se modifica autenticación.
+
 ### CP-044 · 2026-11-06 · A2 · OIDC y sesiones integrados
 - **Hecho:** rutas config/login/callback/me/logout; cliente Authlib 1.9.4 + HTTPX2 2.15.1, firma RS256 mediante
   joserfc 1.8.0 y validación OIDC. Transacciones de 300 s ligadas al navegador y de un uso; sesiones Redis con
@@ -662,3 +710,20 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
   la rama de limpieza ajena. Worktree `/private/tmp/cerberus-auth-A1` y `.env.auth` local ignorado se conservan.
 - **Siguiente paso:** A4 (UI de acceso), luego dependencias de ola P y A5. La interfaz aún no refleja roles ni incluye
   login/logout: el acceso se inicia manualmente en `/api/auth/login`. S1/S2 cerrados; resto de ola P pendiente.
+
+
+### Validación previa a integración A4/B13 · 2026-11-10
+
+El usuario autoriza merge a main y documentar `demo` / `demo`. Se integra A4 (`52ebb0b`) en la
+rama de B13, conservando limpieza CP-043, nota para Astra y dependencias de autenticación.
+Lockfile resuelto sin cambiar versiones respecto a A4. README refleja A0–A4 y las credenciales
+verificadas de la instancia local; el bootstrap no crea la cuenta automáticamente.
+
+Checks: **766 tests rápidos aprobados, 5 slow excluidos**; Ruff, formato, pyright y build correctos.
+Node: 5 pruebas de medios y 10 de sesión; UI controlada: 12 escenarios generales y 8 de sesión.
+QA real Docker con `demo`: login, API autenticada con métricas, logout con 401 y contraseña exigida
+al volver, tanto con «Recordarme» como sin él. Cookie de recuerdo solo con la opción activada.
+QA visual final: **33/33 checks**, 14 auditorías axe sin violaciones automáticas y 27 capturas;
+revisadas Segmentación a 1440×900 y 1280×800. Primer intento interrumpido tras detectar una carrera
+en la aserción de capas; el runner ahora espera la presencia/ausencia solicitada del volumen antes
+de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas en la suite visual.

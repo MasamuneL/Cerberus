@@ -1,5 +1,8 @@
 // Tipos de la API. DEBEN reflejar exactamente backend/cerberus_api/schemas.py y docs/PLAN_MVP.md §7.
 // Si cambias uno, actualiza también schemas.py y el §7 del plan en el mismo PR.
+// Recursos OIDC autenticados: X-Cerberus-Session-Expires-At = vencimiento efectivo en milisegundos Unix.
+// Callback correcto: 303 a /?auth_event=login; señal pública fija, sin datos de identidad/sesión.
+// A4 mantiene errores JSON; navegación HTML de login/callback usa 303 con auth_error público fijo.
 // A3 conserva estos cuerpos; la API valida sesión, roles, propiedad y CSRF antes de procesarlos.
 
 export type RanoCategory = "PD" | "PR" | "MR" | "SD";
@@ -86,7 +89,17 @@ export interface SegmentationResult {
   channels: ChannelUsed[];
   volumes_cm3: SegmentationVolumes;
   dice_vs_gtv: DiceVsGtv | null;
+  metrics_vs_gtv?: { tc: MaskMetrics; wt: MaskMetrics } | null;
   warnings: string[];
+}
+
+export interface MaskMetrics {
+  dice: number;
+  recall: number | null;
+  precision: number | null;
+  hd95_mm: number | null;
+  volume_error_cm3: number;
+  volume_error_pct: number | null;
 }
 
 export interface JobCreated {

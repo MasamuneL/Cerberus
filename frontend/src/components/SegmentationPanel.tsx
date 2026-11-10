@@ -4,8 +4,10 @@ import type { JobStatus, SegmentationResult, StudyDetail } from "../api/types";
 import { useJob } from "../hooks/useJob";
 import { segEstimateText, useSystemInfo } from "../hooks/useSystemInfo";
 import SystemBadge from "./SystemBadge";
+import SegmentationMetrics from "./SegmentationMetrics";
 
 interface Props {
+  canAnalyze: boolean;
   study: StudyDetail;
   onCompleted: () => void;
   /** Avisa cuando una segmentación empieza o termina (indicador en la pestaña). */
@@ -43,7 +45,7 @@ function statusText(s: JobStatus | null, elapsed: number): string {
   }
 }
 
-export default function SegmentationPanel({ study, onCompleted, onBusyChange }: Props) {
+export default function SegmentationPanel({ canAnalyze, study, onCompleted, onBusyChange }: Props) {
   const { patient, timepoint } = study;
   const [result, setResult] = useState<SegmentationResult | null>(null);
   const [loading, setLoading] = useState(true);
@@ -119,6 +121,7 @@ export default function SegmentationPanel({ study, onCompleted, onBusyChange }: 
   }, [jobId, status?.status, patient, timepoint]);
 
   const start = async () => {
+    if (!canAnalyze) return;
     setStarting(true);
     setStartError(null);
     try {
@@ -148,9 +151,9 @@ export default function SegmentationPanel({ study, onCompleted, onBusyChange }: 
     <section className="panel segmentation">
       <h2>Segmentación MONAI</h2>
       <SystemBadge />
-      <button type="button" className="btn-primary" disabled={busy || loading} onClick={() => void start()}>
+      {canAnalyze ? <button type="button" className="btn-primary" disabled={busy || loading} onClick={() => void start()}>
         {busy ? "Segmentando…" : result ? "Volver a segmentar" : "Segmentar con MONAI"}
-      </button>
+      </button> : <p className="note">Solo lectura: puedes consultar los resultados de segmentación.</p>}
 
       {startError && (
         <div className="alert" role="alert">
@@ -182,20 +185,7 @@ export default function SegmentationPanel({ study, onCompleted, onBusyChange }: 
             </tbody>
           </table>
 
-          <h3>Dice vs GTV</h3>
-          {result.dice_vs_gtv ? (
-            <>
-              <table className="data-table">
-                <tbody>
-                  <tr><th>TC</th><td>{fmt(result.dice_vs_gtv.tc, 3)}</td></tr>
-                  <tr><th>WT</th><td>{fmt(result.dice_vs_gtv.wt, 3)}</td></tr>
-                </tbody>
-              </table>
-              <p className="note">Dice inter-observador típico en GBM: 0.72–0.88</p>
-            </>
-          ) : (
-            <p className="placeholder">Sin GTV: no se calcula Dice.</p>
-          )}
+          <SegmentationMetrics result={result} />
 
           <h3>Canales usados</h3>
           <table className="data-table">

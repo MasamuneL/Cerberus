@@ -2,6 +2,8 @@
 
 `frontend/src/api/types.ts` debe reflejar exactamente estos modelos. Si cambias uno, actualiza también
 `types.ts` y el §7 del plan en el mismo PR.
+A4 señala login correcto con 303 a /?auth_event=login, código público fijo consumido por la UI.
+A4 mantiene JSON en errores API y usa 303 con código público fijo solo en navegación HTML de login/callback.
 A3 conserva los cuerpos JSON; las guardas aplican sesión, roles, propiedad y CSRF antes de procesarlos.
 """
 
@@ -11,6 +13,9 @@ from typing import Any, Literal
 from pydantic import AwareDatetime, BaseModel, Field
 
 from cerberus_api.identity import AuthMode, Role
+
+# Cabecera de recursos OIDC autenticados: vencimiento efectivo en milisegundos Unix, sin identidad.
+SESSION_EXPIRY_HEADER = "X-Cerberus-Session-Expires-At"
 
 RanoCategory = Literal["PD", "PR", "MR", "SD"]
 JobState = Literal["queued", "in_progress", "complete", "failed", "not_found"]
@@ -92,12 +97,29 @@ class DiceVsGtv(BaseModel):
     wt: float
 
 
+class MaskMetrics(BaseModel):
+    """Concordancia por estudio contra GTV; null indica una métrica indefinida."""
+
+    dice: float
+    recall: float | None
+    precision: float | None
+    hd95_mm: float | None
+    volume_error_cm3: float
+    volume_error_pct: float | None
+
+
+class MetricsVsGtv(BaseModel):
+    tc: MaskMetrics
+    wt: MaskMetrics
+
+
 class SegmentationResult(BaseModel):
     device: str
     created_at: datetime
     channels: list[ChannelUsed]
     volumes_cm3: SegmentationVolumes
     dice_vs_gtv: DiceVsGtv | None
+    metrics_vs_gtv: MetricsVsGtv | None = None
     warnings: list[str]
 
 
