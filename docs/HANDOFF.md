@@ -32,6 +32,17 @@ Abre las PNG y revísalas: **no te fíes solo de los ✅**. Leer píxeles del ca
 
 ## 2. Estado actual
 
+**Docker local · 2026-11-10:** imágenes en ejecución construidas desde
+`/private/tmp/cerberus-metrics-docker-20261110`: snapshot de `origin/main` (`c36ba58`) más
+código B13 y fuentes de UI de autenticación preservadas en `/private/tmp/cerberus-auth-A1/frontend/src`.
+La UI de login A4 no estaba integrada en main: reconstruir solo desde main o B13 la elimina.
+Se restauró tras detectar esa regresión; conservar estas fuentes al reconstruir hasta integrar A4.
+Compose y `.env.auth` de ejecución siguen en `/private/tmp/cerberus-auth-A1`.
+Verificado en Chrome con contexto nuevo: pantalla de login y enlace a formulario Keycloak;
+API `/api/studies` sin cookie devuelve 401, modo OIDC activo y bundle con métricas presente.
+No se probó autenticación con credenciales ni métricas tras inferencia en esta restauración.
+
+
 **En revisión · B13 (2026-11-10):** rama `feat/B13-segmentation-metrics`, basada en
 `chore/repo-cleanup`. Añade concordancia TC/WT contra GTV (Dice, recall, precisión, HD95 y
 error de volumen), compatibilidad con JSON antiguos y apartado con guía de lectura en Segmentación.
