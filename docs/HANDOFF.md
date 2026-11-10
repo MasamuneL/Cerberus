@@ -4,7 +4,7 @@
 > checkpoint. El historial completo está en [`PROGRESS.md`](PROGRESS.md) y el alcance y los contratos en
 > [`PLAN_MVP.md`](PLAN_MVP.md). Las reglas de trabajo están en [`../AGENTS.md`](../AGENTS.md).
 
-**Última actualización:** 2026-11-10 · último checkpoint: CP-046 · rama base: `main`
+**Última actualización:** 2026-11-10 · último checkpoint: CP-047 · rama base: `main`
 
 ## 1. Arranque rápido
 
@@ -31,6 +31,13 @@ Abre las PNG y revísalas: **no te fíes solo de los ✅**. Leer píxeles del ca
 (`preserveDrawingBuffer=false`), así que esos chequeos de píxeles no son confiables.
 
 ## 2. Estado actual
+
+**CP-047 · 2026-11-10:** README amplía la explicación del mapeo de Brodmann: herramientas,
+registro, exclusión GTV+5 mm, transformaciones inversas, fórmulas y límites. Hallazgo pendiente:
+el atlas de Nilearn declara espacio Talairach, mientras el registro utiliza MNI152; no existe
+conversión explícita entre ambos en el flujo actual. Ver sección «Cómo se estiman las áreas de
+Brodmann» del README antes de interpretar precisión anatómica. No se modificó el algoritmo.
+
 
 **Docker local · 2026-11-10:** imágenes en ejecución construidas desde
 `/private/tmp/cerberus-a4-metrics-docker-20261110`: snapshot completo de `feat/A4-auth-ui`

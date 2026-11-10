@@ -317,6 +317,68 @@ Redis (:6379) ◄── worker arq ──► MONAI SegResNet (torch, cpu/mps/cud
 El mapeo de áreas es una estimación educativa: no sustituye fMRI, tractografía ni mapeo cortical
 intraoperatorio. Con lesiones grandes, el registro pierde precisión.
 
+### Cómo se estiman las áreas de Brodmann
+
+Cerberus adapta un atlas anatómico al espacio de cada paciente mediante **registro de imágenes**.
+Este proceso es independiente de MONAI: SegResNet segmenta regiones de lesión; el registro ubica
+las etiquetas del atlas sobre la RM. Las áreas y funciones mostradas son estimaciones educativas.
+
+| Herramienta | Función |
+|---|---|
+| Nilearn | Obtiene el atlas Talairach-Brodmann, nivel `ba`, y la plantilla MNI152 con su máscara cerebral |
+| ANTsPy (`antspyx`) / ANTs SyN | Calcula alineación afín y deformación local entre paciente y plantilla |
+| NiBabel | Lee, remuestrea y guarda NIfTI conservando coordenadas físicas |
+| NumPy y SciPy | Calculan volúmenes, intersecciones y distancias |
+| Niivue | Visualiza el mapa de áreas sobre las imágenes del estudio |
+
+**Adaptación a cada cerebro:**
+
+1. Selecciona una T1, preferentemente sin contraste (`t1eg`, después `t1tse`; finalmente `t1gd`).
+   Si existe `brain_mask`, la aplica. Remuestrea a 1.5 mm isotrópicos para acelerar el registro.
+2. Registra la T1 contra MNI152 de 1 mm con **ANTs SyN**: una etapa afín ajusta posición,
+   orientación, escala y cizallamiento; una deformación local ajusta diferencias anatómicas.
+3. Excluye el GTV y un margen de **5 mm** de la función de costo en todas las etapas para reducir
+   la influencia de la lesión sobre el ajuste. Esto no garantiza reconstruir la anatomía desplazada.
+4. Aplica las transformaciones inversas al atlas previamente separado por hemisferios, con interpolación
+   `genericLabel` para conservar etiquetas discretas. Guarda `brodmann.nii.gz` con el grid y affine de la
+   secuencia de referencia del visor, preferentemente `t1gd`. Las transformaciones se reutilizan
+   cuando las entradas y parámetros no cambian. Se presupone que las series están corregistradas.
+
+**Cálculos por área:** GTV y etiquetas se llevan al mismo grid; las máscaras se remuestrean con
+vecino más cercano cuando hace falta. Con tamaños de vóxel `sx`, `sy`, `sz` en mm:
+
+| Resultado | Cálculo |
+|---|---|
+| Volumen del área, cm³ | `n_vóxeles_del_área × sx × sy × sz / 1000` |
+| Intersección con GTV, cm³ | `n_vóxeles_compartidos × sx × sy × sz / 1000` |
+| Porcentaje del área solapada | `100 × n_vóxeles_compartidos / n_vóxeles_del_área` |
+| Distancia mínima, mm | Transformada de distancia euclidiana con spacing físico; cero si hay intersección |
+
+El reporte incluye áreas solapadas con GTV y áreas cercanas hasta **10 mm**. Cuando existe
+segmentación MONAI, añade intersección con WT. El atlas etiqueta regiones corticales y estructuras
+subcorticales; el porcentaje corresponde al territorio etiquetado, no a todo el tejido cerebral.
+
+Ejemplo: un área de 10 cm³ comparte 2 cm³ con GTV; el solapamiento es **20 % del área**.
+Ese valor no representa un 20 % de pérdida funcional. Las funciones asociadas proceden de
+[`area_functions.json`](backend/cerberus_api/data/area_functions.json), una base bibliográfica
+con diferencias por hemisferio cuando corresponde; no se miden funciones individuales mediante RM estructural.
+
+**Limitación de coordenadas pendiente de resolver:** el código registra al paciente contra **MNI152**,
+pero Nilearn identifica el atlas descargado como espacio **Talairach** (`template="Talairach"`).
+Actualmente se aplica la inversa del registro MNI152 directamente al atlas, sin una conversión explícita
+Talairach–MNI152. La suposición de que ambos espacios coinciden necesita corregirse o verificarse;
+puede introducir errores de localización y debe resolverse antes de atribuir precisión anatómica al mapa.
+Esta sección documenta el hallazgo; no implica que la conversión ya esté implementada.
+
+La ausencia de `brain_mask`, disponer solo de T1 con contraste y un GTV grande pueden reducir la calidad
+del registro. Un mapa alineado visualmente no demuestra localización funcional individual ni sustituye
+fMRI, tractografía o mapeo cortical intraoperatorio.
+
+Implementación: [`atlas.py`](backend/cerberus_api/atlas.py) y [`areas.py`](backend/cerberus_api/areas.py).
+Referencias: [registro y transformaciones ANTsPy](https://antspy.readthedocs.io/en/latest/registration.html),
+[atlas Talairach de Nilearn](https://nilearn.github.io/stable/modules/generated/nilearn.datasets.fetch_atlas_talairach.html)
+y [definición del espacio en el código de Nilearn](https://github.com/nilearn/nilearn/blob/main/nilearn/datasets/atlas.py).
+
 ### Atajos del visor
 
 | Tecla | Acción |

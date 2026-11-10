@@ -744,3 +744,14 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
   validada previamente; no se reinició durante este merge para evitar interrumpir trabajos.
 - **Estado posterior:** A4 y B13 completados; A5 y ola P pendientes. Fine-tuning solo documentado,
   sin entrenamiento iniciado. Checkout principal actualizado a main y checkpoint subido.
+
+
+### CP-047 · 2026-11-10 · Documentación del mapeo de Brodmann
+
+- Solicitud del usuario: incorporar al README herramientas, adaptación del atlas y fórmulas del reporte.
+- Se documentan ANTs SyN, Nilearn, NiBabel, NumPy/SciPy y Niivue; selección T1, máscara cerebral,
+  exclusión GTV+5 mm del costo, transformación inversa y solapamientos/distancias por área.
+- Hallazgo pendiente explícito: atlas en Talairach y registro a MNI152 sin conversión explícita;
+  la suposición del plan sobre el espacio del atlas necesita corregirse o verificarse.
+- Validación documental: `git diff --check` correcto y enlaces locales del README resueltos.
+  Sin cambios de código ni nuevas ejecuciones de tests, modelos o QA visual.
