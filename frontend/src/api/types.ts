@@ -1,5 +1,9 @@
 // Tipos de la API. DEBEN reflejar exactamente backend/cerberus_api/schemas.py y docs/PLAN_MVP.md §7.
 // Si cambias uno, actualiza también schemas.py y el §7 del plan en el mismo PR.
+// Recursos OIDC autenticados: X-Cerberus-Session-Expires-At = vencimiento efectivo en milisegundos Unix.
+// Callback correcto: 303 a /?auth_event=login; señal pública fija, sin datos de identidad/sesión.
+// A4 mantiene errores JSON; navegación HTML de login/callback usa 303 con auth_error público fijo.
+// A3 conserva estos cuerpos; la API valida sesión, roles, propiedad y CSRF antes de procesarlos.
 
 export type RanoCategory = "PD" | "PR" | "MR" | "SD";
 export type JobState = "queued" | "in_progress" | "complete" | "failed" | "not_found";
@@ -8,10 +12,12 @@ export type ModelChannel = "T1c" | "T1" | "T2" | "FLAIR";
 export type AuthMode = "off" | "oidc";
 export type Role = "reader" | "analyst";
 
+// GET /api/auth/config; disponible en modo local y OIDC.
 export interface AuthConfig {
   mode: AuthMode;
 }
 
+// GET /api/auth/me; solo una sesión OIDC válida, sin identidad ni tokens del proveedor.
 export interface AuthSession {
   roles: Role[];
   expires_at: string; // ISO-8601 con zona horaria

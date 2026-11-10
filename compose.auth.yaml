@@ -41,6 +41,7 @@ services:
     volumes:
       - keycloak-data:/opt/keycloak/data
       - ./docker/keycloak/realm.json:/opt/keycloak/data/import/cerberus-realm.json:ro
+      - ./docker/keycloak/themes/cerberus:/opt/keycloak/themes/cerberus:ro
     networks: [default, identity-db]
     depends_on:
       auth-db:
@@ -73,6 +74,8 @@ services:
       CERBERUS_OIDC_CLIENT_ID: cerberus-web
       CERBERUS_OIDC_CLIENT_SECRET: "${CERBERUS_OIDC_CLIENT_SECRET:?Falta secreto del cliente OIDC}"
       CERBERUS_AUTH_COOKIE_SECURE: "false"
+      CERBERUS_AUTH_IDLE_TIMEOUT_SECONDS: "${CERBERUS_AUTH_IDLE_TIMEOUT_SECONDS:-1800}"
+      CERBERUS_AUTH_ABSOLUTE_TIMEOUT_SECONDS: "${CERBERUS_AUTH_ABSOLUTE_TIMEOUT_SECONDS:-3600}"
       CERBERUS_CORS_ORIGINS: '["${CERBERUS_APP_ORIGIN:-http://localhost:8080}"]'
     depends_on:
       keycloak:

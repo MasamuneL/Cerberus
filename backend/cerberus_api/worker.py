@@ -1,21 +1,25 @@
 """Worker arq: jobs pesados fuera del proceso de la API (docs/PLAN_MVP.md §7 "Jobs de arq", ticket B6).
 
-Arranque: `uv run arq cerberus_api.worker.WorkerSettings` (necesita `redis-server` corriendo).
+Arranque: `uv run python -m cerberus_api.worker` (necesita `redis-server` corriendo).
 El trabajo bloqueante (MONAI, dcm2niix) se corre con `asyncio.to_thread` para no congelar el event loop.
 """
 
 import asyncio
 import logging
+import logging.config
 import shutil
 import uuid
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any, TypeVar
+from typing import Any, TypeVar, cast
 
 from arq.connections import RedisSettings
+from arq.logs import default_log_config
+from arq.worker import Worker, get_kwargs
 from redis.exceptions import RedisError
 
 from cerberus_api import catalog, runtime
+from cerberus_api.access import OwnerStore
 from cerberus_api.areas import run_area_mapping
 from cerberus_api.config import get_settings
 from cerberus_api.dicom import convert_series, group_series, safe_extract, suggest_sequence
@@ -225,6 +229,23 @@ async def ingest_dicom(ctx: dict[str, Any], upload_id: str, zip_path: str) -> di
     return manifest.model_dump(mode="json")
 
 
+async def finish_owner(ctx: dict[str, Any]) -> None:
+    """Después de guardar el resultado arq, alinea la propiedad con su vida útil; conserva reintentos."""
+    redis = ctx["redis"]
+    job_id = ctx["job_id"]
+    try:
+        owner_key = OwnerStore.key("jobs", job_id)
+    except ValueError:
+        return  # Jobs antiguos del modo local no tienen metadata de identidad.
+    ttl = await redis.pttl(f"arq:result:{job_id}")
+    if ttl >= 0:
+        await redis.pexpire(owner_key, ttl)
+    elif ttl == -1:
+        await redis.persist(owner_key)
+    elif not await redis.exists(f"arq:job:{job_id}"):
+        await redis.delete(owner_key)
+
+
 class WorkerSettings:
     """Configuración del worker que lee `arq` (atributos de clase)."""
 
@@ -232,8 +253,30 @@ class WorkerSettings:
     # staticmethod: arq lee los hooks del atributo de clase y los llama con `ctx`
     on_startup = staticmethod(startup)
     on_shutdown = staticmethod(shutdown)
+    after_job_end = staticmethod(finish_owner)
     redis_settings = RedisSettings.from_dsn(get_settings().redis_url)
     job_timeout = 1800
     # Un solo job a la vez: un modelo en GPU/MPS
     max_jobs = 1
     keep_result = 3600
+
+
+class OwnedWorker(Worker):
+    """arq omite after_job_end en sus fallos previos al inicio; ambos caminos limpian propiedad."""
+
+    async def finish_failed_job(self, job_id: str, result_data: bytes | None) -> None:
+        """Primero publica el resultado de arq y después alinea el TTL de su propietario."""
+        await super().finish_failed_job(job_id, result_data)
+        await finish_owner({"redis": self.pool, "job_id": job_id})
+
+
+def run_worker() -> None:
+    """Arranca el worker con configuración arq verificada y limpieza de fallos tempranos."""
+    logging.config.dictConfig(default_log_config(False))
+    # arq 0.28 anota por error los valores de get_kwargs como NameError; son opciones del constructor.
+    options = cast(dict[str, Any], get_kwargs(cast(Any, WorkerSettings)))
+    OwnedWorker(**options).run()
+
+
+if __name__ == "__main__":
+    run_worker()

@@ -7,6 +7,7 @@ import SystemBadge from "./SystemBadge";
 import SegmentationMetrics from "./SegmentationMetrics";
 
 interface Props {
+  canAnalyze: boolean;
   study: StudyDetail;
   onCompleted: () => void;
   /** Avisa cuando una segmentación empieza o termina (indicador en la pestaña). */
@@ -44,7 +45,7 @@ function statusText(s: JobStatus | null, elapsed: number): string {
   }
 }
 
-export default function SegmentationPanel({ study, onCompleted, onBusyChange }: Props) {
+export default function SegmentationPanel({ canAnalyze, study, onCompleted, onBusyChange }: Props) {
   const { patient, timepoint } = study;
   const [result, setResult] = useState<SegmentationResult | null>(null);
   const [loading, setLoading] = useState(true);
@@ -120,6 +121,7 @@ export default function SegmentationPanel({ study, onCompleted, onBusyChange }: 
   }, [jobId, status?.status, patient, timepoint]);
 
   const start = async () => {
+    if (!canAnalyze) return;
     setStarting(true);
     setStartError(null);
     try {
@@ -149,9 +151,9 @@ export default function SegmentationPanel({ study, onCompleted, onBusyChange }: 
     <section className="panel segmentation">
       <h2>Segmentación MONAI</h2>
       <SystemBadge />
-      <button type="button" className="btn-primary" disabled={busy || loading} onClick={() => void start()}>
+      {canAnalyze ? <button type="button" className="btn-primary" disabled={busy || loading} onClick={() => void start()}>
         {busy ? "Segmentando…" : result ? "Volver a segmentar" : "Segmentar con MONAI"}
-      </button>
+      </button> : <p className="note">Solo lectura: puedes consultar los resultados de segmentación.</p>}
 
       {startError && (
         <div className="alert" role="alert">

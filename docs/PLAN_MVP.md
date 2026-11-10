@@ -14,12 +14,12 @@ Las citas `cerberus_eda.py:<líneas>` que siguen identifican el original histór
 **Estado de implementación:** MVP y extensiones §13–§16 integrados en `main`: áreas de Brodmann, dominios
 funcionales, UX/UI, Docker Compose, autoajuste de recursos y caché HTTP. El tablero y los checkpoints
 están en [`PROGRESS.md`](PROGRESS.md), y el estado vivo en [`HANDOFF.md`](HANDOFF.md).
-Los [hallazgos del QA de seguridad y robustez](QA_2026-10-29.md) siguen pendientes; implementar el alcance
+S1/S2 del [QA de seguridad y robustez](QA_2026-10-29.md) están corregidos por A3; el resto sigue pendiente; implementar el alcance
 no implica que esos fallos estén resueltos.
 
 **Fase de autenticación en desarrollo:** OIDC con Keycloak para la demo académica (§17), con una evolución
 posterior hacia identidad y permisos hospitalarios. A0 incorpora configuración e interfaces y A1 el proveedor;
-el login, las sesiones, los permisos y la UI todavía dependen de A2–A5.
+A2 incorpora login y sesiones; A3 aplica permisos y propiedad a recursos. La UI y aceptación final siguen en A4/A5.
 
 Las secciones §1–§10 describen el MVP original y sus tickets. Los contratos iniciales de disco y API
 (§6/§7) se complementan con áreas y `Study.has_areas` en §13, dominios en §14 y recursos/caché en §16.
@@ -49,8 +49,8 @@ y httpx como dependencias de desarrollo.
 **Extensiones ya implementadas:** áreas de Brodmann (§13), dominios y UX/UI (§14), Docker Compose (§15),
 autoajuste de recursos y caché HTTP (§16).
 
-**Siguiente fase planificada:** login, sesiones y permisos para la demo académica (§17). La autenticación
-todavía no está disponible en la app actual.
+**Autenticación en desarrollo:** login y sesiones desde A2 (§17); A3 protege catálogo, archivos y trabajos.
+La interfaz de acceso requiere A4. La aceptación final corresponde a A5.
 
 **Fuera del alcance implementado:** auth/usuarios, base de datos, Otsu/K-Means en la app, edema FLAIR,
 skull-stripping automático, registro entre series, RTSTRUCT (rt-utils), exportar DICOM SEG y Mayavi en la app web.
@@ -132,8 +132,8 @@ Variables de entorno (prefijo `CERBERUS_`; los valores por defecto son relativos
 | `CERBERUS_CORS_ORIGINS` | `["http://localhost:5173"]` |
 | `CERBERUS_CPU_THREADS` | `auto`; entero positivo para fijar los hilos del worker (§16) |
 
-La configuración de autenticación de A0 figura en §17.2. Está disponible en `Settings`, pero las rutas y
-la protección de recursos se implementarán en A2/A3; configurar `oidc` todavía no protege esta versión.
+La configuración de autenticación de A0 figura en §17.2. A2 monta las rutas OIDC y sesiones; la protección de
+los recursos existentes se aplica en A3, incluida la revalidación de archivos y la propiedad de jobs/ingestas.
 
 Las variables de Compose para puertos, límites de memoria y carpetas del host se documentan en el
 [README, opción Docker](../README.md#opción-rápida-docker-desktop-recomendada-para-usarla).
@@ -143,7 +143,7 @@ Comandos (todos desde la raíz):
 ```bash
 uv sync                                                    # deps Python (incluye el paquete en modo editable)
 redis-server                                               # terminal 1
-uv run arq cerberus_api.worker.WorkerSettings              # terminal 2: worker
+uv run python -m cerberus_api.worker              # terminal 2: worker
 uv run uvicorn cerberus_api.main:app --reload --reload-dir backend --port 8000  # terminal 3: API (docs en /docs)
 cd frontend && npm install && npm run dev                  # terminal 4: UI en :5173
 
@@ -246,22 +246,51 @@ El trabajo pesado se corre con `await asyncio.to_thread(...)`. `job_timeout = 18
 `GET /api/jobs` usa `arq.jobs.Job(job_id, redis).status()`; si es `complete`, llama `result_info()` y mapea
 `success=False` → `failed`, poniendo el `str` de la excepción en `error`.
 
-### Modelos de autenticación (A0; rutas pendientes de A2)
+### Autenticación (modelos A0 y rutas A2)
 
 ```jsonc
 // AuthConfig: únicamente configuración pública
 { "mode": "off" } // "off" | "oidc"
 
-// AuthSession: respuesta prevista de /api/auth/me
+// AuthSession: respuesta de /api/auth/me
 { "roles": ["reader"], "expires_at": "2026-11-05T12:00:00Z", "csrf_token": "…" }
 ```
 
 `Role = "reader" | "analyst"`. `AuthSession.roles` no admite listas vacías ni roles desconocidos;
 `expires_at` exige una fecha ISO-8601 con zona horaria y `csrf_token` no puede estar vacío.
-Los modelos existen en Python y TypeScript; **ninguna ruta `/api/auth/*` está montada todavía**.
+Los modelos existen en Python y TypeScript; `expires_at` es el vencimiento efectivo, limitado por
+inactividad y duración absoluta. Las respuestas de auth llevan `Cache-Control: no-store`.
 No contienen issuer, subject, cookie, secreto del cliente ni tokens OIDC. La identidad interna es
 `Principal(issuer: str, sub: str, roles: frozenset[Role])`, inmutable y con sus tres campos no vacíos;
 se define en `identity.py` y no se publica como respuesta de la API.
+
+| Método y ruta | Respuesta |
+|---|---|
+| `GET /api/auth/config` | Público, 200 `AuthConfig` |
+| `GET /api/auth/login` | 302 al proveedor con PKCE/state/nonce; cookie temporal opaca de 300 s |
+| `GET /api/auth/callback` | 303 a `/?auth_event=login` tras consumir transacción y validar OIDC; 400 transacción inválida, 401 token inválido, 403 sin rol |
+| `GET /api/auth/me` | 200 `AuthSession`; 401 sin sesión válida |
+| `POST /api/auth/logout` | 204 tras invalidar Redis y borrar cookies; 401 sin sesión, 403 sin CSRF/Origin válidos |
+
+En modo `off`, solo `/api/auth/config` responde; las demás rutas de auth devuelven 404. Los fallos del
+almacén o proveedor producen 503, sin credenciales ni detalles del error en la respuesta. El callback
+descarta `code/state` del scope del servidor para los logs, incluso ante fallos de dependencias; nginx
+no escribe errores con la query del callback, también en su variante con barra final.
+En navegaciones con `Accept: text/html`, errores de identidad en login/callback y transacciones inválidas
+vuelven con 303 a `/?auth_error=forbidden|failed|unavailable`; estos códigos fijos no contienen identidad,
+code ni state. El callback correcto vuelve a `/?auth_event=login`; la UI consume/borra esa señal fija y
+notifica el cambio de sesión a otras pestañas sin identidad ni tokens. Abrir una pestaña normal no emite
+un cambio ni cancela trabajo de otras pestañas. Las solicitudes JSON conservan los estados 400/401/403/503 descritos arriba. A4 mostrará
+el mensaje correspondiente; el estado de auth del navegador no concede permisos en la API.
+Los recursos de estudio, archivos y `/api/system` requieren sesión OIDC (401 sin ella); las mutaciones y
+jobs/subidas requieren analista (403 para lector). Jobs e ingestas ajenos o sin propietario responden 404.
+Todas las mutaciones OIDC requieren CSRF y Origin autorizado. En `off` requieren `X-Cerberus: 1` y, si
+incluyen Origin, uno autorizado. Host se valida en ambos modos. JSON autenticado usa `no-store` y NIfTI
+`private, no-cache`, con permisos antes del body/I/O y ETag/304. Los modelos JSON anteriores se conservan.
+Los recursos autenticados OIDC añaden `X-Cerberus-Session-Expires-At`, milisegundos Unix del vencimiento
+inactividad/absoluto calculado por Redis para esa petición, también en GET/HEAD/206/304. No aparece en
+salud/config ni rechazos previos a autenticar. El cliente aplica ese límite solo a su generación de sesión
+vigente para avisar/caducar sin sondeos de renovación automática.
 
 ## 8. Tickets
 
@@ -628,7 +657,7 @@ Ola única en paralelo (B12, F9, F10, F11) → verificación con Playwright (cap
 |---|---|---|
 | redis | redis:7.4-alpine (digest) | AOF, healthcheck |
 | api | `docker/backend.Dockerfile` (amd64) | uvicorn :8000 interno, healthcheck `/api/health` |
-| worker | misma imagen | `arq cerberus_api.worker.WorkerSettings` |
+| worker | misma imagen | `python -m cerberus_api.worker` |
 | frontend | `docker/frontend.Dockerfile` | nginx :8080 → estáticos + proxy `/api` → api:8000 |
 
 Volúmenes bind: `./Data`, `./storage`, `./models` (pesos MONAI y atlas en caché; si faltan, se descargan dentro).
@@ -686,7 +715,7 @@ para todos los tamaños de volumen. Las duraciones mostradas en la UI son estima
 
 ## 17. Autenticación para demo académica · OIDC + Keycloak
 
-**Estado:** A0 y A1 integrados; A2–A5 pendientes. El usuario pidió incorporar esta fase
+**Estado:** A0–A3 integrados; A4/A5 pendientes. El usuario pidió incorporar esta fase
 el 2026-11-03 y continuar su desarrollo el 2026-11-05.
 El alcance inmediato es una demo académica open source con datos públicos anonimizados o sintéticos;
 la visión posterior es una instalación hospitalaria. Este apartado no declara preparación para uso clínico.
@@ -730,7 +759,7 @@ El rol administrativo de Keycloak no concede por sí mismo permisos dentro de Ce
 - Añadir `compose.auth.yaml` como overlay explícito: UI de Cerberus en **8080**, Keycloak en **8081**, ambos
   publicados solo en `127.0.0.1`. El arranque objetivo será
   `docker compose --env-file .env.auth -f compose.yaml -f compose.auth.yaml up -d --build`, tras ejecutar
-  `uv run python tools/auth/bootstrap.py`. A1 incluye el proveedor; sesiones y protección siguen en A2/A3.
+  `uv run python tools/auth/bootstrap.py`. A1 incluye el proveedor; A2 añade sesiones y A3 protege recursos.
   La configuración base sin overlay mantiene el modo local actual; la demo con overlay exige autenticación.
 - El overlay incluye PostgreSQL privado para Keycloak y volúmenes persistentes. PostgreSQL no almacena imágenes
   ni sustituye el catálogo en disco de Cerberus. Registrar realm `cerberus`, cliente `cerberus-web`, roles y
@@ -769,7 +798,10 @@ validado; omitirlo conserva exactamente la URL del issuer, incluida su barra fin
 En modo `oidc`, se exige issuer, cliente y secreto no vacíos, y CORS rechaza comodines. El secreto usa
 `SecretStr`; su representación y serialización lo ocultan, y los mensajes de validación omiten entradas.
 El modo `off` no exige proveedor ni secreto y sigue siendo el default. Estas validaciones son locales,
-sin discovery ni conexiones a Keycloak/Redis; todavía no habilitan autenticación.
+sin discovery ni conexiones a Keycloak/Redis al construir `Settings`. En A2, login/callback consultan
+metadata y JWKS por el backchannel; solo se admite firma RS256 y autenticación confidencial `client_secret_basic`.
+Authlib 1.9.4 usa HTTPX2 en esta instalación: se declaran ambos junto a joserfc en principal/runtime;
+fakeredis con Lua queda solo en dev para probar las operaciones Redis sin red.
 
 ### 17.3. Permisos y recursos
 
@@ -799,17 +831,17 @@ sin discovery ni conexiones a Keycloak/Redis; todavía no habilitan autenticaci�
   con autenticación previa a la revalidación. Logout no garantiza borrar archivos descargados o cachés previas;
   la política hospitalaria de retención en clientes se definirá antes de usar datos reales.
 
-### 17.4. Modelos disponibles y endpoints previstos
+### 17.4. Modelos y endpoints de autenticación
 
 Los modelos `AuthConfig`, `AuthSession`, `AuthMode` y `Role` ya están reflejados en `schemas.py`,
-`frontend/src/api/types.ts` y §7 desde A0. `Principal` es interno. Los endpoints siguientes siguen
-pendientes de A2; su comportamiento previsto no está disponible todavía.
+`frontend/src/api/types.ts` y §7 desde A0. `Principal` es interno. A2 implementa los endpoints siguientes;
+el resto de API y archivos adquiere protección en A3, y la UI de acceso en A4.
 
-| Método y ruta | Respuesta prevista |
+| Método y ruta | Respuesta |
 |---|---|
 | `GET /api/auth/config` | Público, 200 `AuthConfig = {"mode":"off"\|"oidc"}`; sin secretos |
 | `GET /api/auth/login` | 302 al proveedor; callback y regreso a `/` fijados por configuración, sin `return_to` arbitrario |
-| `GET /api/auth/callback` | Consume code/state; valida OIDC, crea cookie y devuelve 303 a `/`; error genérico 400/401, o 403 sin rol |
+| `GET /api/auth/callback` | Consume code/state; valida OIDC, crea cookie y devuelve 303 a `/?auth_event=login`; error genérico 400/401, o 403 sin rol |
 | `GET /api/auth/me` | 200 `AuthSession = {"roles":["reader"\|"analyst"],"expires_at":"ISO-8601","csrf_token":"…"}`; 401 sin sesión válida |
 | `POST /api/auth/logout` | 204 tras invalidar sesión; requiere sesión y CSRF |
 
@@ -851,6 +883,21 @@ indican destinos previstos; las firmas de librerías se verificarán en su códi
 - **A4:** estados de carga, anónimo, lector, analista, sin permisos y sesión expirada; al recibir 401, detener
   polling, abortar descargas y desmontar el visor/limpiar datos visibles. 403 se muestra como falta de permiso,
   no como sesión caducada. El modo off conserva el flujo local; login, logout y avisos se operan con teclado.
+  La ampliación autorizada el 2026-11-07 añade criterios explícitos:
+  - Un 401 de NIfTI también retira el visor y aborta descargas pendientes; ningún cargador evita el cliente común.
+  - Tras rotar sesión en otra pestaña, logout recupera el CSRF vigente y ofrece un reintento acotado; 403 no se
+    presenta como una caída del proveedor. Login/logout/cambio de sesión se sincronizan sin transmitir tokens.
+  - Configuración, comprobación de sesión y logout tienen un límite de espera de red y una acción recuperable.
+  - Se avisa antes del vencimiento efectivo conocido y solo una acción del usuario comprueba/continúa la sesión;
+    no se añade sondeo que renueve indefinidamente la inactividad.
+  - Tras reingresar pueden recuperarse trabajos e ingestas propios. Solo se conservan referencias UUID opacas,
+    acotadas y con caducidad en sessionStorage; nunca identidad, roles, CSRF, tokens ni datos de estudios.
+    La API vuelve a comprobar propietario antes de mostrar o reanudar; referencias ajenas o expiradas se eliminan.
+  - «Recordarme» persiste la sesión del proveedor en ese navegador. `prompt=login` sigue exigiendo credenciales;
+    no amplía los límites 1800/3600 s de Cerberus. La UI y la documentación explican esa política.
+  - Cerberus y el formulario de Keycloak comparten presentación y español, conservando el formulario seguro
+    del proveedor. Los cambios de tema/rememberMe se aplican de forma idempotente a realms existentes,
+    preservando usuarios, contraseñas, roles y configuración ajena.
 - **A5:** navegador real en 8080 con Keycloak en 8081: login lector/analista, prohibiciones, volumen protegido,
   expiración, logout y acceso directo posterior denegado; probar también Vite en 5173 con callback por su proxy.
   Los runners previos reciben sesión cuando auth está activa, nunca un bypass de permisos. Pasan checks §5,
@@ -886,6 +933,13 @@ declara Python ≥3.10, compatible con Python 3.11 del proyecto, y licencia
 cerrada conservando avisos y condiciones; al incorporarla se conservarán esos avisos. A0 no instala ni
 fija esta dependencia; A2 deberá comprobar versión, avisos de seguridad y APIs instaladas antes de añadirla
 a los grupos principal/runtime. No se implementará validación criptográfica propia.
+
+**Verificación de A2 (2026-11-06):** instalados Authlib 1.9.4, HTTPX2 2.15.1 y joserfc 1.8.0, con
+BSD-3-Clause declarada en sus metadatos. Se revisaron APIs en el código instalado y el
+[changelog de seguridad de Authlib](https://docs.authlib.org/en/stable/upgrades/changelog.html).
+Authlib usa HTTPX2 cuando está instalado; el cliente y el transporte de prueba comparten esa API.
+`CodeIDToken` valida claims y joserfc verifica firma RS256; se añade la opción de valor de `azp` porque
+el validador de Authlib por sí solo omite valores falsos/vacíos. No se implementa criptografía propia.
 
 
 ## 18. B13 · Métricas de concordancia de segmentación

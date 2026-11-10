@@ -191,11 +191,17 @@ async function layers() {
   } finally { release(); await page.unroute(file); }
   await page.getByRole("button", { name: "Ajustes", exact: true }).click();
   for (const [key, label, file] of [["s", "Segmentación MONAI", "monai_seg.nii.gz"], ["a", "Áreas de Brodmann", "brodmann.nii.gz"]]) {
-    await page.locator(".study-title").click(); await page.keyboard.press(key); await ready();
+    await page.locator(".study-title").click(); await page.keyboard.press(key);
+    // La carga por lotes conserva los volúmenes anteriores hasta publicar el lote nuevo.
+    // Esperar el cambio solicitado evita observar el estado previo antes del efecto de React.
+    await page.waitForFunction((filename) => !window.__nv.volumes.some((v) => v.name === filename), file, { timeout: TIMEOUT });
+    await ready();
     assert.equal(await page.getByRole("button", { name: `Mostrar ${label}`, exact: true }).getAttribute("aria-pressed"), "false");
     assert(!(await page.evaluate(() => window.__nv.volumes.map((v) => v.name))).includes(file));
     if (key === "s") await shot("areas_sin_segmentacion");
-    await page.getByRole("button", { name: `Mostrar ${label}`, exact: true }).click(); await ready();
+    await page.getByRole("button", { name: `Mostrar ${label}`, exact: true }).click();
+    await page.waitForFunction((filename) => window.__nv.volumes.some((v) => v.name === filename), file, { timeout: TIMEOUT });
+    await ready();
     assert((await page.evaluate(() => window.__nv.volumes.map((v) => v.name))).includes(file));
   }
 }

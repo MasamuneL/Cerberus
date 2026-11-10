@@ -41,7 +41,7 @@ def settings(tmp_path: Path) -> Settings:
 
 @pytest.fixture
 def client(settings: Settings) -> TestClient:
-    return TestClient(_make_app(settings))
+    return TestClient(_make_app(settings), base_url="http://localhost", headers={"X-Cerberus": "1"})
 
 
 @pytest.fixture
@@ -156,7 +156,7 @@ def test_upload_too_large_413(tmp_path: Path) -> None:
     small = Settings(
         data_dir=tmp_path / "Data", storage_dir=tmp_path / "storage", models_dir=tmp_path / "models", max_upload_mb=1
     )
-    client = TestClient(_make_app(small))
+    client = TestClient(_make_app(small), base_url="http://localhost", headers={"X-Cerberus": "1"})
     content = b"\0" * (uploads.CHUNK_SIZE + 1)
     r = client.post(
         "/api/uploads",

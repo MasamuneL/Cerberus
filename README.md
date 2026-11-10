@@ -12,10 +12,9 @@ autoajuste de recursos y caché HTTP de volúmenes. Estado y trabajo pendiente e
 [`docs/HANDOFF.md`](docs/HANDOFF.md); historial en [`docs/PROGRESS.md`](docs/PROGRESS.md).
 Los hallazgos del [QA de seguridad y robustez](docs/QA_2026-10-29.md) siguen pendientes de corrección.
 
-**Autenticación en desarrollo:** A0 incorpora configuración validada y contratos para OIDC, sesiones y roles
-lector/analista. A1 añade Keycloak persistente; el inicio de sesión y la protección de recursos todavía
-no están disponibles (A2–A5);
-`CERBERUS_AUTH_MODE=oidc` por sí solo aún no protege la app. El modo local conserva `off` por defecto.
+**Autenticación de la demo:** A0–A4 incorporan Keycloak persistente, sesiones OIDC, protección de recursos,
+roles lector/analista e interfaz de inicio y cierre de sesión. En modo `oidc`, el catálogo exige sesión;
+la entrada vuelve a pedir contraseña después del logout. El modo local conserva `off` por defecto.
 Variables, restricciones y tickets en
 [`PLAN_MVP.md` §17](docs/PLAN_MVP.md#17-autenticación-para-demo-académica--oidc--keycloak).
 
@@ -135,15 +134,23 @@ no tiempos garantizados para cualquier equipo o estudio.
 
 Smoke test de la versión Docker: `cd tools/e2e && npm ci && CERBERUS_UI=http://localhost:8080 node verify-docker.mjs`.
 
-### Proveedor de identidad de la demo (A1)
+### Identidad, sesiones y permisos de la demo (A1–A4)
+
+**Acceso a la demo local:** usuario `demo`, contraseña `demo`.
+Estas credenciales corresponden a la instancia de demostración; el bootstrap y el realm del repositorio
+no crean esa cuenta automáticamente. No son credenciales administrativas de Keycloak.
 
 El overlay añade **Keycloak 26.8.1 en http://localhost:8081** y PostgreSQL 18 privado. Cerberus conserva
-**http://localhost:8080**. Esta entrega prepara el proveedor: las rutas de login, sesiones y permisos
-todavía se completan en A2/A3; el overlay de A1 por sí solo no protege los recursos.
+**http://localhost:8080**. La API protege catálogo, archivos y mutaciones con sesiones y permisos. La pantalla
+de acceso permite iniciar sesión, muestra errores recuperables y explica la política de la demo.
+El lector consulta estudios; solo el analista puede subir y procesar. Jobs e ingestas pendientes son privados
+para la identidad que los creó, también tras un nuevo login; los estudios finales forman un catálogo compartido.
 
 ```bash
 uv run python tools/auth/bootstrap.py
 docker compose --env-file .env.auth -f compose.yaml -f compose.auth.yaml up -d --build
+# Cuando Keycloak esté listo, aplica también los cambios a un realm existente:
+uv run python tools/auth/sync_realm.py
 docker compose --env-file .env.auth -f compose.yaml -f compose.auth.yaml ps
 ```
 
@@ -168,6 +175,23 @@ instalación nueva usa `CERBERUS_APP_ORIGIN=http://localhost:5173` al ejecutar e
 un realm existente se omite para conservar sus cuentas: los cambios posteriores de redirect URIs se hacen
 explícitamente desde la consola, sin recrear el realm.
 
+El tema `cerberus` hereda los formularios de `keycloak.v2`: conserva sus controles, validación y flujo de
+contraseñas, con presentación Cerberus y ayuda en español. El overlay monta el tema en modo lectura.
+Tras actualizar el overlay, vuelve a ejecutar `up -d` para incorporar el montaje antes de sincronizar.
+`uv run python tools/auth/sync_realm.py` lee `.env.auth` (o `--env-file RUTA`) y permite que el entorno
+sobrescriba el usuario administrativo, su contraseña o `CERBERUS_KEYCLOAK_HTTP_PORT`. No acepta contraseñas
+en argumentos ni imprime credenciales. Repetirlo no produce cambios adicionales: solo actualiza nombre de
+la demo, tema, `rememberMe`, activación de idiomas, español por defecto y la unión de idiomas existentes
+con español/inglés. No toca cuentas, contraseñas, roles, clientes, redirect URIs ni límites de sesión,
+incluidos los de «Recordarme» configurados por el administrador. Si falla, comprueba que Keycloak esté
+listo y repite el comando; no borres el realm ni sus volúmenes.
+
+«Recordarme» conserva la sesión de Keycloak en ese navegador según sus límites de proveedor. El login de
+Cerberus mantiene `prompt=login`, por lo que volver a entrar sigue exigiendo credenciales aunque se marque
+la casilla. Esta opción no amplía la sesión de Cerberus: sus límites predeterminados siguen siendo
+**1800 s sin actividad y 3600 s en total**. Cerrar Cerberus invalida su sesión local; no promete cerrar
+las sesiones de Keycloak o de otras aplicaciones.
+
 | Variable del overlay | Default |
 |---|---|
 | `CERBERUS_KEYCLOAK_HTTP_PORT` | `8081`, solo loopback |
@@ -182,6 +206,56 @@ de identidad viven en volúmenes `auth-db-data` y `keycloak-data`; el catálogo 
 Para parar, usa el mismo comando de Compose con ambos archivos y `down`, sin `-v` si quieres conservar
 las cuentas. `start-dev` y HTTP pertenecen exclusivamente a esta demo local.
 
+Con el overlay activo, puedes iniciar sesión en **http://localhost:8080/api/auth/login**. FastAPI usa
+Authorization Code + PKCE S256 con Authlib y verifica firma RS256, issuer, audience, expiración, nonce
+y `azp` antes de crear la sesión. Una cuenta sin roles de Cerberus recibe 403. El navegador conserva
+solo una cookie opaca `HttpOnly`/`SameSite=Lax`, sin tokens OIDC en almacenamiento del navegador.
+
+`GET /api/auth/me` devuelve roles, vencimiento efectivo y token CSRF. `POST /api/auth/logout` requiere
+`Origin` de la app y ese token en `X-CSRF-Token`: invalida Redis y borra cookies; cierra la sesión de
+Cerberus, no la de otras aplicaciones del proveedor. La inactividad caduca a 30 minutos y la duración
+absoluta a 60; el overlay admite `CERBERUS_AUTH_IDLE_TIMEOUT_SECONDS` y
+`CERBERUS_AUTH_ABSOLUTE_TIMEOUT_SECONDS` para configurarlas. Redis caído produce 503; Keycloak caído
+impide nuevos logins, mientras las sesiones válidas continúan hasta vencer. Respuestas de auth: `no-store`.
+En modo local `off`, `/api/auth/config` informa el modo y las otras rutas de auth devuelven 404.
+
+Las mutaciones OIDC requieren `Origin` autorizado y `X-CSRF-Token` de `/api/auth/me`; los permisos se
+comprueban antes de leer el body, acceder a disco o responder 304. JSON autenticado usa `no-store`;
+NIfTI usa `private, no-cache`, con sesión comprobada en cada GET/HEAD. `/docs`, `/redoc` y `/openapi.json`
+se deshabilitan en OIDC. Logout impide nuevas descargas; no borra archivos descargados ni cachés existentes.
+En modo `off`, toda mutación requiere `X-Cerberus: 1`; si llega `Origin`, debe estar autorizado. El cliente
+web lo añade automáticamente. Ejemplo CLI local: `curl -H 'X-Cerberus: 1' -X POST ...`.
+
+API y nginx solo aceptan Host de loopback (la API admite además el host de `CERBERUS_APP_ORIGIN`).
+Si Vite usa otro puerto, configura `CERBERUS_APP_ORIGIN` y `CERBERUS_CORS_ORIGINS` con ese origen real;
+por ejemplo, `http://localhost:5180` en ambos. El callback del cliente de Keycloak también debe coincidir.
+
+El worker se inicia con `uv run python -m cerberus_api.worker`: cubre también fallos tempranos de arq
+(expiración, deserialización y reintentos agotados) al alinear el TTL de propietarios con sus resultados.
+La CLI `arq --check cerberus_api.worker.WorkerSettings` sigue disponible para salud.
+
+Si Redis pierde la propiedad de una ingesta, la API devuelve 404; no la asigna a quien conozca su UUID.
+Para descartar una ingesta huérfana, para primero **worker y API** para evitar carreras. En desarrollo nativo,
+con sus mismas variables de rutas, ejecuta el bloque siguiente con el UUID concreto revisado por el operador:
+
+```bash
+CERBERUS_ORPHAN_UPLOAD='<uuid-hex-de-32-caracteres>' uv run python - <<'PYTHON'
+import os
+import shutil
+from cerberus_api.config import get_settings
+from cerberus_api.staging import upload_dir, validate_upload_id
+settings = get_settings()
+upload_id = validate_upload_id(os.environ["CERBERUS_ORPHAN_UPLOAD"])
+shutil.rmtree(upload_dir(settings.staging_dir, upload_id), ignore_errors=True)
+(settings.tmp_dir / f"{upload_id}.zip").unlink(missing_ok=True)
+PYTHON
+```
+
+En Docker, detén `api worker` con ambos archivos Compose y ejecuta el mismo Python mediante
+`docker compose --env-file .env.auth -f compose.yaml -f compose.auth.yaml run --rm --no-deps -T api python -`,
+pasando el UUID con `-e CERBERUS_ORPHAN_UPLOAD=<uuid>` antes de `api` y conservando las variables de mounts.
+Después reinicia `api worker`. No borres resultados ni estudios finales para limpiar una ingesta pendiente.
+
 ### Modo desarrollo: requisitos
 
 - Python 3.11 + [uv](https://docs.astral.sh/uv/)
@@ -194,7 +268,7 @@ las cuentas. `start-dev` y HTTP pertenecen exclusivamente a esta demo local.
 ```bash
 uv sync                                                    # una vez: deps Python
 redis-server                                               # terminal 1
-uv run arq cerberus_api.worker.WorkerSettings              # terminal 2: worker
+uv run python -m cerberus_api.worker              # terminal 2: worker
 uv run uvicorn cerberus_api.main:app --reload --reload-dir backend --port 8000  # terminal 3: API
 cd frontend && npm install && npm run dev                  # terminal 4: UI
 ```
@@ -350,7 +424,8 @@ todavía no refleja estos hallazgos. Usa datos previamente anonimizados y revisa
 los nombres de archivo y el texto identificable «quemado» en los píxeles.
 
 La limpieza de DICOM crudo se intenta en un `finally`, pero un crash o ciertos casos de cancelación
-pueden dejar archivos temporales. Tampoco hay autenticación. El QA registra además CSRF, DNS rebinding
+pueden dejar archivos temporales. A2 ofrece login y sesiones, pero los recursos aún requieren la protección
+de A3. El QA registra además CSRF, DNS rebinding
 y subidas NIfTI capaces de agotar la memoria. Estas correcciones siguen pendientes; el detalle,
 las reproducciones y las prioridades están en [`QA_2026-10-29.md`](docs/QA_2026-10-29.md).
 

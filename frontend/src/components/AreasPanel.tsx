@@ -7,6 +7,7 @@ import SystemBadge from "./SystemBadge";
 import { areaColorCss } from "./areaColors";
 
 interface Props {
+  canAnalyze: boolean;
   study: StudyDetail;
   onCompleted: (r: AreasResult) => void;
   onFocusLabel: (label: number | null) => void;
@@ -139,7 +140,7 @@ function AreasTable({ rows, showWt, focusedLabel, onFocusLabel }: TableProps) {
   );
 }
 
-export default function AreasPanel({ study, onCompleted, onFocusLabel, focusedLabel, onLoaded, onBusyChange }: Props) {
+export default function AreasPanel({ canAnalyze, study, onCompleted, onFocusLabel, focusedLabel, onLoaded, onBusyChange }: Props) {
   const { patient, timepoint } = study;
   const [result, setResult] = useState<AreasResult | null>(null);
   const [loading, setLoading] = useState(true);
@@ -221,6 +222,7 @@ export default function AreasPanel({ study, onCompleted, onFocusLabel, focusedLa
   }, [jobId, status?.status, patient, timepoint]);
 
   const start = async () => {
+    if (!canAnalyze) return;
     setStarting(true);
     setStartError(null);
     try {
@@ -255,14 +257,14 @@ export default function AreasPanel({ study, onCompleted, onFocusLabel, focusedLa
     <section className="panel areas">
       <h2>Áreas de Brodmann</h2>
       <SystemBadge />
-      <button
+      {canAnalyze ? <button
         type="button"
         className="btn-primary"
         disabled={busy || loading || !study.has_gtv}
         onClick={() => void start()}
       >
         {busy ? "Mapeando…" : result ? "Volver a mapear" : "Mapear áreas afectadas"}
-      </button>
+      </button> : <p className="note">Solo lectura: puedes consultar las áreas afectadas.</p>}
       {!study.has_gtv && <p className="note">Se necesita GTV para mapear áreas.</p>}
 
       {startError && (

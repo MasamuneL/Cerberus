@@ -44,9 +44,9 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 | D1 · actualización documental (CP-037/038) | ✅ | main | 42d39db, f45e5e7 | 2026-11-03 | Vikingo / Codex | PR #2 y #3 integrados |
 | A0 · contratos y configuración de auth (§17) | ✅ | feat/A0-auth-config | 3bd8ee4 | 2026-11-05 | Vikingo / Codex | PR #5 integrado tras QA completo; CP-041 |
 | A1 · Keycloak reproducible (§17) | ✅ | feat/A1-keycloak | 5470dcf | 2026-11-05 | Vikingo / Codex | PR #6 integrado tras QA real y smoke Docker; CP-042 |
-| A2 · OIDC y sesiones (§17) | ⬜ | — | — | — | — | Depende de A0 y A1 |
-| A3 · permisos y propiedad (§17) | ⬜ | — | — | — | — | Depende de A2; coordinar S1/S2 del QA |
-| A4 · UI de acceso (§17) | ⬜ | — | — | — | — | Depende de A2 y A3 |
+| A2 · OIDC y sesiones (§17) | ✅ | feat/A2-oidc-sessions | 7635e58 | 2026-11-06 | Vikingo / Codex | PR #8 integrado tras QA real y smoke Docker; CP-044 |
+| A3 · permisos y propiedad (§17) | ✅ | feat/A3-access-control | 9674ee4 | 2026-11-06 | Vikingo / Codex | PR #9 integrado; 725 tests, visual 33/33 y Docker 15/15; CP-045 |
+| A4 · UI de acceso (§17) | 🟡 | feat/A4-auth-ui | — | 2026-11-06 | Vikingo / Codex | PR #10 draft; 3515f72, 759 tests y UI controlada verde; QA real/visual por subagentes en curso |
 | A5 · E2E y documentación de auth (§17) | ⬜ | — | — | — | — | Depende de A1–A4 y ola P del QA |
 | Mantenimiento · limpieza del repositorio | 🟡 | chore/repo-cleanup | — | 2026-11-05 | Vikingo / Codex | Archivos archivados, dependencias opcionales y ramas integradas retiradas; CP-043 |
 
@@ -661,3 +661,69 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
   capturas de Segmentación a 1440×900 y 1280×800. El primer intento de Chrome falló por sandbox;
   la ejecución autorizada fuera del sandbox completó correctamente. Sin inferencia ni subidas reales.
 - Pendiente: revisar/integrar PR y registrar checkpoint posterior al merge. No se modifica autenticación.
+
+### CP-044 · 2026-11-06 · A2 · OIDC y sesiones integrados
+- **Hecho:** rutas config/login/callback/me/logout; cliente Authlib 1.9.4 + HTTPX2 2.15.1, firma RS256 mediante
+  joserfc 1.8.0 y validación OIDC. Transacciones de 300 s ligadas al navegador y de un uso; sesiones Redis con
+  cookie opaca HttpOnly/Lax, renovación, expiración por inactividad y absoluta, logout con CSRF/Origin.
+  Estado de sesión público limitado a roles, vencimiento y CSRF. Modo off conserva 404 salvo config.
+- **Seguridad y revisión:** regresiones RED→GREEN de `azp` falso/vacío y claim de roles omitido por Keycloak
+  (403 sin rol); query del callback fuera de logs de Uvicorn incluso si fallan dependencias. Reproducida fuga
+  de nginx con API caída, con y sin barra final; corregida y comprobada con marcadores sintéticos. Revisión
+  independiente sin otros hallazgos verificables. APIs comprobadas en los paquetes instalados; sin criptografía propia.
+- **Checks:** Ruff/formato/pyright correctos, **649 tests rápidos aprobados, 5 slow excluidos**; build correcto
+  con aviso conocido de bundles grandes y 37 enlaces locales sin errores. Fakeredis/Lua solo en dev, sin red en tests.
+- **QA real previo al merge:** Chrome, Keycloak y Redis: lector/analista, cuenta sin rol, renovación, CSRF/Origin,
+  logout e identificador viejo; state incorrecto/otro navegador/replay. Proveedor caído conserva sesión válida y
+  nuevos logins dan 503; Redis caído da 503. Caducidad real con 2 s idle/5 s absolutos, luego valores por defecto
+  restaurados y cuentas temporales eliminadas. Respuestas y cookies sin tokens del proveedor.
+- **Smoke Docker previo al merge:** 2026-11-06 21:30:11–21:32:50 UTC, exit 0, **15/15 checks**, 11 capturas,
+  ningún pendiente. Revisadas recursos 1440×900 y volumetría 1280×800; sin regresiones observadas.
+- **Integración:** PR #8, merge `7635e58`; árbol idéntico al commit validado `cbb8d3e`. CP-043 está reservado
+  por la limpieza en PR #7, aún pendiente; este checkpoint no modifica ni integra ese trabajo.
+- **Siguiente paso:** A3 para imponer permisos/propiedad/CSRF/Host en recursos, después A4 UI. A2 todavía no
+  protege catálogo, archivos, jobs ni subidas; A5 requiere ola P. Worktree `/private/tmp/cerberus-auth-A1` conservado.
+
+
+### CP-045 · 2026-11-06 · A3 · Permisos y propiedad integrados
+- **Hecho:** middleware antes del body/I/O para sesión, lector/analista y propiedad Redis por (`issuer`, `sub`).
+  Registra propietarios antes de encolar, limpia errores/confirmación/descarte y alinea TTL con resultados arq.
+  Recursos ajenos o sin metadata devuelven 404. Catálogo final compartido; JSON `no-store`, NIfTI `private, no-cache`
+  y permisos antes de GET/HEAD/304. Swagger/ReDoc/OpenAPI deshabilitados en OIDC.
+- **S1/S2:** CSRF y Origin en OIDC; `X-Cerberus: 1` y Origin autorizado cuando venga en modo local. Host validado
+  por API/nginx. CLI web añade cabecera local automáticamente. La privacidad y las reglas DICOM previas se conservan.
+- **Revisión:** cerrados bypass por `root_path` y propietarios permanentes por fallos tempranos de arq.
+  `OwnedWorker.finish_failed_job` cubre expiración, deserialización, función ausente, retries y abort. Nuevo comando
+  `uv run python -m cerberus_api.worker`; healthcheck oficial `arq --check` conservado. Regresiones con arq real
+  sobre fakeredis; revisión independiente sin hallazgos pendientes.
+- **Checks:** Ruff/formato/pyright y build correctos; **725 tests rápidos aprobados, 5 slow excluidos**. Comprobados
+  39 enlaces locales. Aviso conocido de bundles grandes, sin fallo de build.
+- **QA real:** Keycloak/Redis, lector y dos analistas, mutaciones/CSRF, acceso cruzado, ingesta sintética fallida,
+  TTL de job, propiedad tras nuevo login, descarte y GET/HEAD condicional después de logout (401). Repetida regresión
+  A2 completa con nuevo launcher: state/replay, proveedor/Redis caídos e idle/absoluta bajo actividad. Cuentas temporales
+  eliminadas y timeouts restaurados. Worker Docker también verificado con función ausente/retries agotados.
+- **QA visual:** Vite, 22:01:16–22:07:03 UTC: **33/33 checks**, 14 auditorías axe sin violaciones automáticas,
+  27 capturas y exit 0. Smoke Docker, 22:08:20–22:11:07 UTC: **15/15**, 11 capturas, sin pendientes. Revisadas
+  ambas resoluciones. El wrapper falló al restaurar por cwd; corregido y restaurado manualmente: modo OIDC y
+  catálogo anónimo 401 verificados. El runner aprobó todas sus comprobaciones.
+- **Integración:** PR #9, merge `9674ee4`; árbol idéntico al commit validado `e3345c2`. CP-043/PR #7 siguen en
+  la rama de limpieza ajena. Worktree `/private/tmp/cerberus-auth-A1` y `.env.auth` local ignorado se conservan.
+- **Siguiente paso:** A4 (UI de acceso), luego dependencias de ola P y A5. La interfaz aún no refleja roles ni incluye
+  login/logout: el acceso se inicia manualmente en `/api/auth/login`. S1/S2 cerrados; resto de ola P pendiente.
+
+
+### Validación previa a integración A4/B13 · 2026-11-10
+
+El usuario autoriza merge a main y documentar `demo` / `demo`. Se integra A4 (`52ebb0b`) en la
+rama de B13, conservando limpieza CP-043, nota para Astra y dependencias de autenticación.
+Lockfile resuelto sin cambiar versiones respecto a A4. README refleja A0–A4 y las credenciales
+verificadas de la instancia local; el bootstrap no crea la cuenta automáticamente.
+
+Checks: **766 tests rápidos aprobados, 5 slow excluidos**; Ruff, formato, pyright y build correctos.
+Node: 5 pruebas de medios y 10 de sesión; UI controlada: 12 escenarios generales y 8 de sesión.
+QA real Docker con `demo`: login, API autenticada con métricas, logout con 401 y contraseña exigida
+al volver, tanto con «Recordarme» como sin él. Cookie de recuerdo solo con la opción activada.
+QA visual final: **33/33 checks**, 14 auditorías axe sin violaciones automáticas y 27 capturas;
+revisadas Segmentación a 1440×900 y 1280×800. Primer intento interrumpido tras detectar una carrera
+en la aserción de capas; el runner ahora espera la presencia/ausencia solicitada del volumen antes
+de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas en la suite visual.

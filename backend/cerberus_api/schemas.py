@@ -2,6 +2,9 @@
 
 `frontend/src/api/types.ts` debe reflejar exactamente estos modelos. Si cambias uno, actualiza también
 `types.ts` y el §7 del plan en el mismo PR.
+A4 señala login correcto con 303 a /?auth_event=login, código público fijo consumido por la UI.
+A4 mantiene JSON en errores API y usa 303 con código público fijo solo en navegación HTML de login/callback.
+A3 conserva los cuerpos JSON; las guardas aplican sesión, roles, propiedad y CSRF antes de procesarlos.
 """
 
 from datetime import datetime
@@ -11,19 +14,22 @@ from pydantic import AwareDatetime, BaseModel, Field
 
 from cerberus_api.identity import AuthMode, Role
 
+# Cabecera de recursos OIDC autenticados: vencimiento efectivo en milisegundos Unix, sin identidad.
+SESSION_EXPIRY_HEADER = "X-Cerberus-Session-Expires-At"
+
 RanoCategory = Literal["PD", "PR", "MR", "SD"]
 JobState = Literal["queued", "in_progress", "complete", "failed", "not_found"]
 UploadState = Literal["processing", "ready", "failed"]
 
 
 class AuthConfig(BaseModel):
-    """Configuración pública de acceso, sin credenciales del proveedor (§17)."""
+    """Respuesta pública de `/api/auth/config`, sin credenciales del proveedor (§17)."""
 
     mode: AuthMode
 
 
 class AuthSession(BaseModel):
-    """Datos públicos de sesión; excluye identidad, cookie y tokens OIDC (§17)."""
+    """Respuesta de `/api/auth/me`; excluye identidad, cookie y tokens OIDC (§17)."""
 
     roles: list[Role] = Field(min_length=1)
     expires_at: AwareDatetime
