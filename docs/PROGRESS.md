@@ -7,7 +7,7 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 
 | Ticket | Estado | Rama | Commit | Fecha | Responsable / herramienta | Notas |
 |---|---|---|---|---|---|---|
-| B13 · Métricas y guía de segmentación | 🟡 | feat/B13-segmentation-metrics | pendiente | 2026-11-10 | Codex | 582 tests y QA visual 33/33; pendiente de integración |
+| B13 · Métricas y guía de segmentación | ✅ | feat/B13-segmentation-metrics | d68262a | 2026-11-10 | Codex | PR #11; integrado con A4, 766 tests y visual 33/33; CP-046 |
 | B0 · Bootstrap | ✅ | feat/B0-bootstrap | 31d619a | 2026-10-27 | Vikingo / Claude Code (orquestador) | |
 | B1 · config + sequences | ✅ | feat/B1-config-sequences | bad8563 | 2026-10-27 | Vikingo / Claude Code (subagente) | |
 | B2 · catalog | ✅ | feat/B2-catalog | 0f0927f | 2026-10-27 | Vikingo / Claude Code (subagente) | |
@@ -46,7 +46,7 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 | A1 · Keycloak reproducible (§17) | ✅ | feat/A1-keycloak | 5470dcf | 2026-11-05 | Vikingo / Codex | PR #6 integrado tras QA real y smoke Docker; CP-042 |
 | A2 · OIDC y sesiones (§17) | ✅ | feat/A2-oidc-sessions | 7635e58 | 2026-11-06 | Vikingo / Codex | PR #8 integrado tras QA real y smoke Docker; CP-044 |
 | A3 · permisos y propiedad (§17) | ✅ | feat/A3-access-control | 9674ee4 | 2026-11-06 | Vikingo / Codex | PR #9 integrado; 725 tests, visual 33/33 y Docker 15/15; CP-045 |
-| A4 · UI de acceso (§17) | 🟡 | feat/A4-auth-ui | — | 2026-11-06 | Vikingo / Codex | PR #10 draft; 3515f72, 759 tests y UI controlada verde; QA real/visual por subagentes en curso |
+| A4 · UI de acceso (§17) | ✅ | feat/A4-auth-ui | d68262a | 2026-11-10 | Codex | Incorporado mediante PR #11; login real, Node 15 y UI 20; CP-046 |
 | A5 · E2E y documentación de auth (§17) | ⬜ | — | — | — | — | Depende de A1–A4 y ola P del QA |
 | Mantenimiento · limpieza del repositorio | 🟡 | chore/repo-cleanup | — | 2026-11-05 | Vikingo / Codex | Archivos archivados, dependencias opcionales y ramas integradas retiradas; CP-043 |
 
@@ -727,3 +727,20 @@ QA visual final: **33/33 checks**, 14 auditorías axe sin violaciones automátic
 revisadas Segmentación a 1440×900 y 1280×800. Primer intento interrumpido tras detectar una carrera
 en la aserción de capas; el runner ahora espera la presencia/ausencia solicitada del volumen antes
 de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas en la suite visual.
+
+
+### CP-046 · 2026-11-10 · A4, B13 y documentación integrados en main
+
+- **Integración autorizada:** PR #11, merge `d68262a`; incorpora la limpieza CP-043 y el head A4
+  `52ebb0b`, además de métricas B13 y nota de fine-tuning para planificar posteriormente con Astra.
+- **Acceso demo:** README documenta usuario `demo` y contraseña `demo`; login/logout verificados
+  contra Docker. Se aclara que el bootstrap no crea esa cuenta automáticamente.
+- **Validación:** árbol de código idéntico al head verificado `b8c4cfb`; 766 tests rápidos aprobados,
+  5 slow excluidos, Ruff/formato/pyright y build correctos. Node 15/15 y UI de autenticación 20/20.
+  QA visual final 33/33, 14 auditorías axe sin violaciones automáticas y 27 capturas revisadas en
+  Segmentación a 1440×900 y 1280×800. QA real de contraseña/Recordarme y API con métricas aprobado.
+- **Reproducibilidad:** main conserva pantalla de login y prompt=login junto con métricas; ya no
+  requiere ensamblar fuentes de snapshots. Docker local sigue ejecutando la combinación A4+B13
+  validada previamente; no se reinició durante este merge para evitar interrumpir trabajos.
+- **Estado posterior:** A4 y B13 completados; A5 y ola P pendientes. Fine-tuning solo documentado,
+  sin entrenamiento iniciado. Checkout principal actualizado a main y checkpoint subido.

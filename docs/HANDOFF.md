@@ -4,7 +4,7 @@
 > checkpoint. El historial completo está en [`PROGRESS.md`](PROGRESS.md) y el alcance y los contratos en
 > [`PLAN_MVP.md`](PLAN_MVP.md). Las reglas de trabajo están en [`../AGENTS.md`](../AGENTS.md).
 
-**Última actualización:** 2026-11-10 · último checkpoint: CP-045 · rama base: `main`
+**Última actualización:** 2026-11-10 · último checkpoint: CP-046 · rama base: `main`
 
 ## 1. Arranque rápido
 
@@ -47,13 +47,14 @@ Durante la recreación de API hubo un 504 al consultar un job; arq recuperó la 
 TC/GTV: Dice 0.856827, recall 0.829519, precisión 0.885993, HD95 3.741657 mm.
 Los resultados están en storage/results/001/t0/monai_seg.json; no requieren nueva inferencia.
 
-**Integración preparada · 2026-11-10:** rama `feat/B13-segmentation-metrics` incorpora A4 completa,
-B13, limpieza CP-043 y nota de fine-tuning para Astra. README documenta el acceso local `demo` / `demo`,
-verificado en Docker. Sin cambios de versiones al resolver el lockfile; dependencias del notebook
-conservadas como opcionales. Checks: 766 tests rápidos, Ruff, formato, pyright y build correctos;
+**CP-046 · 2026-11-10:** integrado el [PR #11](https://github.com/MasamuneL/Cerberus/pull/11),
+merge `d68262a`. Main contiene A4 completa, métricas B13, limpieza CP-043 y nota de fine-tuning
+para Astra. README documenta `demo` / `demo`, verificado en Docker; el bootstrap no crea la cuenta.
+La construcción desde main ya incluye login, `prompt=login` y métricas: no necesita combinar snapshots.
+Checks del árbol integrado: 766 tests rápidos, Ruff, formato, pyright y build correctos;
 15 pruebas Node y 20 escenarios de UI de autenticación aprobados. QA visual final: 33/33 checks,
-14 auditorías axe sin violaciones automáticas y 27 capturas; revisadas las de Segmentación en ambos tamaños.
-El usuario autorizó integrar estos cambios en main. A5 y la ola P siguen pendientes.
+14 auditorías axe sin violaciones automáticas y 27 capturas; revisadas Segmentación en ambos tamaños.
+Siguiente paso: ola P y A5 según el plan; no iniciar fine-tuning sin el plan posterior con Astra.
 
 **Implementación integrada en `main`:** MVP completo (B0–B8, F0–F6, D1, E2E), áreas de Brodmann
 (§13: B9–B11, F7, F8), dominios funcionales y UX/UI (§14: B12, F9–F11), Docker Compose (§15: D2a–D2c)
@@ -64,7 +65,8 @@ y autoajuste de recursos y caché HTTP de NIfTI (§16: D2e-back/front).
 | §13–§14 · áreas y UX/UI | ✅ integrado | Capas, cursor, atajos, pestañas, funciones en riesgo, IBM Plex y navegación con teclado; PR #1, merge `bcef409` |
 | §15 · Docker Compose | ✅ integrado | Redis, API, worker y frontend/nginx; acceso local en `http://localhost:8080`; CP-031 |
 | §16 · recursos y caché | ✅ integrado | `CERBERUS_CPU_THREADS=auto`, `GET /api/system`, indicador y estimaciones en la UI, revalidación 304; CP-034 |
-| §17 · login para demo académica | 🟡 A0–A3 integrados | PR #9, merge `9674ee4`; API protegida y propiedad verificada. UI/A5 pendientes |
+| §17 · login para demo académica | 🟡 A0–A4 integrados | PR #11, merge `d68262a`; login, permisos, continuidad y reautenticación. A5 pendiente |
+| §18 · métricas y guía | ✅ integrado | PR #11; TC/WT frente a GTV, casos vacíos y JSON antiguos compatibles |
 | QA de seguridad y robustez | ⬜ correcciones pendientes | Hallazgos y propuesta por olas en [`QA_2026-10-29.md`](QA_2026-10-29.md); CP-035/036 |
 
 **Integración:** CP-037, CP-038 y CP-039 integrados en `main` mediante los PR #2, #3 y #4
@@ -72,7 +74,7 @@ y autoajuste de recursos y caché HTTP de NIfTI (§16: D2e-back/front).
 A0 está integrado mediante el [PR #5](https://github.com/MasamuneL/Cerberus/pull/5), merge `3bd8ee4`.
 A1 está integrado mediante el [PR #6](https://github.com/MasamuneL/Cerberus/pull/6), merge `5470dcf`.
 A2 está integrado mediante el [PR #8](https://github.com/MasamuneL/Cerberus/pull/8), merge `7635e58`, tras QA real
-y smoke Docker completos (CP-044). El PR #7 de limpieza/CP-043 sigue pendiente en otra rama.
+y smoke Docker completos (CP-044). La limpieza/CP-043 está incorporada mediante el PR #11 (CP-046).
 
 **Validación de CP-037 (2026-11-03):** Ruff, formato y pyright correctos; **474 tests rápidos pasaron,
 5 slow excluidos**; frontend build correcto. Comprobados 34 enlaces locales sin errores. No se repitió
@@ -129,22 +131,9 @@ automáticas y 27 capturas (22:01:16–22:07:03 UTC); smoke Docker **15/15**, 11
 (22:08:20–22:11:07 UTC). Revisadas capturas de capas 1440×900 y tabla 005/t0 1280×800, y recursos/volumetría
 Docker en ambas resoluciones. La restauración del wrapper de QA falló por cwd; corregida y ejecutada
 manualmente: `/auth/config` informa `oidc` y catálogo anónimo devuelve 401. No es un fallo del runner ni del producto.
-**Trabajo en curso:** A4 en `feat/A4-auth-ui`, mismo worktree. Navegación de errores implementada y subida
-hasta `93620fc`; UI aún pendiente. El usuario pidió QA durante esta fase: **732 tests rápidos**, visual
-**33/33**, 14 axe sin violaciones automáticas, 27 capturas y smoke Docker **15/15** con 11 capturas,
-sin pendientes. Regresión Keycloak/Redis y permisos reales aprobados, incluida navegación HTML; cuentas
-eliminadas, timeouts y OIDC restaurados. Informe: [`QA_AUTH_2026-11-06.md`](QA_AUTH_2026-11-06.md).
-No se integró A4 ni se declaró completo. La revisión posterior detectó 401 de NIfTI fuera del cliente
-común y logout403 con CSRF viejo tras rotación en otra pestaña; ambos reproducidos. `c7a0544` añade la UI
-inicial y `000c958` conserva prompt=login/rememberMe. El 2026-11-07 el usuario autorizó añadir todos los
-criterios pendientes al plan y ejecutar subagentes; A4.1–A4.6 del plan de ejecución detallan responsables.
-La implementación ampliada está subida hasta `3515f72`: 401 de NIfTI y aborto, logout403/CSRF vigente,
-coordinación entre pestañas, timeout, aviso/caducidad por deadline del servidor, continuidad UUID y tema/sync
-idempotente. Medios y proveedor revisados independientemente. La revisión global detectó retroceso del plazo
-por respuestas concurrentes: corregido con regresión RED→GREEN y revisión adicional. **759 tests backend**,
-Node **5 medios + 10 sesión**, UI controlada **12 generales + 8 sesión** y build aprobados. QA real Keycloak,
-visual Vite y smoke Docker están siendo ejecutados por subagentes; todavía no se autoriza merge de A4.
-El QA de `QA_AUTH_2026-11-06.md` corresponde al código anterior 93620fc y no aprueba la UI nueva. Después, ola P pendiente y A5.
+**A4 integrada en CP-046:** el PR #11 incorpora `52ebb0b` y conserva las correcciones de
+sesión, medios, continuidad y proveedor. La validación del conjunto final se describe arriba y en
+PROGRESS. Los informes del 2026-11-06 son históricos; A5 y la ola P siguen pendientes.
 Plan de ejecución: [`superpowers/plans/2026-11-05-auth-remaining.md`](superpowers/plans/2026-11-05-auth-remaining.md).
 El usuario autorizó avanzar los tickets posibles con commits/push frecuentes y QA antes de cada merge.
 A5 depende de la ola P del QA
