@@ -1,4 +1,4 @@
-"""Sincroniza solo presentación, idioma y «Recordarme» del realm existente de la demo."""
+"""Sincroniza presentación, idioma y «Recordarme»; crea la cuenta demo solo si falta."""
 
 import argparse
 import json
@@ -55,7 +55,7 @@ def build_realm_patch(current: Mapping[str, Any]) -> dict[str, object]:
 
 
 def sync_realm(client: httpx.Client, username: str, password: str) -> list[str]:
-    """Autentica en master y actualiza únicamente el realm cerberus; sin reimportar ni recrear nada."""
+    """Actualiza cerberus e importa la cuenta de demo con SKIP, conservando cualquier cuenta existente."""
     response = client.post(
         "/realms/master/protocol/openid-connect/token",
         data={"grant_type": "password", "client_id": "admin-cli", "username": username, "password": password},
@@ -75,7 +75,20 @@ def sync_realm(client: httpx.Client, username: str, password: str) -> list[str]:
     if patch:
         response = client.put("/admin/realms/cerberus", headers=headers, json=patch)
         response.raise_for_status()
-    return sorted(patch)
+    # Se reutiliza la cuenta del seed. SKIP conserva contraseña, roles y estado si ya existe,
+    # incluso cuando el administrador deshabilitó la cuenta o cambió sus permisos.
+    seed_path = Path(__file__).resolve().parents[2] / "docker/keycloak/realm.json"
+    users = json.loads(seed_path.read_text())["users"]
+    response = client.post(
+        "/admin/realms/cerberus/partialImport",
+        headers=headers,
+        json={"ifResourceExists": "SKIP", "users": users},
+    )
+    response.raise_for_status()
+    imported = response.json()
+    if not isinstance(imported, dict) or type(imported.get("added")) is not int or imported["added"] not in (0, 1):
+        raise ValueError("El proveedor devolvió un resultado de importación inválido.")
+    return sorted([*patch, *(["demo"] if imported["added"] else [])])
 
 
 def main(

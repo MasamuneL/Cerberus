@@ -763,8 +763,12 @@ El rol administrativo de Keycloak no concede por sí mismo permisos dentro de Ce
   La configuración base sin overlay mantiene el modo local actual; la demo con overlay exige autenticación.
 - El overlay incluye PostgreSQL privado para Keycloak y volúmenes persistentes. PostgreSQL no almacena imágenes
   ni sustituye el catálogo en disco de Cerberus. Registrar realm `cerberus`, cliente `cerberus-web`, roles y
-  redirect URIs exactas; no usar comodines, credenciales versionadas ni el realm `master` para la aplicación.
+  redirect URIs exactas; no usar comodines, secretos administrativos versionados ni el realm `master` para la aplicación.
   El bootstrap obtiene secretos del entorno y es repetible sin sobrescribir cuentas ni resetear contraseñas.
+  Ampliación solicitada el 2026-11-11: el realm de demo local incluye la cuenta pública `demo` / `demo`,
+  con rol `analyst` de `cerberus-web`, sin roles administrativos. En instalaciones existentes,
+  `sync_realm.py` la importa con `ifResourceExists=SKIP`: nunca restablece contraseñas, roles ni estado
+  de una cuenta ya creada. Las credenciales públicas se limitan a la demo HTTP publicada en loopback.
 - Resolver explícitamente el acceso al proveedor desde navegador y contenedores: issuer público de demo
   `http://localhost:8081/realms/cerberus`; backchannel Docker `http://keycloak:8080/realms/cerberus` para
   token/JWKS. Comprobar metadata y transporte sin cambiar el issuer validado ni desactivar validaciones.
@@ -859,7 +863,8 @@ indican destinos previstos; las firmas de librerías se verificarán en su códi
 | ID | Entrega y archivos principales | Dependencias |
 |---|---|---|
 | A0 · contratos y configuración | `config.py`, nuevo `identity.py`, `schemas.py`, `frontend/src/api/types.ts`, §7; tipos `Role`, `Principal`, `AuthConfig` y `AuthSession`; tests `test_auth_config.py` | MVP |
-| A1 · proveedor reproducible | Nuevo `compose.auth.yaml`, `docker/keycloak/realm.json` sin usuarios/secretos y bootstrap en `tools/auth/`; PostgreSQL privado, realm/roles/cliente y README | A0 |
+| A1 · proveedor reproducible | Nuevo `compose.auth.yaml`, `docker/keycloak/realm.json` y bootstrap en `tools/auth/`; PostgreSQL privado, realm/roles/cliente y README; cuenta local pública añadida en A1b | A0 |
+| A1b · cuenta de demo automática | Seed con `demo` / `demo` y rol `analyst`; sincronización SKIP para realms existentes, pruebas sin red y QA con Keycloak real; README | A1, A4 |
 | A2 · OIDC y sesiones | Nuevos `oidc.py`, `sessions.py`, `routers/auth.py`; `deps.py`, `main.py`, dependencias en `pyproject.toml` y `uv.lock`; tests `test_oidc.py`, `test_sessions.py`, `test_auth_routes.py` | A0, A1 |
 | A3 · permisos y propiedad | Nuevo `access.py`; `deps.py`, `main.py`, routers `studies/jobs/uploads`, limpieza en `worker.py`, `docker/nginx.conf`; tests `test_access.py` y ampliación de tests API | A2; coordinar con S1/S2 del QA |
 | A4 · UI de acceso | Nuevos `hooks/useAuth.ts`, `components/LoginPanel.tsx`; `App.tsx`, `api/client.ts`, controles en paneles y visor; textos en español, permisos y expiración | A2, A3 |
@@ -873,6 +878,10 @@ indican destinos previstos; las firmas de librerías se verificarán en su códi
 - **A1:** con secretos locales, el comando del overlay levanta servicios sanos, conserva usuarios al reiniciar,
   permite crear lector/analista sin registro público y registra el callback exacto de la UI en 8080. Se comprueban issuer,
   backchannel y JWKS desde `api`; la documentación distingue 8080, 8081, 5173 y el 8000 interno.
+- **A1b:** una instalación nueva permite `demo` / `demo` con PKCE y claim `analyst`, sin pedir configurar
+  perfil ni cambiar contraseña. Un realm existente sin esa cuenta la recibe al sincronizar; repetir
+  no restablece contraseña, roles, acciones requeridas ni estado deshabilitado. Pruebas sin red para
+  SKIP, errores y resultado inválido; comprobar importación y preservación con Keycloak real aislado.
 - **A2:** tests con proveedor/transporte y reloj falsos: login válido; `state` o `nonce` incorrectos/ausentes;
   callback repetido, transacción de otro navegador o expirada; firma/issuer/audience/exp inválidos, algoritmo
   no permitido y rotación de claves; sesión fijada, inactividad y caducidad absoluta; logout e indisponibilidad

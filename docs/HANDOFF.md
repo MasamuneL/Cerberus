@@ -32,6 +32,18 @@ Abre las PNG y revísalas: **no te fíes solo de los ✅**. Leer píxeles del ca
 
 ## 2. Estado actual
 
+**A1b · cuenta de demo automática · 2026-11-11:** rama `feat/A1-demo-account`.
+El seed incluye `demo` / `demo`, perfil ficticio completo y rol `analyst` de `cerberus-web`.
+Para realms existentes, `sync_realm.py` usa importación parcial con SKIP: crea solo si falta,
+conservando contraseña, roles, acciones requeridas y estado de una cuenta existente.
+Checks: 776 tests rápidos, Ruff/formato (incluidos scripts auth), pyright y build frontend correctos.
+QA con Keycloak 26.8.1 aislado: importación inicial, login real PKCE con claim `analyst`, creación
+en realm existente sin cuenta, repetición sin cambios y preservación de contraseña cambiada,
+rol `reader` y cuenta deshabilitada. Captura del formulario en español revisada.
+La primera prueba real detectó campos de perfil obligatorios ausentes; corregidos y repetido el login.
+No se modificaron cuentas ni servicios de la demo existente. No se repitió QA del visor completo.
+Pendiente integrar PR y registrar checkpoint. El 502 del profesor sigue pendiente de sus logs.
+
 **CP-048 · D2b · corrección Windows · 2026-11-11:** integrado el
 [PR #12](https://github.com/MasamuneL/Cerberus/pull/12), merge `7644d87`.
 Reproducido el error `exec /usr/local/bin/cerberus-nginx: no such file or directory`

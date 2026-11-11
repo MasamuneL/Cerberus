@@ -151,8 +151,10 @@ Smoke test de la versión Docker: `cd tools/e2e && npm ci && CERBERUS_UI=http://
 ### Identidad, sesiones y permisos de la demo (A1–A4)
 
 **Acceso a la demo local:** usuario `demo`, contraseña `demo`.
-Estas credenciales corresponden a la instancia de demostración; el bootstrap y el realm del repositorio
-no crean esa cuenta automáticamente. No son credenciales administrativas de Keycloak.
+Keycloak crea esa cuenta automáticamente al importar un realm nuevo, con el rol `analyst` de
+`cerberus-web`. Son credenciales públicas para la demo local, sin permisos administrativos de Keycloak.
+Si el realm ya existía, `sync_realm.py` crea la cuenta solo si falta; conserva la contraseña, los roles
+y el estado de una cuenta `demo` existente, aunque su administrador los haya cambiado.
 
 El overlay añade **Keycloak 26.8.1 en http://localhost:8081** y PostgreSQL 18 privado. Cerberus conserva
 **http://localhost:8080**. La API protege catálogo, archivos y mutaciones con sesiones y permisos. La pantalla
@@ -177,8 +179,9 @@ cambiar su contraseña de base de datos no cambia automáticamente la de un volu
 
 En http://localhost:8081/admin, entra como `cerberus-admin` con la contraseña administrativa del archivo
 local. Selecciona el realm **cerberus**, crea las cuentas desde **Users** y asigna en **Role mapping** uno
-de los roles del cliente **cerberus-web**: `reader` o `analyst`. El realm no incluye cuentas ni contraseñas,
-el registro público está desactivado y los roles administrativos de Keycloak no conceden permisos de Cerberus.
+de los roles del cliente **cerberus-web**: `reader` o `analyst`. Este paso solo hace falta para cuentas
+adicionales: `demo` se aprovisiona automáticamente. El registro público está desactivado y los roles
+administrativos de Keycloak no conceden permisos de Cerberus.
 Los usuarios creados conservan sus contraseñas al repetir el bootstrap o reiniciar servicios.
 
 El cliente exige Authorization Code con PKCE S256 y registra exactamente
@@ -194,11 +197,18 @@ contraseñas, con presentación Cerberus y ayuda en español. El overlay monta e
 Tras actualizar el overlay, vuelve a ejecutar `up -d` para incorporar el montaje antes de sincronizar.
 `uv run python tools/auth/sync_realm.py` lee `.env.auth` (o `--env-file RUTA`) y permite que el entorno
 sobrescriba el usuario administrativo, su contraseña o `CERBERUS_KEYCLOAK_HTTP_PORT`. No acepta contraseñas
-en argumentos ni imprime credenciales. Repetirlo no produce cambios adicionales: solo actualiza nombre de
+en argumentos ni imprime credenciales. Repetirlo no produce cambios adicionales: actualiza nombre de
 la demo, tema, `rememberMe`, activación de idiomas, español por defecto y la unión de idiomas existentes
-con español/inglés. No toca cuentas, contraseñas, roles, clientes, redirect URIs ni límites de sesión,
+con español/inglés; además importa la cuenta `demo` con la política `SKIP` de Keycloak. No modifica cuentas
+existentes, sus contraseñas o roles, clientes, redirect URIs ni límites de sesión,
 incluidos los de «Recordarme» configurados por el administrador. Si falla, comprueba que Keycloak esté
 listo y repite el comando; no borres el realm ni sus volúmenes.
+
+Para habilitar la cuenta en una instalación anterior, con Keycloak listo, basta ejecutar:
+
+```bash
+uv run python tools/auth/sync_realm.py
+```
 
 «Recordarme» conserva la sesión de Keycloak en ese navegador según sus límites de proveedor. El login de
 Cerberus mantiene `prompt=login`, por lo que volver a entrar sigue exigiendo credenciales aunque se marque

@@ -27,6 +27,18 @@
       ]
     }
   },
+  "users": [
+    {
+      "username": "demo",
+      "firstName": "Demo",
+      "lastName": "Cerberus",
+      "email": "demo@example.invalid",
+      "enabled": true,
+      "requiredActions": [],
+      "credentials": [{"type": "password", "value": "demo", "temporary": false}],
+      "clientRoles": {"cerberus-web": ["analyst"]}
+    }
+  ],
   "clients": [
     {
       "clientId": "cerberus-web",
