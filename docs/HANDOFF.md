@@ -4,7 +4,7 @@
 > checkpoint. El historial completo está en [`PROGRESS.md`](PROGRESS.md) y el alcance y los contratos en
 > [`PLAN_MVP.md`](PLAN_MVP.md). Las reglas de trabajo están en [`../AGENTS.md`](../AGENTS.md).
 
-**Última actualización:** 2026-11-11 · último checkpoint: CP-050 · rama base: `main`
+**Última actualización:** 2026-11-11 · último checkpoint: CP-051 · rama base: `main`
 
 ## 1. Arranque rápido
 
@@ -32,7 +32,8 @@ Abre las PNG y revísalas: **no te fíes solo de los ✅**. Leer píxeles del ca
 
 ## 2. Estado actual
 
-**A1c · Compose con un comando · 2026-11-11:** rama `feat/A1c-compose-one-command`, lista para integrar.
+**CP-051 · A1c · Compose con un comando · 2026-11-11:** integrado el
+[PR #14](https://github.com/MasamuneL/Cerberus/pull/14), merge `0c03465`.
 `docker compose up -d --build` incluye OIDC, PostgreSQL/Keycloak y demo/demo; ya no requiere bootstrap,
 overlay ni sincronización manual. Dos inicializadores generan/adoptan secretos en volúmenes separados,
 sin reemplazarlos, y sincronizan cuenta/presentación/callback antes de que arranque la API.
@@ -44,9 +45,12 @@ reinicio y cambio de puerto conservando claves, contraseña propia, reader, esta
 acciones requeridas. El smoke admite `CERBERUS_QA_STORAGE_STATE` con sesión real; no añade bypass.
 Docker local ya migrado al Compose nuevo: seis servicios healthy y dos setup con salida 0. Se conservaron
 las tres claves anteriores, cuentas/roles/credenciales y 46 resultados. QA real local: demo/demo,
-analyst, visor 001/t0, GTV 33.14 cm³ y logout 401. Pendiente integrar PR y registrar CP-051.
+analyst, visor 001/t0, GTV 33.14 cm³ y logout 401. Árbol del merge idéntico al head validado `89d21a6`.
+Los comandos anteriores con overlay siguen siendo compatibles; el arranque normal desde esta raíz
+es ahora `docker compose up -d --build`. Para el profesor, cuyo 8080 ocupa `openshell-gatew`, usar
+`CERBERUS_HTTP_PORT=8082 docker compose up -d --build` y abrir localhost:8082.
 
-**CP-050 · Docker local actualizado · 2026-11-11:** API, worker y frontend reconstruidos desde
+**Histórico CP-050 · Docker local actualizado · 2026-11-11:** API, worker y frontend reconstruidos desde
 `main` (`42d4358`); Keycloak recreado con seed y tema del checkout principal.
 Compose y `.env.auth` de ejecución están ahora en la raíz del repositorio, sin depender de carpetas
 temporales. El archivo anterior de secretos había desaparecido: se recuperaron los mismos valores

@@ -7,7 +7,7 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 
 | Ticket | Estado | Rama | Commit | Fecha | Responsable / herramienta | Notas |
 |---|---|---|---|---|---|---|
-| A1c · Compose con un comando (§17) | 🟡 | feat/A1c-compose-one-command | pendiente | 2026-11-11 | Codex | 799 tests, smoke autenticado 15/15 y migración local; pendiente integrar |
+| A1c · Compose con un comando (§17) | ✅ | feat/A1c-compose-one-command | 0c03465 | 2026-11-11 | Codex | PR #14; 799 tests, smoke autenticado 15/15 y migración local; CP-051 |
 | A1b · cuenta de demo automática (§17) | ✅ | feat/A1-demo-account | 47c02c2 | 2026-11-11 | Codex | PR #13; 776 tests y QA real de importación/login/preservación; CP-049 |
 | B13 · Métricas y guía de segmentación | ✅ | feat/B13-segmentation-metrics | d68262a | 2026-11-10 | Codex | PR #11; integrado con A4, 766 tests y visual 33/33; CP-046 |
 | B0 · Bootstrap | ✅ | feat/B0-bootstrap | 31d619a | 2026-10-27 | Vikingo / Claude Code (orquestador) | |
@@ -884,3 +884,21 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
   QA local 16:14:40–16:15:14 UTC: demo/demo, analyst, visor 001/t0, GTV 33.14 cm³ y logout con 401.
 - No se ejecutaron inferencias, subidas ni suite Vite completa. A5/ola P siguen pendientes.
   Plan breve: `docs/superpowers/plans/2026-11-11-compose-one-command.md`.
+
+### CP-051 · 2026-11-11 · A1c: arranque autenticado con un comando
+
+- **Integración:** [PR #14](https://github.com/MasamuneL/Cerberus/pull/14), merge `0c03465`;
+  árbol idéntico al head validado `89d21a6`. Docker local ya ejecuta esa implementación.
+- `docker compose up -d --build` prepara secretos persistentes, PostgreSQL/Keycloak y cuenta demo,
+  sin Python en el host ni pasos manuales. Seis servicios healthy y dos inicializadores con salida 0.
+  El overlay anterior conserva compatibilidad; el desarrollo nativo mantiene su configuración.
+- `CERBERUS_HTTP_PORT=8082` configura origen/callback automáticamente. Se validaron instalación
+  desde cero, reinicio, cambio de puerto y preservación de claves, contraseña, roles y estado.
+  El conflicto del profesor quedó localizado en `openshell-gatew`, que atiende 127.0.0.1:8080.
+- **Checks:** 799 tests rápidos, 5 slow excluidos, Ruff/formato/pyright y build correctos.
+  Smoke autenticado con sesión real: 15/15, sin pendientes; 11 capturas y ambas resoluciones revisadas.
+  Migración local: mismas tres claves, cuentas/credenciales y 46 resultados intactos; login demo/demo,
+  analyst, visor 001/t0, GTV 33.14 cm³ y logout que vuelve a 401 en sesión/catálogo/NIfTI.
+- Los archivos de sesión temporal y el proyecto QA aislado se eliminaron al terminar. Se conservaron
+  todos los volúmenes locales de la aplicación. No se ejecutaron modelos, subidas ni suite Vite completa.
+  A5 y ola P siguen pendientes. **Siguiente paso:** actualizar el clon del profesor y arrancar en 8082.
