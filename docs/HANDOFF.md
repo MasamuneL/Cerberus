@@ -4,7 +4,7 @@
 > checkpoint. El historial completo está en [`PROGRESS.md`](PROGRESS.md) y el alcance y los contratos en
 > [`PLAN_MVP.md`](PLAN_MVP.md). Las reglas de trabajo están en [`../AGENTS.md`](../AGENTS.md).
 
-**Última actualización:** 2026-11-11 · último checkpoint: CP-049 · rama base: `main`
+**Última actualización:** 2026-11-11 · último checkpoint: CP-050 · rama base: `main`
 
 ## 1. Arranque rápido
 
@@ -31,6 +31,21 @@ Abre las PNG y revísalas: **no te fíes solo de los ✅**. Leer píxeles del ca
 (`preserveDrawingBuffer=false`), así que esos chequeos de píxeles no son confiables.
 
 ## 2. Estado actual
+
+**CP-050 · Docker local actualizado · 2026-11-11:** API, worker y frontend reconstruidos desde
+`main` (`42d4358`); Keycloak recreado con seed y tema del checkout principal.
+Compose y `.env.auth` de ejecución están ahora en la raíz del repositorio, sin depender de carpetas
+temporales. El archivo anterior de secretos había desaparecido: se recuperaron los mismos valores
+desde los contenedores y se guardaron en `.env.auth` con permisos 0600, ignorado por Git; no se regeneraron.
+Usar `docker compose --env-file .env.auth -f compose.yaml -f compose.auth.yaml ...` desde esta raíz.
+Imágenes activas: backend `52559c4cb966`, frontend `ef249ef7c571`; seis servicios sanos.
+Se conservaron la cuenta existente, roles y credenciales, los volúmenes de PostgreSQL/Redis,
+los montajes Data/storage/models y los 46 archivos de resultados. No había jobs activos ni en cola.
+Sincronización del realm: sin cambios, porque `demo` ya existía.
+QA real final 15:07:10–15:07:44 UTC: salud y modo OIDC, login `demo` / `demo` con `analyst`, visor
+001/t0 y GTV 33.14 cm³; logout devuelve sesión, catálogo y NIfTI a 401. Capturas a 1440×900 y
+1280×800 revisadas en `tools/e2e/shots/local-main-update/`. No se repitieron suites completas ni
+se ejecutaron inferencias o subidas. El 502 del profesor sigue requiriendo sus logs.
 
 **CP-049 · A1b · cuenta de demo automática · 2026-11-11:** integrado el
 [PR #13](https://github.com/MasamuneL/Cerberus/pull/13), merge `47c02c2`.
@@ -73,7 +88,7 @@ conversión explícita entre ambos en el flujo actual. Ver sección «Cómo se e
 Brodmann» del README antes de interpretar precisión anatómica. No se modificó el algoritmo.
 
 
-**Docker local · 2026-11-10:** imágenes en ejecución construidas desde
+**Histórico Docker local · 2026-11-10 (sustituido por CP-050):** imágenes construidas desde
 `/private/tmp/cerberus-a4-metrics-docker-20261110`: snapshot completo de `feat/A4-auth-ui`
 (`52ebb0b`) más código B13 (`2c48e71`, adaptando SegmentationPanel al control de sesión de A4).
 Esta construcción sustituye la mezcla anterior de main y archivos sueltos. A4 conserva tanto

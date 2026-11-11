@@ -838,3 +838,24 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
   no se ejecutaron modelos o subidas ni se modificaron cuentas de la demo existente.
 - **Siguiente paso:** actualizar el checkout del profesor y ejecutar la sincronización con Keycloak
   listo si ya tenía un realm. El HTTP 502 requiere sus logs; crear una cuenta no corrige conectividad.
+
+### CP-050 · 2026-11-11 · Docker local actualizado desde main
+
+- **Operación solicitada:** reconstruidas imágenes de API/worker y frontend desde `42d4358` de main,
+  recreados esos tres servicios y Keycloak con los archivos actuales. Imágenes activas:
+  backend `52559c4cb966`, frontend `ef249ef7c571`. Los 28 archivos del backend coinciden con main;
+  el historial de la imagen frontend incluye normalización CRLF y el seed activo incluye `demo`.
+- La configuración anterior referenciaba `/private/tmp/cerberus-auth-A1`, ya desaparecida.
+  Se recuperaron los mismos secretos del entorno de los contenedores, sin imprimirlos, y se guardaron
+  en `.env.auth` de la raíz con permisos 0600 e ignorado por Git. Compose ahora opera desde el checkout
+  principal con ambos archivos y `--env-file .env.auth`.
+- **Preservación:** entorno efectivo conservado para seis servicios; mismos volúmenes de PostgreSQL/Redis
+  y montajes Data/storage/models. Verificados cuenta, roles y credenciales existentes antes/después de
+  sincronizar; `sync_realm.py` informa «sin cambios». Los 46 archivos de resultados conservan tamaños,
+  mtimes y hashes JSON después del QA. No había jobs en progreso ni en cola al reiniciar el worker.
+- **Verificación:** seis servicios healthy, salud 200 y auth/config OIDC. Navegador real final
+  15:07:10–15:07:44 UTC: `demo` / `demo`, rol analyst, Niivue con 001/t0 y volumetría GTV 33.14 cm³;
+  logout vuelve a 401 en sesión, catálogo y NIfTI. Tres capturas, incluidas 1440×900 y 1280×800,
+  revisadas en `tools/e2e/shots/local-main-update/`.
+- Solo cambian documentos de estado; no se repitieron suites completas, modelos ni subidas.
+  **Siguiente paso:** recoger logs del profesor para su HTTP 502, independiente de esta actualización local.
