@@ -27,6 +27,7 @@ sample_mode=${CERBERUS_SAMPLE_MODE:-}
 if [ -f .env ]; then
   while IFS='=' read -r key value; do
     value=${value%$'\r'}
+    if [[ "$value" == \'*\' ]]; then value=${value:1:${#value}-2}; fi
     case "$key" in
       CERBERUS_SAMPLE_MODE) [ -n "$sample_mode" ] || sample_mode=$value ;;
       CERBERUS_HTTP_PORT) [ -n "$http_port" ] || http_port=$value ;;
@@ -73,7 +74,7 @@ sample='null'
 [ ! -f release.json ] || release=$(cat release.json 2>/dev/null) || release='{}'
 [ ! -f tools/release/sample-manifest.json ] || sample=$(cat tools/release/sample-manifest.json 2>/dev/null) || sample='null'
 case "$sample_mode" in none) sample_mode=none ;; *) sample_mode=auto ;; esac
-snapshot='{"docker":{"status":"ready"},"services":['"$services"'],"ports":{'"$ports"'},"release":'"$release"',"sample_mode":'"'"$sample_mode"'"',"sample_manifest":'"$sample"'}'
+snapshot=$(printf '{"docker":{"status":"ready"},"services":[%s],"ports":{%s},"http_port":%s,"identity_port":%s,"release":%s,"sample_mode":"%s","sample_manifest":%s}' "$services" "$ports" "$((10#$http_port))" "$((10#$identity_port))" "$release" "$sample_mode" "$sample")
 
 # Si la API está detenida, solo se crea un contenedor temporal sin puertos ni dependencias.
 # --pull never impide que diagnosticar instale o actualice imágenes.

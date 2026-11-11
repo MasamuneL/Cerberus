@@ -206,3 +206,64 @@ def test_explicit_own_data_mode_does_not_report_missing_sample(tmp_path: Path) -
     report = diagnostics().build_report({"sample_mode": "none"}, data_dir=tmp_path)
     assert "SAMPLE_DISABLED" in codes(report)
     assert "SAMPLE_MISSING" not in codes(report)
+
+
+def test_metadata_export_is_useful_and_excludes_registry_paths(tmp_path: Path) -> None:
+    module = diagnostics()
+    snapshot = {
+        "release": {
+            "version": "1.2.3",
+            "revision": "a" * 40,
+            "images": {"backend": "private-registry/personal-name@sha256:" + "b" * 64},
+        },
+        "http_port": 8082,
+        "identity_port": 8083,
+    }
+    report = module.build_report(snapshot, data_dir=tmp_path)
+    assert report["metadata"]["http_port"] == 8082
+    assert report["metadata"]["backend_digest"] == "sha256:" + "b" * 64
+    target = tmp_path / "report.json"
+    module.export_report(report, target)
+    assert "personal-name" not in target.read_text()
+    assert json.loads(target.read_text())["metadata"]["revision"] == "a" * 40
+    assert module.public_metadata({"version": "SECRET PatientName", "revision": "/Users/name", "http_port": True}) == {}
+
+
+def test_shell_diagnosis_accepts_migrated_quoted_ports(tmp_path: Path) -> None:
+    import sys
+
+    root = Path(__file__).resolve().parents[2]
+    install = tmp_path / "instalación con espacios"
+    install.mkdir()
+    (install / ".env").write_text(
+        "CERBERUS_HTTP_PORT='18082'\nCERBERUS_KEYCLOAK_HTTP_PORT='18083'\nCERBERUS_SAMPLE_MODE='none'\n"
+    )
+    (install / "release.json").write_text('{"version":"1.2.3"}')
+    binary = tmp_path / "docker"
+    binary.write_text("""#!/bin/bash
+case "$*" in
+  info|"compose version") exit 0 ;;
+  "compose exec "*) exec "$QA_PYTHON" -m cerberus_api.diagnostics --snapshot-stdin --data-dir "$QA_DATA" ;;
+  *) exit 1 ;;
+esac
+""")
+    binary.chmod(0o755)
+    environment = {key: value for key, value in os.environ.items() if not key.startswith("CERBERUS_")}
+    environment.update(
+        PATH=str(tmp_path) + ":/usr/bin:/bin",
+        QA_PYTHON=sys.executable,
+        QA_DATA=str(tmp_path),
+        CERBERUS_INSTALL_DIR=str(install),
+        PYTHONPATH=str(root / "backend"),
+    )
+    result = subprocess.run(
+        ["/bin/bash", str(root / "tools/setup/diagnose.sh")],
+        env=environment,
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+    report = json.loads(result.stdout)
+    assert "SAMPLE_DISABLED" in codes(report)
+    assert report["metadata"]["http_port"] == 18082
+    assert report["metadata"]["identity_port"] == 18083

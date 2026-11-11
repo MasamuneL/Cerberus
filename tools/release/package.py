@@ -27,6 +27,7 @@ def distribution_config(source: dict[str, Any], backend: str, frontend: str) -> 
             service["image"] = backend
         elif name == "frontend":
             service["image"] = frontend
+            service["platform"] = "linux/amd64"
     for name in ("api", "worker"):
         services[name].setdefault("environment", {})["CERBERUS_VERIFY_WRITABLE"] = "true"
     # El worker de desarrollo dependía solo de Redis; la distribución necesita escritura preparada.

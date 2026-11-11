@@ -25,7 +25,8 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'unavailable' }
     $ports = @{http=$env:CERBERUS_HTTP_PORT; identity=$env:CERBERUS_KEYCLOAK_HTTP_PORT}
     if (Test-Path -LiteralPath '.env') {
-        foreach ($line in Get-Content -LiteralPath '.env') {
+        foreach ($rawLine in Get-Content -LiteralPath '.env') {
+            $line = $rawLine -replace "='([^']*)'$", '=$1'
             if ($line -match '^CERBERUS_HTTP_PORT=(\d+)$' -and -not $ports.http) { $ports.http = $Matches[1] }
             if ($line -match '^CERBERUS_KEYCLOAK_HTTP_PORT=(\d+)$' -and -not $ports.identity) { $ports.identity = $Matches[1] }
         }
@@ -34,7 +35,7 @@ try {
     if (-not $ports.identity) { $ports.identity = '8081' }
     $sampleMode = if ($env:CERBERUS_SAMPLE_MODE -eq 'none') { 'none' } else { 'auto' }
     if (-not $env:CERBERUS_SAMPLE_MODE -and (Test-Path -LiteralPath '.env')) {
-        if ((Get-Content -LiteralPath '.env') -contains 'CERBERUS_SAMPLE_MODE=none') { $sampleMode = 'none' }
+        if ((Get-Content -LiteralPath '.env') -match "^CERBERUS_SAMPLE_MODE='?none'?$") { $sampleMode = 'none' }
     }
     $services = @()
     foreach ($service in @('setup-secrets','setup-sample','redis','auth-db','keycloak','setup-identity','api','worker','frontend')) {
@@ -61,7 +62,7 @@ try {
     $sample = $null
     if (Test-Path -LiteralPath 'release.json') { $release = Get-Content -Raw -LiteralPath 'release.json' | ConvertFrom-Json }
     if (Test-Path -LiteralPath 'tools/release/sample-manifest.json') { $sample = Get-Content -Raw -LiteralPath 'tools/release/sample-manifest.json' | ConvertFrom-Json }
-    $snapshot = @{docker=@{status='ready'}; services=@($services); ports=$portStates; release=$release; sample_manifest=$sample; sample_mode=$sampleMode} | ConvertTo-Json -Depth 12 -Compress
+    $snapshot = @{docker=@{status='ready'}; services=@($services); ports=$portStates; http_port=[int]$ports.http; identity_port=[int]$ports.identity; release=$release; sample_manifest=$sample; sample_mode=$sampleMode} | ConvertTo-Json -Depth 12 -Compress
     $result = $snapshot | & docker compose exec -T api python -m cerberus_api.diagnostics --snapshot-stdin 2>$null
     $resultCode = $LASTEXITCODE
     if (-not $result) {

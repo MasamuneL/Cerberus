@@ -225,7 +225,7 @@ def build_report(
             )
         release = snapshot.get("release", {})
         images = release.get("images", {}) if isinstance(release, dict) else {}
-        for name in ("api", "worker", "setup-secrets", "setup-identity", "frontend"):
+        for name in ("api", "worker", "setup-secrets", "setup-identity", "setup-sample", "frontend"):
             expected = images.get("frontend" if name == "frontend" else "backend") if isinstance(images, dict) else None
             code = "IMAGE_UNKNOWN"
             if isinstance(expected, str) and re.fullmatch(r"[\w./:-]+@sha256:[a-f0-9]{64}", expected) and name in known:
@@ -247,13 +247,57 @@ def build_report(
             except OSError:
                 code = "STORAGE_PERMISSIONS"
             checks.append(check(code, name))
-    return {"format": 1, "checks": checks}
+    report: dict[str, Any] = {"format": 1, "checks": checks}
+    release = snapshot.get("release", {})
+    if isinstance(release, dict):
+        images = release.get("images", {})
+        metadata = public_metadata(
+            {
+                "version": release.get("version"),
+                "revision": release.get("revision"),
+                "backend_digest": images.get("backend", "").split("@")[-1]
+                if isinstance(images, dict) and isinstance(images.get("backend"), str)
+                else None,
+                "frontend_digest": images.get("frontend", "").split("@")[-1]
+                if isinstance(images, dict) and isinstance(images.get("frontend"), str)
+                else None,
+                "http_port": snapshot.get("http_port"),
+                "identity_port": snapshot.get("identity_port"),
+            }
+        )
+        if metadata:
+            report["metadata"] = metadata
+    return report
+
+
+def public_metadata(raw: object) -> dict[str, str | int]:
+    """Conserva únicamente versión pública, SHA y puertos; no exporta referencias de registro."""
+    if not isinstance(raw, dict):
+        return {}
+    result: dict[str, str | int] = {}
+    patterns = {
+        "version": r"(?:v?\d+\.\d+\.\d+(?:[-.][a-z0-9]+)*|candidate-[a-f0-9]{3,40}|d3-qa|dev|pr-\d+)",
+        "revision": r"[a-f0-9]{40}",
+        "backend_digest": r"sha256:[a-f0-9]{64}",
+        "frontend_digest": r"sha256:[a-f0-9]{64}",
+    }
+    for key, pattern in patterns.items():
+        value = raw.get(key)
+        if isinstance(value, str) and re.fullmatch(pattern, value):
+            result[key] = value
+    for key in ("http_port", "identity_port"):
+        value = raw.get(key)
+        if type(value) is int and 1 <= value <= 65535:
+            result[key] = value
+    return result
 
 
 def export_report(report: Mapping[str, Any], destination: Path) -> None:
     """Crea un reporte privado exclusivo, sin seguir enlaces ni reemplazar archivos existentes."""
     # Reconstruir por lista permitida protege también a consumidores externos de esta función.
     safe = {"format": 1, "checks": [check(item["code"], item["service"]) for item in report["checks"]]}
+    if metadata := public_metadata(report.get("metadata")):
+        safe["metadata"] = metadata
     descriptor = os.open(destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(descriptor, "w", encoding="utf-8") as output:
         json.dump(safe, output, ensure_ascii=True)
