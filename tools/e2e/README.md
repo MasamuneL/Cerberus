@@ -66,6 +66,10 @@ fallidas producen exit 1 y el navegador se cierra en `finally`. Cualquier mutaci
 y hace fallar el smoke; los únicos 404 permitidos corresponden a resultados ausentes según el catálogo.
 Revisa las capturas manualmente: el smoke no certifica accesibilidad ni sustituye `verify.mjs`.
 
+Las cancelaciones NIfTI por recarga de capas quedan registradas en `report.cancelledNifti`.
+Solo se aceptan si una descarga posterior del mismo volumen termina correctamente; una cancelación
+sin reemplazo completo o cualquier otro fallo HTTP o de descarga hace fallar el smoke.
+
 ### Solo la imagen del frontend contra la API de desarrollo
 
 Nginx resuelve `api` en cada petición con el DNS de Docker (`127.0.0.11`), así sobrevive a que Compose

@@ -765,6 +765,18 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
   ambos arrancan, `nginx -t` pasa con raíz de solo lectura y se rechazan límites inválidos.
   Build completo con Dockerfile CRLF correcto; healthz y proxy de auth responden desde imagen nueva.
 - 766 tests rápidos aprobados, 5 slow excluidos; Ruff, formato, pyright y build frontend correctos.
-  20 escenarios de auth UI y 8 de continuidad/sesión aprobados con HTTP controlado; login revisado
+  12 escenarios de auth UI y 8 de continuidad/sesión aprobados con HTTP controlado; login revisado
   visualmente. No se ejecutó la suite visual Vite ni autenticación con proveedor real.
 - Pendiente: integrar PR y registrar checkpoint. La segunda captura necesita logs del equipo afectado.
+
+- **QA ampliado antes del merge:** visual Vite 33/33 (14:21:03–14:26:29 UTC), 14 auditorías axe
+  sin violaciones automáticas y 27 capturas; smoke Docker final 15/15 sin pendientes
+  (14:32:22–14:34:57 UTC), 11 capturas; revisadas ambas resoluciones. Auth UI 12/12 y
+  continuidad/sesión 8/8, Node 15/15 y login/logout real con Keycloak aprobados.
+  La imagen construida con Dockerfile CRLF sirve catálogo autenticado; tras logout,
+  `/api/auth/me` y catálogo devuelven 401. No se ejecutan inferencias ni subidas reales.
+- El primer smoke quedó 14/15: cancelaciones al actualizar capas se contaban como fallos de red.
+  Diagnóstico ubicó los tres abortos en la carga inicial; se interrumpió la pasada diagnóstica
+  después de localizarlos. El runner ahora registra cancelaciones NIfTI y exige un reemplazo
+  posterior completo; cinco casos positivos/negativos confirman que errores HTTP, descargas
+  antiguas, otros archivos y falta de reemplazo siguen bloqueando. Repetición completa correcta.
