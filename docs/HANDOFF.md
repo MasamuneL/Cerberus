@@ -32,15 +32,19 @@ Abre las PNG y revísalas: **no te fíes solo de los ✅**. Leer píxeles del ca
 
 ## 2. Estado actual
 
-**F12 · integración PR #15 · 2026-11-11 · en validación:** worktree aislado
-`/private/tmp/cerberus-pr15`, rama `feat/viewer-3d-integration`, base main CP-051.
-Se incorpora la contribución de BiomedicLJZ (`bbb72ed`) conservando su historial. Superficie GTV,
-máscara cerebral y controles de render/cámara/corte. Corregidos pérdida de focos por remuestreo,
-suavizado de componentes mínimos, liberación de mallas y compatibilidad de las pruebas de auth.
-La modulación exige dimensiones y affine compatibles; si no, se conserva la anatomía y se explica
-el motivo en el panel. Revisión independiente sin bloqueantes pendientes; Ruff/formato/Pyright,
-799 tests rápidos (5 slow excluidos), build y regresiones Node correctos. QA visual final en curso;
-no declarar integrado ni actualizar Docker hasta registrar la evidencia final. D3 se desarrolla aparte.
+**F12 · PR #15 / integración #16 · 2026-11-11 · listo para merge:** rama
+`feat/viewer-3d-integration`, worktree `/private/tmp/cerberus-pr15`. Conserva los commits de
+BiomedicLJZ (`bbb72ed`) y añade correcciones verificadas: extracción nativa para conservar focos,
+componentes mínimos sin suavizado, compatibilidad de grid antes de modular, liberación de mallas,
+restauración 2D y cargador de pruebas actualizado. Revisión independiente sin bloqueantes.
+Checks: Ruff/formato/Pyright, 799 tests rápidos (5 slow excluidos), build, geometría y 22 comprobaciones
+Node de visor/sesión correctos. QA final: 33/33 generales, 14 auditorías axe sin violaciones automáticas,
+27 capturas; 3D 7/7 y axe del panel en ambos tamaños, seis capturas; auth UI 20/20 y smoke del build
+15/15 sin pendientes. Capturas revisadas. El smoke usa Vite preview con API local, no una imagen Docker
+nueva; auth UI usa HTTP controlado, no Keycloak real. Sin inferencias, subidas ni cambios de contratos.
+Primeras pasadas interrumpidas durante correcciones; otra falló 31/33 por fuentes 403 del enlace de
+node_modules fuera del allowlist de Vite. Dependencias locales y repetición completa aprobada.
+Siguiente paso: merge con historial de #16, comprobar incorporación de #15 y registrar checkpoint.
 
 **CP-051 · A1c · Compose con un comando · 2026-11-11:** integrado el
 [PR #14](https://github.com/MasamuneL/Cerberus/pull/14), merge `0c03465`.
