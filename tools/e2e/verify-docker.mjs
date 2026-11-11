@@ -7,6 +7,7 @@ import { chromium } from "playwright-core";
 const BASE = (process.env.CERBERUS_UI ?? "http://localhost:8080").replace(/\/$/, "");
 const OUT = fileURLToPath(new URL("./shots/docker", import.meta.url));
 const TIMEOUT = Number(process.env.CERBERUS_TIMEOUT ?? 180000);
+const authContext = process.env.CERBERUS_QA_STORAGE_STATE ? { storageState: process.env.CERBERUS_QA_STORAGE_STATE } : {};
 const report = {
   base: BASE, startedAt: new Date().toISOString(), checks: [], screenshots: [],
   catalog: [], system: null, pending: [], niftiResponses: [], niftiDownloads: [], cancelledNifti: [], expected404: [], networkErrors: [], consoleErrors: [], blockedMutations: [],
@@ -104,7 +105,7 @@ try {
     channel: "chrome", headless: true,
     args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"],
   });
-  const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, reducedMotion: "reduce" });
+  const context = await browser.newContext({ ...authContext, viewport: { width: 1440, height: 900 }, reducedMotion: "reduce" });
   context.setDefaultTimeout(15000);
   await context.route("**/*", async (route) => {
     const request = route.request();
@@ -310,7 +311,7 @@ try {
   await check("revalidación NIfTI (ETag/304) al volver al mismo estudio", async () => {
     // page.route/context.route desactivan la caché HTTP de Chromium: este paso usa un contexto propio sin
     // intercepción. Las mutaciones no se pueden abortar aquí, pero se registran y hacen fallar el smoke.
-    const cacheContext = await browser.newContext({ viewport: { width: 1440, height: 900 }, reducedMotion: "reduce" });
+    const cacheContext = await browser.newContext({ ...authContext, viewport: { width: 1440, height: 900 }, reducedMotion: "reduce" });
     cacheContext.setDefaultTimeout(15000);
     const previous = page;
     try {

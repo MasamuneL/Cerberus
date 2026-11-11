@@ -23,6 +23,8 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --only-group runtime --no-install-project --no-build
 
 COPY backend/cerberus_api ./backend/cerberus_api
+COPY tools/auth ./tools/auth
+COPY docker/keycloak/realm.json ./docker/keycloak/realm.json
 
 RUN useradd --create-home --uid 1000 cerberus \
     && mkdir -p /app/Data /app/storage /app/models \
@@ -30,4 +32,5 @@ RUN useradd --create-home --uid 1000 cerberus \
 
 USER cerberus
 EXPOSE 8000
+ENTRYPOINT ["python", "-m", "cerberus_api.container_setup", "exec"]
 CMD ["uvicorn", "cerberus_api.main:app", "--host", "0.0.0.0", "--port", "8000"]

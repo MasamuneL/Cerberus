@@ -291,6 +291,52 @@ def test_locale_order_is_not_a_configuration_change() -> None:
     assert SYNC["build_realm_patch"](current) == {}
 
 
+def test_explicit_origin_updates_only_callback_and_web_origin() -> None:
+    current: dict[str, object] = {
+        "id": "client-id",
+        "clientId": "cerberus-web",
+        "secret": "existing-secret",
+        "redirectUris": ["http://localhost:8080/api/auth/callback"],
+        "webOrigins": ["http://localhost:8080"],
+        "attributes": {"pkce.code.challenge.method": "S256"},
+    }
+    updates: list[dict[str, object]] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        if request.method == "GET":
+            assert request.url.path == "/admin/realms/cerberus/clients"
+            assert request.url.params["clientId"] == "cerberus-web"
+            return httpx.Response(200, json=[current])
+        assert request.method == "PUT"
+        assert request.url.path == "/admin/realms/cerberus/clients/client-id"
+        patch = json.loads(request.content)
+        assert set(patch) == {"redirectUris", "webOrigins"}
+        current.update(patch)
+        updates.append(patch)
+        return httpx.Response(204)
+
+    with httpx.Client(base_url="http://keycloak:8080", transport=httpx.MockTransport(respond)) as client:
+        assert SYNC["sync_client_origin"](client, {}, "http://localhost:8082") is True
+        assert SYNC["sync_client_origin"](client, {}, "http://localhost:8082") is False
+    assert len(updates) == 1
+    assert current["redirectUris"] == ["http://localhost:8082/api/auth/callback"]
+    assert current["webOrigins"] == ["http://localhost:8082"]
+    assert current["secret"] == "existing-secret"
+    assert current["attributes"] == {"pkce.code.challenge.method": "S256"}
+
+
+@pytest.mark.parametrize(
+    "origin", ["http://example.test", "http://localhost:8082/", "http://localhost:8082?x=1", "https://*.example.test"]
+)
+def test_invalid_client_origin_never_sends_admin_credentials(origin: str) -> None:
+    def respond(request: httpx.Request) -> httpx.Response:
+        pytest.fail("Origen inválido no debe enviar credenciales")
+
+    with httpx.Client(base_url="http://keycloak:8080", transport=httpx.MockTransport(respond)) as client:
+        with pytest.raises(ValueError):
+            SYNC["sync_realm"](client, "admin", SECRET, app_origin=origin)
+
+
 @pytest.mark.parametrize("failing_method", ["GET", "PUT"])
 def test_realm_read_or_write_failure_is_recoverable(
     tmp_path: Path,

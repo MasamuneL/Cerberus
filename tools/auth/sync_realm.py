@@ -3,12 +3,15 @@
 import argparse
 import json
 import os
+import re
 import sys
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
 import httpx2 as httpx
+
+from cerberus_api.config import validate_app_origin
 
 SETTING_NAMES = (
     "CERBERUS_KEYCLOAK_ADMIN_USERNAME",
@@ -54,8 +57,34 @@ def build_realm_patch(current: Mapping[str, Any]) -> dict[str, object]:
     return patch
 
 
-def sync_realm(client: httpx.Client, username: str, password: str) -> list[str]:
+def sync_client_origin(client: httpx.Client, headers: Mapping[str, str], app_origin: str) -> bool:
+    """Gestiona solo callback y origen del cliente de demo; conserva secreto, PKCE y demás campos."""
+    validate_app_origin(app_origin)
+    response = client.get("/admin/realms/cerberus/clients", headers=headers, params={"clientId": "cerberus-web"})
+    response.raise_for_status()
+    clients = response.json()
+    if not isinstance(clients, list) or len(clients) != 1 or not isinstance(clients[0], dict):
+        raise ValueError("No se pudo identificar el cliente cerberus-web")
+    current = clients[0]
+    client_id = current.get("id")
+    if (
+        current.get("clientId") != "cerberus-web"
+        or not isinstance(client_id, str)
+        or not re.fullmatch(r"[\w-]+", client_id)
+    ):
+        raise ValueError("El proveedor devolvió un cliente inválido")
+    desired = {"redirectUris": [app_origin + "/api/auth/callback"], "webOrigins": [app_origin]}
+    patch = {key: value for key, value in desired.items() if current.get(key) != value}
+    if patch:
+        response = client.put(f"/admin/realms/cerberus/clients/{client_id}", headers=headers, json=patch)
+        response.raise_for_status()
+    return bool(patch)
+
+
+def sync_realm(client: httpx.Client, username: str, password: str, *, app_origin: str | None = None) -> list[str]:
     """Actualiza cerberus e importa la cuenta de demo con SKIP, conservando cualquier cuenta existente."""
+    if app_origin is not None:
+        validate_app_origin(app_origin)
     response = client.post(
         "/realms/master/protocol/openid-connect/token",
         data={"grant_type": "password", "client_id": "admin-cli", "username": username, "password": password},
@@ -88,7 +117,10 @@ def sync_realm(client: httpx.Client, username: str, password: str) -> list[str]:
     imported = response.json()
     if not isinstance(imported, dict) or type(imported.get("added")) is not int or imported["added"] not in (0, 1):
         raise ValueError("El proveedor devolvió un resultado de importación inválido.")
-    return sorted([*patch, *(["demo"] if imported["added"] else [])])
+    changed = [*patch, *(["demo"] if imported["added"] else [])]
+    if app_origin is not None and sync_client_origin(client, headers, app_origin):
+        changed.append("client-origin")
+    return sorted(changed)
 
 
 def main(
@@ -99,6 +131,7 @@ def main(
     """CLI local sin secretos en argv o salida; timeout y transporte inyectable para pruebas sin red."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--env-file", type=Path, default=Path(".env.auth"))
+    parser.add_argument("--app-origin", help="Actualiza explícitamente callback/origen de cerberus-web")
     args = parser.parse_args(argv)
     try:
         settings = read_settings(args.env_file, os.environ if environment is None else environment)
@@ -115,7 +148,7 @@ def main(
             trust_env=False,
             transport=transport,
         ) as client:
-            changed = sync_realm(client, username, password)
+            changed = sync_realm(client, username, password, app_origin=args.app_origin)
     except (OSError, ValueError, httpx.HTTPError, json.JSONDecodeError):
         # No interpolar excepciones HTTP: pueden contener cuerpos, tokens o credenciales del proveedor.
         print(

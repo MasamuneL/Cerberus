@@ -659,6 +659,8 @@ Ola única en paralelo (B12, F9, F10, F11) → verificación con Playwright (cap
 | api | `docker/backend.Dockerfile` (amd64) | uvicorn :8000 interno, healthcheck `/api/health` |
 | worker | misma imagen | `python -m cerberus_api.worker` |
 | frontend | `docker/frontend.Dockerfile` | nginx :8080 → estáticos + proxy `/api` → api:8000 |
+| auth-db / keycloak | PostgreSQL 18 / Keycloak 26.8.1 (digest) | Identidad persistente, integrada por defecto desde A1c |
+| setup-secrets / setup-identity | imagen backend | Claves, migración y callback automáticos; finalizan con código 0 |
 
 Volúmenes bind: `./Data`, `./storage`, `./models` (pesos MONAI y atlas en caché; si faltan, se descargan dentro).
 
@@ -756,12 +758,16 @@ El rol administrativo de Keycloak no concede por sí mismo permisos dentro de Ce
 - Logout invalida la sesión en Redis y borra la cookie. Es cierre de sesión de Cerberus; no promete cerrar
   las sesiones de otras aplicaciones del proveedor. Redis caído produce 503 en operaciones que necesitan sesión;
   no hay acceso anónimo de respaldo. Un fallo de Keycloak impide nuevos logins, sin convertir sesiones en anónimas.
-- Añadir `compose.auth.yaml` como overlay explícito: UI de Cerberus en **8080**, Keycloak en **8081**, ambos
-  publicados solo en `127.0.0.1`. El arranque objetivo será
-  `docker compose --env-file .env.auth -f compose.yaml -f compose.auth.yaml up -d --build`, tras ejecutar
-  `uv run python tools/auth/bootstrap.py`. A1 incluye el proveedor; A2 añade sesiones y A3 protege recursos.
-  La configuración base sin overlay mantiene el modo local actual; la demo con overlay exige autenticación.
-- El overlay incluye PostgreSQL privado para Keycloak y volúmenes persistentes. PostgreSQL no almacena imágenes
+- Desde A1c, solicitado el 2026-11-11, `docker compose up -d --build` incluye autenticación por defecto:
+  UI de Cerberus en **8080**, Keycloak en **8081**, ambos solo en `127.0.0.1`. No requiere Python en el host,
+  bootstrap manual ni overlay. `compose.auth.yaml` permanece como compatibilidad con comandos anteriores.
+  El modo nativo de desarrollo conserva el default `off`; Docker fija `oidc`, sin fallback automático.
+  `setup-secrets` genera una vez tres claves aleatorias en volúmenes separados. Adopta una `.env.auth`
+  anterior si existe; bloquea una base previa sin secretos recuperables y no reemplaza claves persistidas.
+  PostgreSQL y Keycloak esperan ese inicializador; API espera a `setup-identity`, que prepara cuenta y
+  callback antes de aceptar peticiones. Los directorios nuevos vacíos de storage/models reciben el UID/GID
+  configurado; no se cambian propietarios recursivamente ni contenidos existentes.
+- Compose incluye PostgreSQL privado para Keycloak y volúmenes persistentes. PostgreSQL no almacena imágenes
   ni sustituye el catálogo en disco de Cerberus. Registrar realm `cerberus`, cliente `cerberus-web`, roles y
   redirect URIs exactas; no usar comodines, secretos administrativos versionados ni el realm `master` para la aplicación.
   El bootstrap obtiene secretos del entorno y es repetible sin sobrescribir cuentas ni resetear contraseñas.
@@ -769,6 +775,12 @@ El rol administrativo de Keycloak no concede por sí mismo permisos dentro de Ce
   con rol `analyst` de `cerberus-web`, sin roles administrativos. En instalaciones existentes,
   `sync_realm.py` la importa con `ifResourceExists=SKIP`: nunca restablece contraseñas, roles ni estado
   de una cuenta ya creada. Las credenciales públicas se limitan a la demo HTTP publicada en loopback.
+  A1c añade `auth-db-secret`, `keycloak-admin-secret` y `oidc-client-secret`: cada servicio monta solo
+  sus secretos y los consumidores lo hacen en modo lectura. API recibe el secreto del cliente por archivo;
+  no recibe claves administrativas o de PostgreSQL. Los inicializadores terminan con código 0.
+  `setup-identity` gestiona callback y web origin exactos de `cerberus-web` según el puerto público,
+  conservando secreto, PKCE y campos ajenos. Cambiar `CERBERUS_HTTP_PORT` actualiza automáticamente
+  origen/callback si no hay un `CERBERUS_APP_ORIGIN` explícito; no se usan comodines.
 - Resolver explícitamente el acceso al proveedor desde navegador y contenedores: issuer público de demo
   `http://localhost:8081/realms/cerberus`; backchannel Docker `http://keycloak:8080/realms/cerberus` para
   token/JWKS. Comprobar metadata y transporte sin cambiar el issuer validado ni desactivar validaciones.
@@ -780,7 +792,7 @@ El rol administrativo de Keycloak no concede por sí mismo permisos dentro de Ce
 
 | Variable | Valor o regla |
 |---|---|
-| `CERBERUS_AUTH_MODE` | `off` en el modo local heredado; el overlay fija `oidc`; ningún fallback automático |
+| `CERBERUS_AUTH_MODE` | `off` en desarrollo nativo; Compose fija `oidc`; ningún fallback automático |
 | `CERBERUS_APP_ORIGIN` | Default `http://localhost:5173`; A1 fijará `http://localhost:8080` en Docker; origen exacto sin ruta ni barra final |
 | `CERBERUS_OIDC_ISSUER_URL` | Obligatorio en modo `oidc`; issuer público exacto del proveedor |
 | `CERBERUS_OIDC_BACKCHANNEL_URL` | Base interna confiable del mismo realm; si se omite, usa el issuer |
@@ -789,10 +801,10 @@ El rol administrativo de Keycloak no concede por sí mismo permisos dentro de Ce
 | `CERBERUS_AUTH_COOKIE_SECURE` | `true`; `false` únicamente con origen público HTTP de loopback |
 | `CERBERUS_AUTH_IDLE_TIMEOUT_SECONDS` | `1800` |
 | `CERBERUS_AUTH_ABSOLUTE_TIMEOUT_SECONDS` | `3600`; ambos timeouts positivos, absoluto no menor que inactividad |
-| `CERBERUS_KEYCLOAK_HTTP_PORT` | `8081`, variable del overlay A1, no de `Settings` |
-| `CERBERUS_AUTH_DB_PASSWORD` | Secreto local obligatorio de PostgreSQL, solo overlay/bootstrap |
-| `CERBERUS_KEYCLOAK_ADMIN_PASSWORD` | Secreto local obligatorio del administrador, solo Keycloak/bootstrap |
-| `CERBERUS_KEYCLOAK_ADMIN_USERNAME` | `cerberus-admin`, solo overlay |
+| `CERBERUS_KEYCLOAK_HTTP_PORT` | `8081`, variable de Compose, no de `Settings` |
+| `CERBERUS_AUTH_DB_PASSWORD` | Fuente opcional para migrar el secreto PostgreSQL; se genera en volumen en instalaciones nuevas |
+| `CERBERUS_KEYCLOAK_ADMIN_PASSWORD` | Fuente opcional de migración; el inicializador persiste una clave aleatoria si la instalación es nueva |
+| `CERBERUS_KEYCLOAK_ADMIN_USERNAME` | `cerberus-admin`, configurable al preparar identidad; se conserva al reiniciar |
 
 Las URLs requieren HTTP(S), host y puerto válido; no admiten credenciales, espacios, query ni fragmento.
 Origen e issuer públicos requieren HTTPS salvo HTTP con `localhost` exacto o IP canónica de loopback;
@@ -865,6 +877,7 @@ indican destinos previstos; las firmas de librerías se verificarán en su códi
 | A0 · contratos y configuración | `config.py`, nuevo `identity.py`, `schemas.py`, `frontend/src/api/types.ts`, §7; tipos `Role`, `Principal`, `AuthConfig` y `AuthSession`; tests `test_auth_config.py` | MVP |
 | A1 · proveedor reproducible | Nuevo `compose.auth.yaml`, `docker/keycloak/realm.json` y bootstrap en `tools/auth/`; PostgreSQL privado, realm/roles/cliente y README; cuenta local pública añadida en A1b | A0 |
 | A1b · cuenta de demo automática | Seed con `demo` / `demo` y rol `analyst`; sincronización SKIP para realms existentes, pruebas sin red y QA con Keycloak real; README | A1, A4 |
+| A1c · Compose con un comando | Identidad por defecto, secretos persistentes y migración desde `.env.auth`, inicializadores y callback derivado del puerto; README y pruebas de instalación/reinicio | A1b, A4 |
 | A2 · OIDC y sesiones | Nuevos `oidc.py`, `sessions.py`, `routers/auth.py`; `deps.py`, `main.py`, dependencias en `pyproject.toml` y `uv.lock`; tests `test_oidc.py`, `test_sessions.py`, `test_auth_routes.py` | A0, A1 |
 | A3 · permisos y propiedad | Nuevo `access.py`; `deps.py`, `main.py`, routers `studies/jobs/uploads`, limpieza en `worker.py`, `docker/nginx.conf`; tests `test_access.py` y ampliación de tests API | A2; coordinar con S1/S2 del QA |
 | A4 · UI de acceso | Nuevos `hooks/useAuth.ts`, `components/LoginPanel.tsx`; `App.tsx`, `api/client.ts`, controles en paneles y visor; textos en español, permisos y expiración | A2, A3 |
@@ -882,6 +895,11 @@ indican destinos previstos; las firmas de librerías se verificarán en su códi
   perfil ni cambiar contraseña. Un realm existente sin esa cuenta la recibe al sincronizar; repetir
   no restablece contraseña, roles, acciones requeridas ni estado deshabilitado. Pruebas sin red para
   SKIP, errores y resultado inválido; comprobar importación y preservación con Keycloak real aislado.
+- **A1c:** desde un clon sin `.env.auth`, un único Compose levanta login y cuenta demo; claves persistentes
+  distintas y sin secretos en Git/salida. Reiniciar y cambiar puerto conserva cuentas, contraseñas, roles
+  y secretos, actualizando el callback exacto. Una instalación anterior adopta sus claves y volúmenes;
+  una base previa sin sus claves bloquea, sin regenerarlas. Solo inicializadores privilegiados pueden
+  escribir secretos; API no monta claves de PostgreSQL/administración. Verificar con proveedor real.
 - **A2:** tests con proveedor/transporte y reloj falsos: login válido; `state` o `nonce` incorrectos/ausentes;
   callback repetido, transacción de otro navegador o expirada; firma/issuer/audience/exp inválidos, algoritmo
   no permitido y rotación de claves; sesión fijada, inactividad y caducidad absoluta; logout e indisponibilidad

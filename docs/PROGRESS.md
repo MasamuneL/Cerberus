@@ -7,6 +7,7 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 
 | Ticket | Estado | Rama | Commit | Fecha | Responsable / herramienta | Notas |
 |---|---|---|---|---|---|---|
+| A1c · Compose con un comando (§17) | 🟡 | feat/A1c-compose-one-command | pendiente | 2026-11-11 | Codex | 799 tests, smoke autenticado 15/15 y migración local; pendiente integrar |
 | A1b · cuenta de demo automática (§17) | ✅ | feat/A1-demo-account | 47c02c2 | 2026-11-11 | Codex | PR #13; 776 tests y QA real de importación/login/preservación; CP-049 |
 | B13 · Métricas y guía de segmentación | ✅ | feat/B13-segmentation-metrics | d68262a | 2026-11-10 | Codex | PR #11; integrado con A4, 766 tests y visual 33/33; CP-046 |
 | B0 · Bootstrap | ✅ | feat/B0-bootstrap | 31d619a | 2026-10-27 | Vikingo / Claude Code (orquestador) | |
@@ -859,3 +860,27 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
   revisadas en `tools/e2e/shots/local-main-update/`.
 - Solo cambian documentos de estado; no se repitieron suites completas, modelos ni subidas.
   **Siguiente paso:** recoger logs del profesor para su HTTP 502, independiente de esta actualización local.
+
+### En revisión · 2026-11-11 · A1c: Compose autenticado con un comando
+
+- Pedido del usuario: eliminar bootstrap, overlay y configuración manual para iniciar la demo.
+  `compose.yaml` incluye identidad e inicializadores; `compose.auth.yaml` mantiene compatibilidad.
+  Secretos aleatorios persistentes en tres volúmenes separados; migración desde `.env.auth`, claves
+  no reemplazables y bloqueo de una base anterior sin claves recuperables. Directorios nuevos vacíos
+  de storage/models reciben el UID/GID del contenedor, sin cambiar datos o propietarios existentes.
+- `setup-identity` conserva usuarios con SKIP y gestiona exclusivamente origen/callback de cerberus-web,
+  manteniendo secreto y PKCE. El puerto público deriva ambas URLs; origen explícito validado antes de
+  enviar credenciales, incluyendo rechazo de comodines. API espera a ese setup y lee solo su secreto.
+- Checks: Ruff/formato backend y scripts auth, pyright, 799 tests rápidos (5 slow excluidos) y build
+  frontend correctos. Compose se valida sin red y sin archivos de secretos, con puertos 8080/8082 y
+  ambos formatos de comando. Smoke autenticado con sesión real: 15/15, sin pendientes,
+  16:08:51–16:09:38 UTC; 11 capturas, ambas resoluciones revisadas. Soporte opcional de storageState
+  para el runner; no se desactiva autenticación.
+- QA real aislado: instalación sin `.env.auth` ni volúmenes, cuenta demo operativa; reinicio completo y
+  cambio de puerto conservaron claves, contraseña cambiada, rol reader, estado deshabilitado y acciones
+  requeridas. Callback actualizado automáticamente; login posterior con la contraseña conservada correcto.
+- Docker local migrado mediante el comando único: claves originales adoptadas, cuentas/credenciales
+  y 46 archivos de resultados intactos; seis servicios healthy y dos inicializadores con salida 0.
+  QA local 16:14:40–16:15:14 UTC: demo/demo, analyst, visor 001/t0, GTV 33.14 cm³ y logout con 401.
+- No se ejecutaron inferencias, subidas ni suite Vite completa. A5/ola P siguen pendientes.
+  Plan breve: `docs/superpowers/plans/2026-11-11-compose-one-command.md`.
