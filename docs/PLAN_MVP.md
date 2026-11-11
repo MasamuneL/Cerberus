@@ -1015,3 +1015,6 @@ Depende de F3/F9 y A4, ya integrados. Solo cambia el frontend y su QA; se conser
 - Aceptación: regresiones geométricas con focos aislados y mixtos, affine reflejado y máscara vacía;
   pruebas de ciclo de vida/cancelación y autenticación; checks §5, QA completo y capturas 3D en ambos
   tamaños. Ver `tools/e2e/verify-mask-surface.mjs`, `verify-auth-media.mjs` y `verify-viewer-3d.mjs`.
+
+Integrado mediante PR #16 (merge `0e93254`), conservando el historial del PR #15. Evidencia y cierre
+en `PROGRESS.md`, checkpoint CP-052.

@@ -7,7 +7,7 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 
 | Ticket | Estado | Rama | Commit | Fecha | Responsable / herramienta | Notas |
 |---|---|---|---|---|---|---|
-| F12 · vista 3D y superficie GTV (§20) | 🟡 | feat/viewer-3d-integration | — | 2026-11-11 | BiomedicLJZ / Codex | PR #15; integración #16, QA completo aprobado; pendiente de merge |
+| F12 · vista 3D y superficie GTV (§20) | ✅ | feat/viewer-3d-integration | 0e93254 | 2026-11-11 | BiomedicLJZ / Codex | PR #15 mediante #16; QA 33/33, 3D 7/7, smoke 15/15; CP-052 |
 | A1c · Compose con un comando (§17) | ✅ | feat/A1c-compose-one-command | 0c03465 | 2026-11-11 | Codex | PR #14; 799 tests, smoke autenticado 15/15 y migración local; CP-051 |
 | A1b · cuenta de demo automática (§17) | ✅ | feat/A1-demo-account | 47c02c2 | 2026-11-11 | Codex | PR #13; 776 tests y QA real de importación/login/preservación; CP-049 |
 | B13 · Métricas y guía de segmentación | ✅ | feat/B13-segmentation-metrics | d68262a | 2026-11-10 | Codex | PR #11; integrado con A4, 766 tests y visual 33/33; CP-046 |
@@ -923,3 +923,22 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
   repetición completa. No se cambió el runner para ignorar errores ni se omitieron comprobaciones.
 - Smoke sobre Vite preview/API local; no reconstruye Docker. Auth UI con HTTP controlado; no repite
   Keycloak real. Sin modelos, registros ni subidas. Contratos §6/§7 intactos; A5/ola P pendientes.
+
+
+### CP-052 · 2026-11-11 · F12: vista 3D y superficie GTV integradas
+
+- **Integración:** [PR #15](https://github.com/MasamuneL/Cerberus/pull/15) incorporado mediante
+  [PR #16](https://github.com/MasamuneL/Cerberus/pull/16), merge `0e93254`. Ambos figuran merged;
+  commits del profesor conservados y árbol idéntico al head validado `1915451`.
+- Superficie GTV nativa, máscara cerebral compatible, controles de render, corte, cámara y cubo
+  de orientación. Focos mínimos conservados, liberación de mallas y restauración 2D verificadas.
+- **Checks:** 799 tests rápidos (5 slow excluidos), Ruff/formato/Pyright, build, regresiones de geometría
+  y grid, 12 escenarios de visor/cancelación y 10 pruebas de sesión correctos. Revisión independiente cerrada.
+- **QA final:** general 33/33 (22:04:32–22:10:38 UTC), 14 auditorías axe sin violaciones automáticas,
+  27 capturas; 3D 7/7 (22:10:38–22:15:51 UTC), axe del panel y seis capturas; auth UI 20/20;
+  smoke 15/15 (22:16:08–22:18:42 UTC), sin pendientes y 11 capturas. Ambas resoluciones revisadas.
+- La aprobación corresponde a esas pasadas finales; interrupciones y fuentes HTTP 403 del entorno
+  previo quedan documentadas arriba. Smoke con Vite preview/API local, sin reconstrucción Docker;
+  auth UI con HTTP controlado, sin nueva prueba de Keycloak real. Sin inferencias ni subidas.
+- README, plan §20, runners y handoff actualizados. Contratos §6/§7 intactos. D3 sigue separado;
+  A5 y las correcciones de la ola P siguen pendientes.
