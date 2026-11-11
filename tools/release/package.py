@@ -28,13 +28,29 @@ def distribution_config(source: dict[str, Any], backend: str, frontend: str) -> 
         elif name == "frontend":
             service["image"] = frontend
     for name in ("api", "worker"):
-        services[name]["environment"]["CERBERUS_VERIFY_WRITABLE"] = "true"
+        services[name].setdefault("environment", {})["CERBERUS_VERIFY_WRITABLE"] = "true"
     # El worker de desarrollo dependía solo de Redis; la distribución necesita escritura preparada.
     services["worker"]["depends_on"]["setup-secrets"] = {"condition": "service_completed_successfully"}
     services["setup-secrets"]["volumes"].append(
         {"type": "bind", "source": "${CERBERUS_DATA_PATH:-./Data}", "target": "/app/Data"}
     )
     services["setup-secrets"]["environment"]["CERBERUS_PREPARE_DATA"] = "true"
+    services["setup-sample"] = {
+        "image": backend,
+        "platform": "linux/amd64",
+        "user": "${CERBERUS_UID:-1000}:${CERBERUS_GID:-1000}",
+        "entrypoint": ["python", "-m", "cerberus_api.sample"],
+        "command": ["--manifest", "/app/tools/release/sample-manifest.json", "--data", "/app/Data"],
+        "environment": {"CERBERUS_SAMPLE_MODE": "${CERBERUS_SAMPLE_MODE:-auto}"},
+        "volumes": [{"type": "bind", "source": "${CERBERUS_DATA_PATH:-./Data}", "target": "/app/Data"}],
+        "depends_on": {"setup-secrets": {"condition": "service_completed_successfully"}},
+        "security_opt": ["no-new-privileges:true"],
+        "cap_drop": ["ALL"],
+        "read_only": True,
+        "tmpfs": ["/tmp"],
+    }
+    for name in ("api", "worker"):
+        services[name].setdefault("depends_on", {})["setup-sample"] = {"condition": "service_completed_successfully"}
     return result
 
 

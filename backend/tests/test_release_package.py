@@ -23,6 +23,9 @@ def test_distribution_preserves_contract() -> None:
     assert config["networks"] == source["networks"]
     assert config["volumes"] == source["volumes"]
     for name, service in config["services"].items():
+        if name == "setup-sample":
+            assert service["user"] == "${CERBERUS_UID:-1000}:${CERBERUS_GID:-1000}"
+            continue
         assert "build" not in service
         if name not in {"setup-secrets", "api", "worker"}:
             assert service.get("environment") == source["services"][name].get("environment")
