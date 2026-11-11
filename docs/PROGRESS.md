@@ -7,6 +7,7 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 
 | Ticket | Estado | Rama | Commit | Fecha | Responsable / herramienta | Notas |
 |---|---|---|---|---|---|---|
+| A1b · cuenta de demo automática (§17) | ✅ | feat/A1-demo-account | 47c02c2 | 2026-11-11 | Codex | PR #13; 776 tests y QA real de importación/login/preservación; CP-049 |
 | B13 · Métricas y guía de segmentación | ✅ | feat/B13-segmentation-metrics | d68262a | 2026-11-10 | Codex | PR #11; integrado con A4, 766 tests y visual 33/33; CP-046 |
 | B0 · Bootstrap | ✅ | feat/B0-bootstrap | 31d619a | 2026-10-27 | Vikingo / Claude Code (orquestador) | |
 | B1 · config + sequences | ✅ | feat/B1-config-sequences | bad8563 | 2026-10-27 | Vikingo / Claude Code (subagente) | |
@@ -820,3 +821,20 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
   Captura en español revisada; sin cambios a cuentas ni servicios de demo existentes.
 - Pendiente integrar PR y registrar checkpoint. No se repitieron las suites completas del visor
   ni smoke de nginx; no se ejecutaron inferencias o subidas. El 502 del profesor necesita sus logs.
+
+### CP-049 · 2026-11-11 · A1b: cuenta de demo automática integrada
+
+- **Integración:** [PR #13](https://github.com/MasamuneL/Cerberus/pull/13), merge `47c02c2`;
+  árbol idéntico al head validado `20d69be`.
+- Las instalaciones nuevas incluyen la cuenta pública local `demo` / `demo`, perfil ficticio
+  completo y rol `analyst`. En instalaciones anteriores, el comando documentado de sincronización
+  la crea solo si falta mediante SKIP, sin modificar cuentas existentes ni conceder administración.
+- **Checks:** 776 tests rápidos aprobados, 5 slow excluidos; Ruff/formato de backend/scripts auth,
+  pyright (incluido `sync_realm.py` por separado) y build frontend correctos.
+- **QA real:** Keycloak 26.8.1 aislado; importación desde cero, login Authorization Code+PKCE
+  sin formularios extra y claim `analyst`, alta en realm existente y repetición sin cambios.
+  Preservados contraseña cambiada, rol `reader`, acciones requeridas y cuenta deshabilitada.
+  Captura del formulario en español revisada. No se repitieron visor completo ni smoke nginx;
+  no se ejecutaron modelos o subidas ni se modificaron cuentas de la demo existente.
+- **Siguiente paso:** actualizar el checkout del profesor y ejecutar la sincronización con Keycloak
+  listo si ya tenía un realm. El HTTP 502 requiere sus logs; crear una cuenta no corrige conectividad.

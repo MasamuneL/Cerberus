@@ -4,7 +4,7 @@
 > checkpoint. El historial completo está en [`PROGRESS.md`](PROGRESS.md) y el alcance y los contratos en
 > [`PLAN_MVP.md`](PLAN_MVP.md). Las reglas de trabajo están en [`../AGENTS.md`](../AGENTS.md).
 
-**Última actualización:** 2026-11-11 · último checkpoint: CP-048 · rama base: `main`
+**Última actualización:** 2026-11-11 · último checkpoint: CP-049 · rama base: `main`
 
 ## 1. Arranque rápido
 
@@ -32,7 +32,8 @@ Abre las PNG y revísalas: **no te fíes solo de los ✅**. Leer píxeles del ca
 
 ## 2. Estado actual
 
-**A1b · cuenta de demo automática · 2026-11-11:** rama `feat/A1-demo-account`.
+**CP-049 · A1b · cuenta de demo automática · 2026-11-11:** integrado el
+[PR #13](https://github.com/MasamuneL/Cerberus/pull/13), merge `47c02c2`.
 El seed incluye `demo` / `demo`, perfil ficticio completo y rol `analyst` de `cerberus-web`.
 Para realms existentes, `sync_realm.py` usa importación parcial con SKIP: crea solo si falta,
 conservando contraseña, roles, acciones requeridas y estado de una cuenta existente.
@@ -42,7 +43,9 @@ en realm existente sin cuenta, repetición sin cambios y preservación de contra
 rol `reader` y cuenta deshabilitada. Captura del formulario en español revisada.
 La primera prueba real detectó campos de perfil obligatorios ausentes; corregidos y repetido el login.
 No se modificaron cuentas ni servicios de la demo existente. No se repitió QA del visor completo.
-Pendiente integrar PR y registrar checkpoint. El 502 del profesor sigue pendiente de sus logs.
+Árbol del merge idéntico al head validado `20d69be`. Para una instalación anterior, actualizar main
+y ejecutar `uv run python tools/auth/sync_realm.py` con Keycloak listo; no hace falta crear roles ni
+cuentas desde la consola. El 502 del profesor sigue pendiente de sus logs.
 
 **CP-048 · D2b · corrección Windows · 2026-11-11:** integrado el
 [PR #12](https://github.com/MasamuneL/Cerberus/pull/12), merge `7644d87`.
