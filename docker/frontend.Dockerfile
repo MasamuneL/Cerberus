@@ -23,6 +23,9 @@ printf 'client_max_body_size %sm;\n' "$((mb + 64))" > /tmp/cerberus-upload.conf
 exec nginx -g 'daemon off;' "$@"
 EOF
 
+# Un checkout de Windows puede introducir CRLF en el heredoc y convertir el intérprete en /bin/sh\r.
+RUN sed -i 's/\r$//' /usr/local/bin/cerberus-nginx
+
 COPY docker/nginx.conf /etc/nginx/nginx.conf
 COPY --from=build /app/frontend/dist /usr/share/nginx/html
 

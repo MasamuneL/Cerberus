@@ -755,3 +755,16 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
   la suposición del plan sobre el espacio del atlas necesita corregirse o verificarse.
 - Validación documental: `git diff --check` correcto y enlaces locales del README resueltos.
   Sin cambios de código ni nuevas ejecuciones de tests, modelos o QA visual.
+
+### En revisión · 2026-11-11 · D2b: arranque Docker en Windows
+
+- Rama `feat/D2b-windows-entrypoint`: CRLF en el heredoc produce un shebang `/bin/sh\r`
+  y reproduce exactamente el error de arranque reportado. Normalización durante build y LF
+  en `.gitattributes`; README documenta reconstrucción y diagnóstico de sesión.
+- Reproducción antes del cambio: LF arranca, CRLF termina con código 255. Tras corregir,
+  ambos arrancan, `nginx -t` pasa con raíz de solo lectura y se rechazan límites inválidos.
+  Build completo con Dockerfile CRLF correcto; healthz y proxy de auth responden desde imagen nueva.
+- 766 tests rápidos aprobados, 5 slow excluidos; Ruff, formato, pyright y build frontend correctos.
+  20 escenarios de auth UI y 8 de continuidad/sesión aprobados con HTTP controlado; login revisado
+  visualmente. No se ejecutó la suite visual Vite ni autenticación con proveedor real.
+- Pendiente: integrar PR y registrar checkpoint. La segunda captura necesita logs del equipo afectado.

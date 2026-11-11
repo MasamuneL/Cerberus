@@ -117,6 +117,20 @@ En Docker Desktop aparece el proyecto **cerberus** con 4 contenedores. Solo se p
 `/api` se reenvía a la API y Redis queda en la red interna. `Data/`, `storage/` y `models/` se montan desde el repo,
 así que los resultados se comparten con el modo de desarrollo.
 
+Si el frontend reinicia con `exec /usr/local/bin/cerberus-nginx: no such file or directory`, puede haberse
+construido con finales de línea Windows (CRLF). El build normaliza ese script desde la corrección D2b.
+Tras actualizar el repositorio, reconstruye y recrea el servicio:
+
+```bash
+git pull --ff-only
+docker compose up -d --build --force-recreate frontend
+```
+
+Si usas autenticación, conserva `--env-file .env.auth -f compose.yaml -f compose.auth.yaml` en el comando
+Compose. Abre `http://localhost:8080`. Si aparece «Servicio no disponible», comprueba
+`docker compose ps` y `docker compose logs --tail=100 api redis frontend` con esos mismos archivos:
+la pantalla indica un fallo al consultar configuración o sesión, no identifica por sí sola la causa.
+
 | Variable (opcional) | Default | Para qué |
 |---|---|---|
 | `CERBERUS_HTTP_PORT` | 8080 | puerto local de la app |
