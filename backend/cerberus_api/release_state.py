@@ -57,3 +57,49 @@ def check_update(current: Mapping[str, Any], candidate: Mapping[str, Any], activ
             raise ValueError("Cambio de identidad requiere backup y restauración validados por separado")
     if current.get("name") != candidate.get("name") or current.get("volumes") != candidate.get("volumes"):
         raise ValueError("Identidad del proyecto o volúmenes incompatibles")
+
+
+async def active_job_count(client: Any) -> int:
+    """Cuenta cola y trabajos en ejecución según constantes de arq instalado; falla cerrado."""
+    from arq.constants import default_queue_name, in_progress_key_prefix
+
+    count = int(await client.zcard(default_queue_name))
+    async for _ in client.scan_iter(match=in_progress_key_prefix + "*"):
+        count += 1
+    return count
+
+
+def main() -> int:
+    """Comprueba candidato y cola sin escribir configuración ni datos."""
+    import argparse
+    import asyncio
+    import os
+
+    from redis.asyncio import Redis
+
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--current", type=Path, required=True)
+    parser.add_argument("--candidate", type=Path, required=True)
+    args = parser.parse_args()
+
+    async def validate() -> None:
+        client = Redis.from_url(os.environ.get("CERBERUS_REDIS_URL", "redis://redis:6379/0"))
+        try:
+            count = await active_job_count(client)
+            current = verify_package(args.current)
+            candidate = verify_package(args.candidate)
+            check_update(current, candidate, count)
+        finally:
+            await client.aclose()
+
+    try:
+        asyncio.run(validate())
+    except Exception:
+        print("Actualización bloqueada: comprueba integridad, compatibilidad de identidad y trabajos activos.")
+        return 1
+    print("Candidato íntegro y compatible; cola sin trabajos activos.")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

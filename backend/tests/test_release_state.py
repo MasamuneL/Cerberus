@@ -63,3 +63,20 @@ def test_update_preserves_identity() -> None:
     changed["services"]["auth-db"]["image"] = "different"
     with pytest.raises(ValueError, match="identidad"):
         check_update(config, changed, 0)
+
+
+def test_active_job_count() -> None:
+    import asyncio
+
+    from cerberus_api.release_state import active_job_count
+
+    class Client:
+        async def zcard(self, key: str) -> int:
+            assert key == "arq:queue"
+            return 2
+
+        async def scan_iter(self, *, match: str):
+            assert match == "arq:in-progress:*"
+            yield b"job"
+
+    assert asyncio.run(active_job_count(Client())) == 3
