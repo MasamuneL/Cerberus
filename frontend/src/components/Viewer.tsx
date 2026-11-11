@@ -627,7 +627,7 @@ export default function Viewer({
     };
     // study se lee por studyKey; has_brain_mask va aparte por si cambia sin cambiar de estudio.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [is3D, r3d.skullStrip, loadVersion, studyKey, study.has_brain_mask]);
+  }, [is3D, r3d.skullStrip, loadVersion, studyKey, study.has_brain_mask, sequence, showGtv, segOn, segAvailable, segmentationVersion, areasOn, areasAvailable, areasVersion]);
 
   // --- Vista 3D: superficie del GTV ------------------------------------------------------------------
   // Malla calculada en el navegador (maskSurface) y cacheada por estudio. Mientras se ve, el overlay
