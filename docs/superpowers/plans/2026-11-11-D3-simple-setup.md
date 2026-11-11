@@ -257,3 +257,11 @@ validada. El README describe exactamente esa experiencia. Merge y checkpoint ref
 
 Revalidar APIs y versiones al implementar; los comandos específicos de lanzamiento que aún no existen
 son requisitos de este plan, no instrucciones disponibles para el profesor hoy.
+
+## 8. Contrato congelado D3a · ejecución 2026-11-11
+
+Ver [contrato de paquete](../../../tools/release/CONTRACT.md). Distribución generada desde Compose
+mediante `tools/release/package.py`: sin build, imágenes por digest, recursos de identidad incluidos.
+Compose mínimo 2.30.0; plataformas esperadas, pendientes de evidencia D3h. Directorio de instalación
+persistente, rutas absolutas para migración y nombre de proyecto conservado. Worker espera permisos;
+Data se prepara solo en distribución. No se recrea el stack diario ni se publican artefactos.

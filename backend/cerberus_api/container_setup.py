@@ -147,7 +147,10 @@ def main(argv: Sequence[str] | None = None, environment: Mapping[str, str] | Non
             prepare_secrets(root, Path("/run/cerberus-existing-db"), environment)
             uid = int(environment.get("CERBERUS_CONTAINER_UID", "1000"))
             gid = int(environment.get("CERBERUS_CONTAINER_GID", "1000"))
-            for directory in (Path("/app/storage"), Path("/app/models")):
+            directories = [Path("/app/storage"), Path("/app/models")]
+            if environment.get("CERBERUS_PREPARE_DATA") == "true":
+                directories.append(Path("/app/Data"))
+            for directory in directories:
                 prepare_writable_directory(directory, uid, gid)
             print("Secretos persistentes preparados; valores existentes conservados.")
         elif args.mode == "sync":
