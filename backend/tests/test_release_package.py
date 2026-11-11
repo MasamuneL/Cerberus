@@ -24,7 +24,8 @@ def test_distribution_preserves_contract() -> None:
     assert config["volumes"] == source["volumes"]
     for name, service in config["services"].items():
         assert "build" not in service
-        assert service.get("environment") == source["services"][name].get("environment") or name == "setup-secrets"
+        if name not in {"setup-secrets", "api", "worker"}:
+            assert service.get("environment") == source["services"][name].get("environment")
     assert config["services"]["api"]["image"] == config["services"]["worker"]["image"] == backend
     assert config["services"]["worker"]["depends_on"]["setup-secrets"]["condition"] == "service_completed_successfully"
 

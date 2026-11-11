@@ -191,3 +191,19 @@ def test_fresh_writable_directory_gets_container_owner_without_recursive_changes
     setup.prepare_writable_directory(tmp_path, 1001, 1002)
     assert len(ownership) == 1
     assert marker.read_text() == "datos existentes"
+
+
+def test_verify_writable_directories(tmp_path: Path) -> None:
+    from cerberus_api.container_setup import verify_writable_directories
+
+    environment = {"CERBERUS_VERIFY_WRITABLE": "true"}
+    for key in ("DATA", "STORAGE", "MODELS"):
+        directory = tmp_path / key
+        directory.mkdir()
+        environment[f"CERBERUS_{key}_DIR"] = str(directory)
+    verify_writable_directories(environment)
+    assert all(not list(directory.iterdir()) for directory in tmp_path.iterdir())
+    environment["CERBERUS_DATA_DIR"] = str(tmp_path / "missing")
+    with pytest.raises(OSError):
+        verify_writable_directories(environment)
+    verify_writable_directories({})

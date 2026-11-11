@@ -7,6 +7,7 @@ import ContinuityPanel from "./components/ContinuityPanel";
 import StudyList, { type StudyKey } from "./components/StudyList";
 import Viewer from "./components/Viewer";
 import LoginPanel from "./components/LoginPanel";
+import BuildVersion from "./components/BuildVersion";
 import { useAuth, type AuthControl } from "./hooks/useAuth";
 
 const errText = (e: unknown) =>
@@ -165,6 +166,7 @@ function Workspace({ auth }: { auth: AuthControl }) {
     <div className="app">
       <header className="app-header">
         <h1>Cerberus</h1>
+        <BuildVersion />
         <p>Visor y volumetría de glioblastoma (CFB-GBM)</p>
         <div className="auth-header-actions">
           {auth.status === "authenticated" && <span className="auth-role">{auth.canAnalyze ? "Analista" : "Lector"}</span>}
