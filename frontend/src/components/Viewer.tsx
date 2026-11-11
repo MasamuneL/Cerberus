@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Niivue, NVImage, SLICE_TYPE, type NiiVueLocation } from "@niivue/niivue";
+import { Niivue, NVImage, NVMesh, SLICE_TYPE, type NiiVueLocation } from "@niivue/niivue";
 import { fetchVolume, fileUrl } from "../api/client";
 import type { AreaLabel, AreasResult, StudyDetail } from "../api/types";
 import { areaColor, areaColorCss } from "./areaColors";
 import { LayerChip, LayerSettings, LayersPanel } from "./viewer/LayersPanel";
 import CursorReadout, { type Readout } from "./viewer/CursorReadout";
 import ShortcutsHelp from "./viewer/ShortcutsHelp";
+import Render3DPanel, { DEFAULT_RENDER3D, type Render3DSettings } from "./viewer/Render3DPanel";
+import { maskSurface, strideForSpacing, type MaskSurface } from "./viewer/maskSurface";
 import "./viewer.css";
 
 interface Props {
@@ -91,6 +93,22 @@ const SEG_SWATCHES: { name: string; color: string }[] = [
   { name: "Núcleo", color: "#ff8c00" },
   { name: "Realce", color: "#ff0000" },
 ];
+
+// Color de la superficie del GTV en 3D (un rojo algo más claro que el overlay, para que la luz se note).
+const GTV_SURFACE_RGBA = new Uint8Array([255, 40, 40, 255]);
+// Profundidad > 1 desactiva el plano de corte (ClipPlaneManager.DEFAULT_DEPTH_AZI_ELEV de Niivue).
+const NO_CLIP: number[] = [2, 0, 0];
+
+/** Superficie del GTV a partir del volumen ya cargado en Niivue (mismo affine que el centroide). */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function gtvSurfaceFromVolume(vol: any): MaskSurface | null {
+  const data = vol?.img;
+  const dims: number[] | undefined = vol?.hdr?.dims;
+  const aff: number[][] | undefined = vol?.hdr?.affine;
+  const pix: number[] | undefined = vol?.hdr?.pixDims;
+  if (!data || !dims || !aff || !pix) return null;
+  return maskSurface(data, [dims[1], dims[2], dims[3]], aff, strideForSpacing(pix.slice(1, 4)));
+}
 
 /** ¿El evento de teclado viene de un campo donde las teclas escriben o eligen? */
 function isTypingTarget(t: EventTarget | null): boolean {
@@ -210,6 +228,19 @@ export default function Viewer({
   const [areasLoaded, setAreasLoaded] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
 
+  // --- Vista 3D ------------------------------------------------------------------------------------
+  const [r3d, setR3d] = useState<Render3DSettings>(DEFAULT_RENDER3D);
+  // Sube en cada carga completa: los efectos 3D se reaplican sobre los volúmenes nuevos.
+  const [loadVersion, setLoadVersion] = useState(0);
+  const [surfaceInfo, setSurfaceInfo] = useState<string | null>(null);
+  const maskIdxRef = useRef<number>(-1); // brain_mask añadido al final solo para el 3D
+  const maskCacheRef = useRef<{ key: string; img: NVImage } | null>(null);
+  const surfaceCacheRef = useRef<{ key: string; surf: MaskSurface | null } | null>(null);
+  const meshRef = useRef<{ key: string; mesh: NVMesh } | null>(null);
+  // Con la malla visible el overlay volumétrico del GTV se apaga (la malla lo sustituye).
+  const gtvMeshModeRef = useRef(false);
+  const is3D = view === SLICE_TYPE.RENDER;
+
   const segAvailable = study.has_segmentation || showSegmentation;
   const areasAvailable = study.has_areas && !!areas && areas.lut.length > 0;
 
@@ -304,6 +335,9 @@ export default function Viewer({
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
       nv.onLocationChange = () => {};
+      meshRef.current = null; // nv.cleanup libera los buffers GL de las mallas
+      maskIdxRef.current = -1;
+      gtvMeshModeRef.current = false;
       nv.volumes = [];
       nv.mediaUrlMap.clear();
       nv.cleanup();
@@ -383,6 +417,7 @@ export default function Viewer({
     gtvIdxRef.current = -1;
     segIdxRef.current = -1;
     areasIdxRef.current = -1;
+    maskIdxRef.current = -1; // nv.volumes se vacía: el efecto 3D vuelve a añadir la máscara
     crosshairReadoutRef.current = null;
     pushReadout(null);
     setGtvLoaded(false);
@@ -429,6 +464,7 @@ export default function Viewer({
         areasIdxRef.current = areasIdx;
         // Los controles pueden cambiar mientras Niivue descarga los volúmenes.
         if (gtvIdx >= 0 && nv.volumes[gtvIdx]) nv.setOpacity(gtvIdx, gtvOpacityRef.current);
+        gtvMeshModeRef.current = false; // GTV nuevo con su opacidad; el efecto 3D la vuelve a 0 si hace falta
         if (segIdx >= 0 && nv.volumes[segIdx]) nv.setOpacity(segIdx, segOpacityRef.current);
         if (areasIdx >= 0 && nv.volumes[areasIdx]) nv.setOpacity(areasIdx, areasOpacityRef.current);
         if (areasIdx >= 0 && nv.volumes[areasIdx] && areasCmRef.current) {
@@ -463,6 +499,7 @@ export default function Viewer({
         }
         loadingRef.current = false;
         readCrosshair();
+        setLoadVersion((v) => v + 1);
       } catch (e) {
         const aborted = controller.signal.aborted;
         // Si falla una capa, se cancelan también las descargas hermanas del mismo lote.
@@ -489,7 +526,7 @@ export default function Viewer({
   useEffect(() => {
     const nv = nvRef.current;
     const i = gtvIdxRef.current;
-    if (nv && i >= 0 && nv.volumes[i]) nv.setOpacity(i, gtvOpacity);
+    if (nv && i >= 0 && nv.volumes[i] && !gtvMeshModeRef.current) nv.setOpacity(i, gtvOpacity);
   }, [gtvOpacity]);
 
   useEffect(() => {
@@ -502,6 +539,163 @@ export default function Viewer({
     const nv = nvRef.current;
     if (nv && nv.volumes.length > 0) nv.setSliceType(view);
   }, [view]);
+
+  // --- Vista 3D: aspecto del render volumétrico ----------------------------------------------------
+  // Iluminación (matcap) y opacidad por gradiente recompilan el shader de render; solo afectan al 3D.
+  useEffect(() => {
+    const nv = nvRef.current;
+    if (!nv) return;
+    nv.opts.isOrientCube = is3D;
+    if (!is3D || nv.volumes.length === 0) {
+      nv.drawScene();
+      return;
+    }
+    let stale = false;
+    (async () => {
+      try {
+        await nv.setVolumeRenderIllumination(r3d.light);
+        if (!stale) await nv.setGradientOpacity(r3d.edges, r3d.silhouette);
+      } catch {
+        // sin WebGL suficiente se queda el render plano
+      }
+    })();
+    return () => {
+      stale = true;
+    };
+  }, [is3D, r3d.light, r3d.edges, r3d.silhouette, loadVersion]);
+
+  // --- Vista 3D: plano de corte -----------------------------------------------------------------------
+  useEffect(() => {
+    const nv = nvRef.current;
+    if (!nv || nv.volumes.length === 0) return;
+    nv.setClipPlane(is3D && r3d.clipOn ? [...r3d.clip] : NO_CLIP);
+  }, [is3D, r3d.clipOn, r3d.clip, loadVersion]);
+
+  // --- Vista 3D: ocultar cráneo ----------------------------------------------------------------------
+  // brain_mask se añade al final como capa invisible y modula el alfa del volumen base
+  // (VolumeModulation de Niivue: modulateAlpha → FragColor.a = máscara). La modulación también
+  // oscurecería los cortes 2D, por eso se quita al salir del 3D. Se encadena con las cargas.
+  useEffect(() => {
+    const nv = nvRef.current;
+    if (!nv || loadVersion === 0 || nv.volumes.length === 0) return;
+    const base = nv.volumes[0];
+    if (!(is3D && r3d.skullStrip && study.has_brain_mask)) {
+      if (base.modulationImage !== null && base.modulationImage !== undefined) nv.setModulationImage(base.id, "");
+      return;
+    }
+    let cancelled = false;
+    const controller = new AbortController();
+    const { patient: p, timepoint: t } = study;
+    const prev = loadChainRef.current;
+    const run = (async () => {
+      try {
+        await prev;
+        if (cancelled || loadingRef.current || nv.volumes[0] !== base) return;
+        let idx = maskIdxRef.current;
+        if (idx < 0 || !nv.volumes[idx]) {
+          let img = maskCacheRef.current?.key === studyKey ? maskCacheRef.current.img : null;
+          if (!img) {
+            const buffer = await fetchVolume(fileUrl(p, t, "brain_mask"), controller.signal);
+            img = await NVImage.loadFromUrl({
+              url: buffer,
+              name: "brain_mask.nii.gz",
+              colormap: "gray",
+              opacity: 0,
+              cal_min: 0,
+              cal_max: 1,
+            });
+            // VolumeModulation escala con 1 / (cal_max − cal_min): una máscara 0/1 debe quedar en [0, 1].
+            img.cal_min = 0;
+            img.cal_max = 1;
+            maskCacheRef.current = { key: studyKey, img };
+          }
+          if (cancelled || loadingRef.current || nv.volumes[0] !== base) return;
+          nv.addVolume(img);
+          idx = nv.volumes.length - 1;
+          maskIdxRef.current = idx;
+          nv.setOpacity(idx, 0);
+        }
+        nv.setModulationImage(base.id, nv.volumes[idx].id, 1);
+      } catch {
+        // sin máscara el render conserva el cráneo
+      }
+    })();
+    loadChainRef.current = run;
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+    // study se lee por studyKey; has_brain_mask va aparte por si cambia sin cambiar de estudio.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [is3D, r3d.skullStrip, loadVersion, studyKey, study.has_brain_mask]);
+
+  // --- Vista 3D: superficie del GTV ------------------------------------------------------------------
+  // Malla calculada en el navegador (maskSurface) y cacheada por estudio. Mientras se ve, el overlay
+  // volumétrico del GTV queda a opacidad 0 para no taparla; al salir del 3D se restaura.
+  useEffect(() => {
+    const nv = nvRef.current;
+    if (!nv) return;
+    const gi = gtvIdxRef.current;
+    const want = is3D && r3d.surface && showGtv && gtvLoaded && gi >= 0 && !!nv.volumes[gi];
+    const current = meshRef.current;
+    if (!want) {
+      if (current) {
+        nv.removeMesh(current.mesh);
+        meshRef.current = null;
+      }
+      if (gtvMeshModeRef.current) {
+        gtvMeshModeRef.current = false;
+        if (gi >= 0 && nv.volumes[gi]) nv.setOpacity(gi, gtvOpacityRef.current);
+      }
+      nv.drawScene();
+      return;
+    }
+    if (current && current.key !== studyKey) {
+      nv.removeMesh(current.mesh);
+      meshRef.current = null;
+    }
+    if (!meshRef.current) {
+      let cached = surfaceCacheRef.current;
+      if (!cached || cached.key !== studyKey) {
+        cached = { key: studyKey, surf: gtvSurfaceFromVolume(nv.volumes[gi]) };
+        surfaceCacheRef.current = cached;
+      }
+      const surf = cached.surf;
+      if (!surf) {
+        setSurfaceInfo(null);
+        return;
+      }
+      const mesh = new NVMesh(surf.pts, surf.tris, "gtv-superficie", GTV_SURFACE_RGBA, r3d.surfaceOpacity, true, nv.gl);
+      nv.addMesh(mesh);
+      meshRef.current = { key: studyKey, mesh };
+      setSurfaceInfo(
+        `${(surf.tris.length / 3).toLocaleString("es-MX")} triángulos · ${(surf.volumeMM3 / 1000).toFixed(1)} cm³ (malla)`,
+      );
+    }
+    // Opacidad directa: setMeshProperty llama a updateGLVolume y vuelve a subir todos los volúmenes.
+    meshRef.current.mesh.opacity = r3d.surfaceOpacity;
+    nv.opts.meshXRay = r3d.xray;
+    if (!gtvMeshModeRef.current) {
+      gtvMeshModeRef.current = true;
+      nv.setOpacity(gi, 0);
+    }
+    nv.drawScene();
+  }, [is3D, r3d.surface, r3d.surfaceOpacity, r3d.xray, showGtv, gtvLoaded, loadVersion, studyKey]);
+
+  const setCamera = useCallback((azimuth: number, elevation: number) => {
+    nvRef.current?.setRenderAzimuthElevation(azimuth, elevation);
+  }, []);
+  const resetRender3D = useCallback(() => {
+    setR3d(DEFAULT_RENDER3D);
+    nvRef.current?.setRenderAzimuthElevation(110, 10);
+  }, []);
+  const surfaceReason = !study.has_gtv
+    ? "sin GTV"
+    : !showGtv
+      ? "capa GTV oculta"
+      : !gtvLoaded
+        ? "cargando GTV…"
+        : null;
 
   useEffect(() => {
     const nv = nvRef.current;
@@ -748,6 +942,18 @@ export default function Viewer({
         </LayerSettings>
       </LayersPanel>
 
+      {is3D && (
+        <Render3DPanel
+          settings={r3d}
+          onChange={setR3d}
+          hasBrainMask={study.has_brain_mask}
+          surfaceReason={surfaceReason}
+          surfaceInfo={surfaceInfo}
+          onPreset={setCamera}
+          onReset={resetRender3D}
+        />
+      )}
+
       <div className="vw-stage">
         <canvas ref={canvasRef} onMouseMove={onCanvasMouseMove} onMouseLeave={onCanvasMouseLeave} />
         {loading && <div className="canvas-overlay">Cargando volúmenes…</div>}
@@ -765,7 +971,7 @@ export default function Viewer({
       <ul className="vw-legend" aria-label="Leyenda">
         {study.has_gtv && showGtv && (
           <li>
-            {gtvSwatch} GTV (radioterapia)
+            {gtvSwatch} GTV (radioterapia){is3D && r3d.surface ? " · superficie 3D" : ""}
           </li>
         )}
         {segAvailable &&
