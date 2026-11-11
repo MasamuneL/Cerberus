@@ -200,3 +200,9 @@ def test_shell_wrapper_handles_missing_docker_without_leaking_errors(tmp_path: P
     assert result.returncode == 1
     assert "DOCKER_UNAVAILABLE" in codes(json.loads(result.stdout))
     assert "secret" not in result.stdout + result.stderr
+
+
+def test_explicit_own_data_mode_does_not_report_missing_sample(tmp_path: Path) -> None:
+    report = diagnostics().build_report({"sample_mode": "none"}, data_dir=tmp_path)
+    assert "SAMPLE_DISABLED" in codes(report)
+    assert "SAMPLE_MISSING" not in codes(report)

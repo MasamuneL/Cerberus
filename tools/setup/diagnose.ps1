@@ -32,6 +32,10 @@ try {
     }
     if (-not $ports.http) { $ports.http = '8080' }
     if (-not $ports.identity) { $ports.identity = '8081' }
+    $sampleMode = if ($env:CERBERUS_SAMPLE_MODE -eq 'none') { 'none' } else { 'auto' }
+    if (-not $env:CERBERUS_SAMPLE_MODE -and (Test-Path -LiteralPath '.env')) {
+        if ((Get-Content -LiteralPath '.env') -contains 'CERBERUS_SAMPLE_MODE=none') { $sampleMode = 'none' }
+    }
     $services = @()
     foreach ($service in @('setup-secrets','setup-sample','redis','auth-db','keycloak','setup-identity','api','worker','frontend')) {
         $container = & docker compose ps -aq $service 2>$null
@@ -57,7 +61,7 @@ try {
     $sample = $null
     if (Test-Path -LiteralPath 'release.json') { $release = Get-Content -Raw -LiteralPath 'release.json' | ConvertFrom-Json }
     if (Test-Path -LiteralPath 'tools/release/sample-manifest.json') { $sample = Get-Content -Raw -LiteralPath 'tools/release/sample-manifest.json' | ConvertFrom-Json }
-    $snapshot = @{docker=@{status='ready'}; services=@($services); ports=$portStates; release=$release; sample_manifest=$sample} | ConvertTo-Json -Depth 12 -Compress
+    $snapshot = @{docker=@{status='ready'}; services=@($services); ports=$portStates; release=$release; sample_manifest=$sample; sample_mode=$sampleMode} | ConvertTo-Json -Depth 12 -Compress
     $result = $snapshot | & docker compose exec -T api python -m cerberus_api.diagnostics --snapshot-stdin 2>$null
     $resultCode = $LASTEXITCODE
     if (-not $result) {

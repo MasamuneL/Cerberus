@@ -23,10 +23,12 @@ docker_ready=true
 # Compose interpreta su .env; este lector solo toma puertos decimales, nunca ejecuta el archivo.
 http_port=${CERBERUS_HTTP_PORT:-}
 identity_port=${CERBERUS_KEYCLOAK_HTTP_PORT:-}
+sample_mode=${CERBERUS_SAMPLE_MODE:-}
 if [ -f .env ]; then
   while IFS='=' read -r key value; do
     value=${value%$'\r'}
     case "$key" in
+      CERBERUS_SAMPLE_MODE) [ -n "$sample_mode" ] || sample_mode=$value ;;
       CERBERUS_HTTP_PORT) [ -n "$http_port" ] || http_port=$value ;;
       CERBERUS_KEYCLOAK_HTTP_PORT) [ -n "$identity_port" ] || identity_port=$value ;;
     esac
@@ -70,7 +72,8 @@ release='{}'
 sample='null'
 [ ! -f release.json ] || release=$(cat release.json 2>/dev/null) || release='{}'
 [ ! -f tools/release/sample-manifest.json ] || sample=$(cat tools/release/sample-manifest.json 2>/dev/null) || sample='null'
-snapshot='{"docker":{"status":"ready"},"services":['"$services"'],"ports":{'"$ports"'},"release":'"$release"',"sample_manifest":'"$sample"'}'
+case "$sample_mode" in none) sample_mode=none ;; *) sample_mode=auto ;; esac
+snapshot='{"docker":{"status":"ready"},"services":['"$services"'],"ports":{'"$ports"'},"release":'"$release"',"sample_mode":'"'"$sample_mode"'"',"sample_manifest":'"$sample"'}'
 
 # Si la API está detenida, solo se crea un contenedor temporal sin puertos ni dependencias.
 # --pull never impide que diagnosticar instale o actualice imágenes.

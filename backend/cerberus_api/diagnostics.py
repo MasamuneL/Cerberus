@@ -61,6 +61,7 @@ MESSAGES = {
         "Imagen distinta de la release; actualiza explícitamente al conjunto de digests declarado.",
     ),
     "IMAGE_UNKNOWN": ("pending", "No hay digest verificable de la release o falta el contenedor."),
+    "SAMPLE_DISABLED": ("ok", "Muestra omitida explícitamente; se conservan los datos propios."),
     "SAMPLE_MISSING": ("error", "Muestra ausente; ejecuta su preparación o configura datos propios explícitamente."),
     "SAMPLE_UNVERIFIED": ("pending", "Hay archivos de muestra; falta un manifest válido para verificar su integridad."),
     "SAMPLE_VERIFIED": ("ok", "Archivos de muestra verificados por tamaño y SHA-256 sin consultar la red."),
@@ -230,7 +231,11 @@ def build_report(
             if isinstance(expected, str) and re.fullmatch(r"[\w./:-]+@sha256:[a-f0-9]{64}", expected) and name in known:
                 code = "IMAGE_MATCH" if known[name].get("image") == expected else "IMAGE_MISMATCH"
             checks.append(check(code, name))
-    checks.append(sample_check(data_dir, snapshot.get("sample_manifest")))
+    checks.append(
+        check("SAMPLE_DISABLED", "sample")
+        if snapshot.get("sample_mode") == "none"
+        else sample_check(data_dir, snapshot.get("sample_manifest"))
+    )
     for name, directory in (("storage", storage_dir), ("models", models_dir)):
         if directory is not None:
             try:
