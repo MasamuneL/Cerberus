@@ -37,3 +37,12 @@ def test_distribution_preserves_contract() -> None:
 def test_distribution_rejects_unpinned_images(image: str) -> None:
     with pytest.raises(ValueError):
         package.distribution_config({}, image, image)
+
+
+def test_distribution_generation_ignores_packager_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("COMPOSE_PROJECT_NAME", "personal-project-name")
+    monkeypatch.setenv("CERBERUS_HTTP_PORT", "19999")
+    source = package.source_config()
+    assert source["name"] == "cerberus"
+    assert "19999" not in str(source)
+    assert "personal-project-name" not in str(source)

@@ -2,6 +2,7 @@
 
 import copy
 import json
+import os
 import re
 import subprocess
 from pathlib import Path
@@ -61,6 +62,10 @@ def source_config() -> dict[str, Any]:
         [
             "docker",
             "compose",
+            "--project-name",
+            "cerberus",
+            "--env-file",
+            os.devnull,
             "-f",
             str(ROOT / "compose.yaml"),
             "config",
