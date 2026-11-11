@@ -801,3 +801,22 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
   desde macOS/Docker. La demo existente conserva sus contenedores; solo se usaron servicios QA aislados.
 - **Siguiente paso:** actualizar el repositorio y reconstruir el frontend del profesor en Windows.
   La segunda captura requiere logs si persiste «Servicio no disponible». A5 y ola P siguen pendientes.
+
+### En revisión · 2026-11-11 · A1b: cuenta de demo automática
+
+- Solicitud del usuario: evitar crear y configurar manualmente la cuenta del profesor.
+  Rama `feat/A1-demo-account`: seed con `demo` / `demo` y rol `analyst` de `cerberus-web`;
+  perfil ficticio con nombre, apellido y correo `.invalid`, sin acciones iniciales obligatorias.
+- `sync_realm.py` importa ese usuario con `ifResourceExists=SKIP`. En un realm existente,
+  crea la cuenta si falta, conservando contraseña, roles, acciones requeridas y estado si existe.
+  README y PLAN_MVP §17 reflejan la excepción de credenciales públicas para la demo de loopback.
+- Validación: 776 tests rápidos aprobados, 5 slow excluidos; Ruff y formato de backend/scripts auth,
+  pyright y build frontend correctos. Pruebas sin red: seed, importación/skip, errores HTTP,
+  respuesta inválida y ausencia de credenciales en errores.
+- Keycloak 26.8.1 aislado: importación inicial desde cero, login real Authorization Code+PKCE,
+  claim `analyst`, creación en realm sin demo y sincronización repetible. Preservación comprobada
+  tras cambiar contraseña, pasar a rol `reader`, exigir cambio de contraseña y deshabilitar la cuenta.
+  La primera pasada real pidió completar perfil; se añadieron datos ficticios y se repitió con éxito.
+  Captura en español revisada; sin cambios a cuentas ni servicios de demo existentes.
+- Pendiente integrar PR y registrar checkpoint. No se repitieron las suites completas del visor
+  ni smoke de nginx; no se ejecutaron inferencias o subidas. El 502 del profesor necesita sus logs.

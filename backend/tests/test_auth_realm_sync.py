@@ -77,8 +77,12 @@ def test_sync_is_idempotent_and_preserves_existing_realm(tmp_path: Path, capsys:
             }
             assert not request.url.query
             return httpx.Response(200, json={"access_token": TOKEN})
-        assert request.url.path == "/admin/realms/cerberus"
         assert request.headers["Authorization"] == f"Bearer {TOKEN}"
+        if request.url.path == "/admin/realms/cerberus/partialImport":
+            assert request.method == "POST"
+            assert json.loads(request.content)["ifResourceExists"] == "SKIP"
+            return httpx.Response(200, json={"added": 0, "skipped": 1})
+        assert request.url.path == "/admin/realms/cerberus"
         if request.method == "GET":
             return httpx.Response(200, json=realm)
         assert request.method == "PUT"
@@ -94,8 +98,10 @@ def test_sync_is_idempotent_and_preserves_existing_realm(tmp_path: Path, capsys:
         ("POST", "/realms/master/protocol/openid-connect/token"),
         ("GET", "/admin/realms/cerberus"),
         ("PUT", "/admin/realms/cerberus"),
+        ("POST", "/admin/realms/cerberus/partialImport"),
         ("POST", "/realms/master/protocol/openid-connect/token"),
         ("GET", "/admin/realms/cerberus"),
+        ("POST", "/admin/realms/cerberus/partialImport"),
     ]
     for key in ("clients", "users", "roles", "ssoSessionIdleTimeout"):
         assert realm[key] == original[key]
@@ -183,6 +189,82 @@ def test_realm_seed_and_theme_preserve_provider_forms() -> None:
     footer = (theme / "footer.ftl").read_text()
     assert "<#macro content>" in footer
     assert "cerberusRememberHelp" in footer
+
+
+def test_realm_seed_creates_demo_analyst_without_password_change_required() -> None:
+    seed = json.loads((REPO_ROOT / "docker/keycloak/realm.json").read_text())
+    assert seed["users"] == [
+        {
+            "username": "demo",
+            "firstName": "Demo",
+            "lastName": "Cerberus",
+            "email": "demo@example.invalid",
+            "enabled": True,
+            "requiredActions": [],
+            "credentials": [{"type": "password", "value": "demo", "temporary": False}],
+            "clientRoles": {"cerberus-web": ["analyst"]},
+        }
+    ]
+
+
+@pytest.mark.parametrize("added", [0, 1])
+def test_sync_imports_only_missing_demo_with_skip_policy(added: int) -> None:
+    calls: list[dict[str, object]] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/token"):
+            return httpx.Response(200, json={"access_token": TOKEN})
+        if request.url.path == "/admin/realms/cerberus" and request.method == "GET":
+            return httpx.Response(
+                200,
+                json=SYNC["DESIRED_FIELDS"]
+                | {
+                    "realm": "cerberus",
+                    "supportedLocales": ["es", "en"],
+                },
+            )
+        assert request.method == "POST"
+        assert request.url.path == "/admin/realms/cerberus/partialImport"
+        body = json.loads(request.content)
+        assert body["ifResourceExists"] == "SKIP"
+        assert set(body) == {"ifResourceExists", "users"}
+        assert body["users"] == json.loads((REPO_ROOT / "docker/keycloak/realm.json").read_text())["users"]
+        calls.append(body)
+        return httpx.Response(200, json={"added": added, "skipped": 1 - added})
+
+    with httpx.Client(base_url="http://localhost:8081", transport=httpx.MockTransport(respond)) as client:
+        changed = SYNC["sync_realm"](client, "cerberus-admin", SECRET)
+    assert calls
+    assert changed == (["demo"] if added else [])
+
+
+def test_failed_demo_import_is_reported_without_credentials(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    def respond(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/token"):
+            return httpx.Response(200, json={"access_token": TOKEN})
+        if request.url.path.endswith("/partialImport"):
+            return httpx.Response(500, text=SECRET)
+        if request.method == "GET":
+            return httpx.Response(200, json={"realm": "cerberus"})
+        return httpx.Response(204)
+
+    assert SYNC["main"](["--env-file", str(tmp_path / "absent")], ENV, httpx.MockTransport(respond)) == 1
+    output = capsys.readouterr()
+    assert SECRET not in output.out + output.err
+
+
+@pytest.mark.parametrize("body", [{}, [], {"added": True}, {"added": -1}, {"added": 2}, {"added": "1"}])
+def test_unexpected_import_result_is_recoverable(tmp_path: Path, body: object) -> None:
+    def respond(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/token"):
+            return httpx.Response(200, json={"access_token": TOKEN})
+        if request.url.path.endswith("/partialImport"):
+            return httpx.Response(200, json=body)
+        if request.method == "GET":
+            return httpx.Response(200, json={"realm": "cerberus"})
+        return httpx.Response(204)
+
+    assert SYNC["main"](["--env-file", str(tmp_path / "absent")], ENV, httpx.MockTransport(respond)) == 1
 
 
 @pytest.mark.parametrize(
