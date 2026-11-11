@@ -1,5 +1,16 @@
 # Cerberus
 
+## Usar la demo
+
+**D3 en implementación; todavía sin paquete publicado ni matriz de plataformas aprobada.**
+El paquete previsto requiere Docker: descargar, descomprimir, iniciar y entrar con `demo` / `demo`.
+[Guía de instalación, datos, diagnóstico y actualización](docs/INSTALL.md).
+Mientras se valida D3, siguen disponibles los comandos Compose del checkout descritos abajo.
+
+## Desarrollar
+
+El desarrollo utiliza Git/LFS, uv y Node; las instrucciones y comandos existentes siguen vigentes.
+
 Análisis exploratorio, visualización 3D y segmentación de glioblastoma sobre el dataset **CFB-GBM** (The Cancer Imaging Archive).
 
 Cerberus es una **app web**: backend **FastAPI + arq/Redis + MONAI** y frontend
