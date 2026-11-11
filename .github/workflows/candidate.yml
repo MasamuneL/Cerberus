@@ -93,6 +93,12 @@ jobs:
             test "$(docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.version" }}' "$image")" = "$VERSION"
             test "$(docker image inspect --format '{{.Os}}/{{.Architecture}}' "$image")" = linux/amd64
           done
+      - name: Verificar muestra remota antes de empaquetar
+        env:
+          BACKEND_DIGEST: ${{ steps.backend.outputs.digest }}
+        run: |
+          docker run --rm --platform linux/amd64 --entrypoint python "$BACKEND@$BACKEND_DIGEST" \
+            -m cerberus_api.sample --manifest /app/tools/release/sample-manifest.json --data /app/Data
       - name: Crear paquete fijado a los digests publicados
         env:
           BACKEND_DIGEST: ${{ steps.backend.outputs.digest }}
