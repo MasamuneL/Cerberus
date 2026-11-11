@@ -32,6 +32,23 @@ Abre las PNG y revísalas: **no te fíes solo de los ✅**. Leer píxeles del ca
 
 ## 2. Estado actual
 
+**D2b · corrección Windows · 2026-11-11:** rama `feat/D2b-windows-entrypoint`.
+Reproducido el error `exec /usr/local/bin/cerberus-nginx: no such file or directory`
+con un Dockerfile CRLF: el heredoc conserva CR en el shebang. El build normaliza el script
+y `.gitattributes` fija LF para los Dockerfiles; README incluye reconstrucción y diagnóstico.
+Validados LF/CRLF, build completo CRLF, nginx sin privilegios con raíz de solo lectura,
+healthz y proxy `/api/auth/config`. Checks obligatorios correctos: 766 tests rápidos,
+Ruff/formato/pyright y build frontend. QA previo al merge: `verify.mjs` 33/33,
+14 auditorías axe sin violaciones automáticas, 27 capturas; smoke Docker 15/15 sin pendientes,
+12 escenarios de auth UI y 8 de continuidad/sesión, 15 pruebas Node y login/logout real con Keycloak
+aprobados. Capturas de ambas resoluciones y login revisadas; servicios de demo existentes conservados.
+El primer smoke falló por tres cancelaciones previstas al llegar reportes de capas. Se ajustó el runner
+para exigir descargas posteriores completas, sin ignorar errores HTTP ni cancelaciones sin reemplazo;
+cinco casos positivos/negativos y repetición completa correctos. Diagnóstico intermedio interrumpido
+tras localizar el fallo del runner; la aprobación corresponde a la repetición final.
+La pantalla «Servicio no disponible» del profesor requiere sus logs para determinar la causa.
+Pendiente integrar PR y registrar checkpoint tras merge.
+
 **CP-047 · 2026-11-10:** README amplía la explicación del mapeo de Brodmann: herramientas,
 registro, exclusión GTV+5 mm, transformaciones inversas, fórmulas y límites. Hallazgo pendiente:
 el atlas de Nilearn declara espacio Talairach, mientras el registro utiliza MNI152; no existe

@@ -9,7 +9,7 @@ const OUT = fileURLToPath(new URL("./shots/docker", import.meta.url));
 const TIMEOUT = Number(process.env.CERBERUS_TIMEOUT ?? 180000);
 const report = {
   base: BASE, startedAt: new Date().toISOString(), checks: [], screenshots: [],
-  catalog: [], system: null, pending: [], niftiResponses: [], niftiDownloads: [], expected404: [], networkErrors: [], consoleErrors: [], blockedMutations: [],
+  catalog: [], system: null, pending: [], niftiResponses: [], niftiDownloads: [], cancelledNifti: [], expected404: [], networkErrors: [], consoleErrors: [], blockedMutations: [],
   limitations: [
     "Las capturas requieren revisión humana; no existe una línea base visual.",
     "La carga se verifica mediante descargas completas, estado visible y lectura del visor; no se inspecciona la instancia privada de Niivue.",
@@ -174,7 +174,15 @@ try {
       report.expected404.push(error);
     } else report.networkErrors.push(error);
   });
-  page.on("requestfailed", (request) => report.networkErrors.push({ url: request.url(), error: request.failure()?.errorText }));
+  page.on("requestfailed", (request) => {
+    const error = { url: request.url(), error: request.failure()?.errorText };
+    const path = new URL(request.url()).pathname;
+    // Los reportes de capas pueden reemplazar una carga inicial. Solo se admite la cancelación si
+    // una descarga posterior del mismo volumen termina correctamente; se comprueba al cerrar el smoke.
+    if (error.error === "net::ERR_ABORTED" && /\/files\/[^/]+\.nii\.gz$/.test(path)) {
+      report.cancelledNifti.push({ ...error, path, abortedAt: new Date().toISOString() });
+    } else report.networkErrors.push(error);
+  });
   page.on("requestfinished", (request) => {
     const path = new URL(request.url()).pathname;
     if (/\/files\/[^/]+\.nii\.gz$/.test(path)) {
@@ -362,7 +370,13 @@ try {
     }
   });
   size = "global";
-  await check("sin fallos HTTP o de descarga inesperados", async () => assert.deepEqual(report.networkErrors, []));
+  await check("sin fallos HTTP o de descarga inesperados", async () => {
+    assert.deepEqual(report.networkErrors, []);
+    for (const cancelled of report.cancelledNifti) {
+      assert(report.niftiDownloads.some((download) => download.path === cancelled.path && download.finishedAt >= cancelled.abortedAt),
+        `Descarga cancelada sin reemplazo completado: ${cancelled.url}`);
+    }
+  });
   await check("sin errores JavaScript o de consola inesperados", async () => {
     const unexpected = report.consoleErrors.filter((error) => !(observed404.has(error.url) && /^Failed to load resource: the server responded with a status of 404/.test(error.text)));
     assert.deepEqual(unexpected, []);
