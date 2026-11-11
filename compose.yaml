@@ -2,7 +2,7 @@ name: cerberus
 
 x-backend: &backend
   image: cerberus-backend:local
-  build:
+  build: &backend-build
     context: .
     dockerfile: docker/backend.Dockerfile
   # ANTs del lockfile solo publica wheel Linux x86_64 (en Apple Silicon corre con Rosetta).
@@ -34,17 +34,51 @@ x-backend: &backend
     MPLCONFIGDIR: /tmp/matplotlib
     XDG_CACHE_HOME: /tmp/cache
   volumes: &backend-volumes
-    - type: bind
+    - &data-mount
+      type: bind
       source: ${CERBERUS_DATA_PATH:-./Data}
       target: /app/Data
-    - type: bind
+    - &storage-mount
+      type: bind
       source: ${CERBERUS_STORAGE_PATH:-./storage}
       target: /app/storage
-    - type: bind
+    - &models-mount
+      type: bind
       source: ${CERBERUS_MODELS_PATH:-./models}
       target: /app/models
 
 services:
+  setup-secrets:
+    image: cerberus-backend:local
+    build: *backend-build
+    platform: linux/amd64
+    user: "0:0"
+    entrypoint: [python, -m, cerberus_api.container_setup]
+    command: [prepare]
+    network_mode: none
+    # Opcional: adopta las claves de instalaciones anteriores sin exigir pasos en un clon nuevo.
+    env_file:
+      - path: ${CERBERUS_LEGACY_AUTH_ENV_FILE:-.env.auth}
+        required: false
+    environment:
+      CERBERUS_DEFAULT_ADMIN_USERNAME: "${CERBERUS_KEYCLOAK_ADMIN_USERNAME:-cerberus-admin}"
+      CERBERUS_SEED_ADMIN_USERNAME: "${CERBERUS_KEYCLOAK_ADMIN_USERNAME:-}"
+      CERBERUS_SEED_AUTH_DB_PASSWORD: "${CERBERUS_AUTH_DB_PASSWORD:-}"
+      CERBERUS_SEED_KEYCLOAK_ADMIN_PASSWORD: "${CERBERUS_KEYCLOAK_ADMIN_PASSWORD:-}"
+      CERBERUS_SEED_OIDC_CLIENT_SECRET: "${CERBERUS_OIDC_CLIENT_SECRET:-}"
+      CERBERUS_CONTAINER_UID: "${CERBERUS_UID:-1000}"
+      CERBERUS_CONTAINER_GID: "${CERBERUS_GID:-1000}"
+    volumes:
+      - auth-db-secret:/run/cerberus/db
+      - keycloak-admin-secret:/run/cerberus/admin
+      - oidc-client-secret:/run/cerberus/client
+      - auth-db-data:/run/cerberus-existing-db:ro
+      - *storage-mount
+      - *models-mount
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    cap_add: [CHOWN]
+
   redis:
     image: redis:7.4-alpine@sha256:8da19c7399dca900c6822a1cf30f9d2285585e2c4b457ff4095b0f4500054d3f
     user: redis
@@ -64,10 +98,29 @@ services:
 
   api:
     <<: *backend
+    environment:
+      <<: *backend-environment
+      CERBERUS_AUTH_MODE: oidc
+      CERBERUS_APP_ORIGIN: "${CERBERUS_APP_ORIGIN:-http://localhost:${CERBERUS_HTTP_PORT:-8080}}"
+      CERBERUS_OIDC_ISSUER_URL: "http://localhost:${CERBERUS_KEYCLOAK_HTTP_PORT:-8081}/realms/cerberus"
+      CERBERUS_OIDC_BACKCHANNEL_URL: http://keycloak:8080/realms/cerberus
+      CERBERUS_OIDC_CLIENT_ID: cerberus-web
+      CERBERUS_OIDC_CLIENT_SECRET_FILE: /run/cerberus/client/secret
+      CERBERUS_AUTH_COOKIE_SECURE: "false"
+      CERBERUS_AUTH_IDLE_TIMEOUT_SECONDS: "${CERBERUS_AUTH_IDLE_TIMEOUT_SECONDS:-1800}"
+      CERBERUS_AUTH_ABSOLUTE_TIMEOUT_SECONDS: "${CERBERUS_AUTH_ABSOLUTE_TIMEOUT_SECONDS:-3600}"
+      CERBERUS_CORS_ORIGINS: '["${CERBERUS_APP_ORIGIN:-http://localhost:${CERBERUS_HTTP_PORT:-8080}}"]'
+    volumes:
+      - *data-mount
+      - *storage-mount
+      - *models-mount
+      - oidc-client-secret:/run/cerberus/client:ro
     mem_limit: "${CERBERUS_API_MEM_LIMIT:-2g}"
     depends_on:
       redis:
         condition: service_healthy
+      setup-identity:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=3)"]
       interval: 10s
@@ -91,6 +144,103 @@ services:
       timeout: 20s
       retries: 3
       start_period: 40s
+
+  auth-db:
+    image: postgres:18-alpine@sha256:10a5c69a83035ab5239f5620d708520e8b28f5aa1f2b20143e6024532edadfb5
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD_FILE: /run/cerberus/db/secret
+    volumes:
+      - auth-db-data:/var/lib/postgresql
+      - auth-db-secret:/run/cerberus/db:ro
+    networks: [identity-db]
+    depends_on:
+      setup-secrets:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    mem_limit: 512m
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U keycloak -d keycloak"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.8.1@sha256:3f3c5f8e03c614774b4bd9173b88391fefa4153bfc010d8012d59ad825377332
+    entrypoint:
+      - /bin/bash
+      - -ec
+      - |
+        set -euo pipefail
+        KCRAW_DB_PASSWORD="$$(</run/cerberus/db/secret)"
+        KC_BOOTSTRAP_ADMIN_PASSWORD="$$(</run/cerberus/admin/secret)"
+        KC_BOOTSTRAP_ADMIN_USERNAME="$$(</run/cerberus/admin/username)"
+        CERBERUS_OIDC_CLIENT_SECRET="$$(</run/cerberus/client/secret)"
+        export KCRAW_DB_PASSWORD KC_BOOTSTRAP_ADMIN_PASSWORD KC_BOOTSTRAP_ADMIN_USERNAME CERBERUS_OIDC_CLIENT_SECRET
+        exec /opt/keycloak/bin/kc.sh "$$@"
+      - --
+    command: [start-dev, --import-realm]
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://auth-db:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_HOSTNAME: "http://localhost:${CERBERUS_KEYCLOAK_HTTP_PORT:-8081}"
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
+      KC_HOSTNAME_STRICT: "true"
+      KC_HEALTH_ENABLED: "true"
+      KC_METRICS_ENABLED: "true"
+      CERBERUS_APP_ORIGIN: "${CERBERUS_APP_ORIGIN:-http://localhost:${CERBERUS_HTTP_PORT:-8080}}"
+    ports:
+      - "127.0.0.1:${CERBERUS_KEYCLOAK_HTTP_PORT:-8081}:8080"
+    volumes:
+      - keycloak-data:/opt/keycloak/data
+      - auth-db-secret:/run/cerberus/db:ro
+      - keycloak-admin-secret:/run/cerberus/admin:ro
+      - oidc-client-secret:/run/cerberus/client:ro
+      - ./docker/keycloak/realm.json:/opt/keycloak/data/import/cerberus-realm.json:ro
+      - ./docker/keycloak/themes/cerberus:/opt/keycloak/themes/cerberus:ro
+    networks: [default, identity-db]
+    depends_on:
+      auth-db:
+        condition: service_healthy
+    restart: unless-stopped
+    mem_limit: 1g
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    healthcheck:
+      test:
+        - CMD
+        - bash
+        - -ec
+        - >-
+          exec 3<>/dev/tcp/127.0.0.1/9000;
+          printf 'GET /health/ready HTTP/1.0\r\nHost: localhost\r\n\r\n' >&3;
+          IFS= read -r status <&3;
+          [[ "$$status" == *" 200 "* ]]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 60s
+
+  setup-identity:
+    image: cerberus-backend:local
+    build: *backend-build
+    platform: linux/amd64
+    entrypoint: [python, -m, cerberus_api.container_setup]
+    command: [sync]
+    environment:
+      CERBERUS_APP_ORIGIN: "${CERBERUS_APP_ORIGIN:-http://localhost:${CERBERUS_HTTP_PORT:-8080}}"
+    volumes:
+      - keycloak-admin-secret:/run/cerberus/admin:ro
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
 
   frontend:
     image: cerberus-frontend:local
@@ -116,3 +266,12 @@ services:
 
 volumes:
   redis-data:
+  auth-db-data:
+  keycloak-data:
+  auth-db-secret:
+  keycloak-admin-secret:
+  oidc-client-secret:
+
+networks:
+  identity-db:
+    internal: true

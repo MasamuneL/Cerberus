@@ -32,6 +32,20 @@ Abre las PNG y revísalas: **no te fíes solo de los ✅**. Leer píxeles del ca
 
 ## 2. Estado actual
 
+**A1c · Compose con un comando · 2026-11-11:** rama `feat/A1c-compose-one-command`, lista para integrar.
+`docker compose up -d --build` incluye OIDC, PostgreSQL/Keycloak y demo/demo; ya no requiere bootstrap,
+overlay ni sincronización manual. Dos inicializadores generan/adoptan secretos en volúmenes separados,
+sin reemplazarlos, y sincronizan cuenta/presentación/callback antes de que arranque la API.
+`CERBERUS_HTTP_PORT=8082` deriva origen y callback automáticamente; no hace falta editar Keycloak.
+Una `.env.auth` existente se adopta automáticamente. API no monta claves administrativas ni de PostgreSQL.
+Pruebas: 799 rápidas, 5 slow excluidas, Ruff/formato/pyright y build correctos; smoke Docker autenticado
+15/15, 11 capturas, ambas resoluciones revisadas. Clon aislado sin claves previas: login/visor/logout,
+reinicio y cambio de puerto conservando claves, contraseña propia, reader, estado deshabilitado y
+acciones requeridas. El smoke admite `CERBERUS_QA_STORAGE_STATE` con sesión real; no añade bypass.
+Docker local ya migrado al Compose nuevo: seis servicios healthy y dos setup con salida 0. Se conservaron
+las tres claves anteriores, cuentas/roles/credenciales y 46 resultados. QA real local: demo/demo,
+analyst, visor 001/t0, GTV 33.14 cm³ y logout 401. Pendiente integrar PR y registrar CP-051.
+
 **CP-050 · Docker local actualizado · 2026-11-11:** API, worker y frontend reconstruidos desde
 `main` (`42d4358`); Keycloak recreado con seed y tema del checkout principal.
 Compose y `.env.auth` de ejecución están ahora en la raíz del repositorio, sin depender de carpetas

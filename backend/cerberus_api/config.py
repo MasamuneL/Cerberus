@@ -50,6 +50,18 @@ def _is_loopback(host: str) -> bool:
         return False
 
 
+def validate_app_origin(value: str) -> SplitResult:
+    """Origen exacto compartido por la API y el aprovisionamiento del cliente OIDC."""
+    if "*" in value:
+        raise ValueError("CERBERUS_APP_ORIGIN requiere un origen exacto sin comodines")
+    origin = _parse_auth_url(value)
+    if origin.path:
+        raise ValueError("CERBERUS_APP_ORIGIN debe ser un origen sin ruta ni barra final")
+    if origin.scheme == "http" and not _is_loopback(origin.hostname or ""):
+        raise ValueError("CERBERUS_APP_ORIGIN requiere HTTPS salvo HTTP de loopback")
+    return origin
+
+
 class Settings(BaseSettings):
     """Ajustes leídos del entorno (prefijo `CERBERUS_`)."""
 
@@ -75,12 +87,8 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def _validate_auth(self) -> Self:
         """Configuración OIDC explícita; nunca degrada automáticamente al modo sin auth."""
-        origin = _parse_auth_url(self.app_origin)
-        if origin.path:
-            raise ValueError("CERBERUS_APP_ORIGIN debe ser un origen sin ruta ni barra final")
+        origin = validate_app_origin(self.app_origin)
         loopback_http = origin.scheme == "http" and _is_loopback(origin.hostname or "")
-        if origin.scheme == "http" and not loopback_http:
-            raise ValueError("CERBERUS_APP_ORIGIN requiere HTTPS salvo HTTP de loopback")
         if not self.auth_cookie_secure and not loopback_http:
             raise ValueError("Una cookie insegura solo se admite con origen HTTP de loopback")
         if self.auth_absolute_timeout_seconds < self.auth_idle_timeout_seconds:

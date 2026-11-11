@@ -100,21 +100,23 @@ Con Compose, nginx reenvía `/api` al puerto 8000 interno del contenedor, que no
 
 ### Opción rápida: Docker Desktop (recomendada para usarla)
 
-Requisitos: [Docker Desktop](https://www.docker.com/products/docker-desktop/) con **≥ 8 GB de RAM** asignados
+Requisitos: [Docker Desktop](https://www.docker.com/products/docker-desktop/) con Compose **≥ 2.24** y **≥ 8 GB de RAM** asignados
 (Settings → Resources) y la muestra `Data/001` descargada con Git LFS. En Mac con Apple Silicon activa
 *Use Rosetta for x86_64/amd64 emulation* (Settings → General): el backend es `linux/amd64` porque ANTs no publica
 wheel ARM para Linux.
 
 ```bash
 docker compose up -d --build      # primer build: varios minutos (torch CPU + ANTs)
-docker compose ps                 # redis, api, worker y frontend deben estar "healthy"
+docker compose ps -a              # seis servicios healthy; setup-secrets y setup-identity terminan con código 0
 open http://localhost:8080        # la app
 docker compose logs -f worker     # ver jobs de segmentación / áreas
-docker compose down               # parar (añade -v para borrar también la cola de Redis)
+docker compose down               # parar conservando cuentas, claves y resultados
 ```
 
-En Docker Desktop aparece el proyecto **cerberus** con 4 contenedores. Solo se publica `127.0.0.1:8080` (nginx):
-`/api` se reenvía a la API y Redis queda en la red interna. `Data/`, `storage/` y `models/` se montan desde el repo,
+El comando incluye login, Keycloak, PostgreSQL y la cuenta **demo / demo**; no requiere Python en el host,
+bootstrap manual, overlay ni configuración en la consola de Keycloak. En Docker Desktop aparece el proyecto
+**cerberus** con seis servicios persistentes y dos inicializadores que terminan con código 0. Se publican
+`127.0.0.1:8080` (nginx) y `127.0.0.1:8081` (Keycloak); `/api` se reenvía a la API y Redis queda en la red interna. `Data/`, `storage/` y `models/` se montan desde el repo,
 así que los resultados se comparten con el modo de desarrollo.
 
 Si el frontend reinicia con `exec /usr/local/bin/cerberus-nginx: no such file or directory`, puede haberse
@@ -126,9 +128,9 @@ git pull --ff-only
 docker compose up -d --build --force-recreate frontend
 ```
 
-Si usas autenticación, conserva `--env-file .env.auth -f compose.yaml -f compose.auth.yaml` en el comando
-Compose. Abre `http://localhost:8080`. Si aparece «Servicio no disponible», comprueba
-`docker compose ps` y `docker compose logs --tail=100 api redis frontend` con esos mismos archivos:
+Los comandos anteriores con `--env-file .env.auth -f compose.yaml -f compose.auth.yaml` siguen siendo válidos,
+pero ya no son necesarios. Abre `http://localhost:8080`. Si aparece «Servicio no disponible», comprueba
+`docker compose ps -a` y `docker compose logs --tail=100 setup-secrets setup-identity api frontend`:
 la pantalla indica un fallo al consultar configuración o sesión, no identifica por sí sola la causa.
 
 | Variable (opcional) | Default | Para qué |
@@ -151,64 +153,43 @@ Smoke test de la versión Docker: `cd tools/e2e && npm ci && CERBERUS_UI=http://
 ### Identidad, sesiones y permisos de la demo (A1–A4)
 
 **Acceso a la demo local:** usuario `demo`, contraseña `demo`.
-Keycloak crea esa cuenta automáticamente al importar un realm nuevo, con el rol `analyst` de
-`cerberus-web`. Son credenciales públicas para la demo local, sin permisos administrativos de Keycloak.
-Si el realm ya existía, `sync_realm.py` crea la cuenta solo si falta; conserva la contraseña, los roles
-y el estado de una cuenta `demo` existente, aunque su administrador los haya cambiado.
+Compose genera tres claves aleatorias una sola vez en volúmenes locales separados y prepara Keycloak
+antes de arrancar la API. PostgreSQL recibe únicamente su clave, la API únicamente el secreto del cliente,
+y Keycloak las claves que necesita. No se versionan ni se imprimen. `setup-identity` crea la cuenta de
+prueba con rol `analyst` si falta; una cuenta existente conserva contraseña, roles y estado.
 
-El overlay añade **Keycloak 26.8.1 en http://localhost:8081** y PostgreSQL 18 privado. Cerberus conserva
-**http://localhost:8080**. La API protege catálogo, archivos y mutaciones con sesiones y permisos. La pantalla
-de acceso permite iniciar sesión, muestra errores recuperables y explica la política de la demo.
-El lector consulta estudios; solo el analista puede subir y procesar. Jobs e ingestas pendientes son privados
-para la identidad que los creó, también tras un nuevo login; los estudios finales forman un catálogo compartido.
+Los volúmenes `auth-db-data`, `keycloak-data`, `auth-db-secret`, `keycloak-admin-secret` y
+`oidc-client-secret` conservan identidad y claves entre arranques. `docker compose down` los mantiene;
+`down -v` los elimina. Las imágenes y resultados de estudios siguen en los montajes habituales.
 
-```bash
-uv run python tools/auth/bootstrap.py
-docker compose --env-file .env.auth -f compose.yaml -f compose.auth.yaml up -d --build
-# Cuando Keycloak esté listo, aplica también los cambios a un realm existente:
-uv run python tools/auth/sync_realm.py
-docker compose --env-file .env.auth -f compose.yaml -f compose.auth.yaml ps
-```
+Si ya utilizabas `.env.auth`, consérvalo en la raíz: el inicializador lo lee como fuente opcional y adopta
+los mismos secretos. No genera claves nuevas para una base existente cuando faltan las anteriores ni
+sobrescribe claves persistidas. El overlay `compose.auth.yaml` queda como compatibilidad. Los scripts
+`tools/auth/bootstrap.py` y `sync_realm.py` siguen disponibles para operaciones manuales, sin ser pasos
+necesarios del arranque normal.
 
-El bootstrap crea `.env.auth` con permisos `0600` y tres secretos aleatorios distintos; no los imprime
-ni sobrescribe un archivo existente. Si se proporcionan `CERBERUS_AUTH_DB_PASSWORD`,
-`CERBERUS_KEYCLOAK_ADMIN_PASSWORD` o `CERBERUS_OIDC_CLIENT_SECRET` en el entorno, los usa al crear el archivo.
-Este generador exige al menos 32 caracteres URL-safe (letras, números, `_` y `-`), evitando interpolación
-accidental de Compose. `.env.auth` está ignorado por Git. Conserva el archivo para los siguientes arranques:
-cambiar su contraseña de base de datos no cambia automáticamente la de un volumen existente.
-
-En http://localhost:8081/admin, entra como `cerberus-admin` con la contraseña administrativa del archivo
-local. Selecciona el realm **cerberus**, crea las cuentas desde **Users** y asigna en **Role mapping** uno
-de los roles del cliente **cerberus-web**: `reader` o `analyst`. Este paso solo hace falta para cuentas
-adicionales: `demo` se aprovisiona automáticamente. El registro público está desactivado y los roles
-administrativos de Keycloak no conceden permisos de Cerberus.
-Los usuarios creados conservan sus contraseñas al repetir el bootstrap o reiniciar servicios.
-
-El cliente exige Authorization Code con PKCE S256 y registra exactamente
-`http://localhost:8080/api/auth/callback`. El claim `cerberus_roles` del ID Token contiene únicamente roles
-de `cerberus-web`. El password grant, el flujo implícito y las cuentas de servicio del cliente están desactivados.
-En desarrollo, **5173** sigue siendo Vite y **8000** la API nativa; para registrar el callback de Vite en una
-instalación nueva usa `CERBERUS_APP_ORIGIN=http://localhost:5173` al ejecutar el overlay. La importación de
-un realm existente se omite para conservar sus cuentas: los cambios posteriores de redirect URIs se hacen
-explícitamente desde la consola, sin recrear el realm.
-
-El tema `cerberus` hereda los formularios de `keycloak.v2`: conserva sus controles, validación y flujo de
-contraseñas, con presentación Cerberus y ayuda en español. El overlay monta el tema en modo lectura.
-Tras actualizar el overlay, vuelve a ejecutar `up -d` para incorporar el montaje antes de sincronizar.
-`uv run python tools/auth/sync_realm.py` lee `.env.auth` (o `--env-file RUTA`) y permite que el entorno
-sobrescriba el usuario administrativo, su contraseña o `CERBERUS_KEYCLOAK_HTTP_PORT`. No acepta contraseñas
-en argumentos ni imprime credenciales. Repetirlo no produce cambios adicionales: actualiza nombre de
-la demo, tema, `rememberMe`, activación de idiomas, español por defecto y la unión de idiomas existentes
-con español/inglés; además importa la cuenta `demo` con la política `SKIP` de Keycloak. No modifica cuentas
-existentes, sus contraseñas o roles, clientes, redirect URIs ni límites de sesión,
-incluidos los de «Recordarme» configurados por el administrador. Si falla, comprueba que Keycloak esté
-listo y repite el comando; no borres el realm ni sus volúmenes.
-
-Para habilitar la cuenta en una instalación anterior, con Keycloak listo, basta ejecutar:
+Si 8080 está ocupado, por ejemplo por `openshell-gatew`, puedes arrancar en otro puerto:
 
 ```bash
-uv run python tools/auth/sync_realm.py
+CERBERUS_HTTP_PORT=8082 docker compose up -d --build
 ```
+
+Abre entonces **http://localhost:8082**. Para conservarlo entre terminales, escribe
+`CERBERUS_HTTP_PORT=8082` en `.env` y utiliza el comando normal. El origen público y el callback exacto
+se derivan de ese puerto y se actualizan automáticamente, incluso con un realm ya existente;
+no necesitas editar Keycloak. Un `CERBERUS_APP_ORIGIN` explícito tiene prioridad y debe corresponder
+al origen que realmente usa el navegador. Las opciones públicas de `.env.auth` solo participan en la
+interpolación si se pasa ese archivo explícitamente con `--env-file`.
+
+El cliente exige Authorization Code con PKCE S256. `setup-identity` gestiona solo `redirectUris` y
+`webOrigins` de `cerberus-web`, además de la presentación del realm y la cuenta demo con SKIP.
+Conserva secreto del cliente, PKCE, límites de sesión, cuentas y configuración ajena. La consola
+administrativa de Keycloak no es necesaria para usar la cuenta de prueba; esta cuenta no tiene roles
+administrativos. El registro público y el password grant del cliente están desactivados.
+
+El lector consulta estudios; solo el analista puede subir y procesar. Jobs e ingestas pendientes son
+privados para su identidad; los estudios finales forman un catálogo compartido. El modo de desarrollo
+nativo con Vite sigue disponible; el Compose predeterminado utiliza autenticación.
 
 «Recordarme» conserva la sesión de Keycloak en ese navegador según sus límites de proveedor. El login de
 Cerberus mantiene `prompt=login`, por lo que volver a entrar sigue exigiendo credenciales aunque se marque
@@ -216,21 +197,20 @@ la casilla. Esta opción no amplía la sesión de Cerberus: sus límites predete
 **1800 s sin actividad y 3600 s en total**. Cerrar Cerberus invalida su sesión local; no promete cerrar
 las sesiones de Keycloak o de otras aplicaciones.
 
-| Variable del overlay | Default |
+| Configuración de identidad en Compose | Default |
 |---|---|
 | `CERBERUS_KEYCLOAK_HTTP_PORT` | `8081`, solo loopback |
 | `CERBERUS_KEYCLOAK_ADMIN_USERNAME` | `cerberus-admin` |
-| `CERBERUS_APP_ORIGIN` | `http://localhost:8080` |
+| `CERBERUS_APP_ORIGIN` | `http://localhost:${CERBERUS_HTTP_PORT:-8080}` |
 | Issuer público | `http://localhost:8081/realms/cerberus` |
 | Backchannel de API en Docker | `http://keycloak:8080/realms/cerberus` |
 
 La metadata conserva el issuer público y ofrece token/JWKS por la red interna; no se desactivan las
 validaciones OIDC. PostgreSQL no publica puertos y solo comparte su red privada con Keycloak. Los datos
 de identidad viven en volúmenes `auth-db-data` y `keycloak-data`; el catálogo y las imágenes siguen en disco.
-Para parar, usa el mismo comando de Compose con ambos archivos y `down`, sin `-v` si quieres conservar
-las cuentas. `start-dev` y HTTP pertenecen exclusivamente a esta demo local.
+Para parar, usa `docker compose down`, sin `-v` si quieres conservar cuentas y claves. `start-dev` y HTTP pertenecen exclusivamente a esta demo local.
 
-Con el overlay activo, puedes iniciar sesión en **http://localhost:8080/api/auth/login**. FastAPI usa
+Con Compose, puedes iniciar sesión en **http://localhost:8080/api/auth/login**. FastAPI usa
 Authorization Code + PKCE S256 con Authlib y verifica firma RS256, issuer, audience, expiración, nonce
 y `azp` antes de crear la sesión. Una cuenta sin roles de Cerberus recibe 403. El navegador conserva
 solo una cookie opaca `HttpOnly`/`SameSite=Lax`, sin tokens OIDC en almacenamiento del navegador.
@@ -238,7 +218,7 @@ solo una cookie opaca `HttpOnly`/`SameSite=Lax`, sin tokens OIDC en almacenamien
 `GET /api/auth/me` devuelve roles, vencimiento efectivo y token CSRF. `POST /api/auth/logout` requiere
 `Origin` de la app y ese token en `X-CSRF-Token`: invalida Redis y borra cookies; cierra la sesión de
 Cerberus, no la de otras aplicaciones del proveedor. La inactividad caduca a 30 minutos y la duración
-absoluta a 60; el overlay admite `CERBERUS_AUTH_IDLE_TIMEOUT_SECONDS` y
+absoluta a 60; Compose admite `CERBERUS_AUTH_IDLE_TIMEOUT_SECONDS` y
 `CERBERUS_AUTH_ABSOLUTE_TIMEOUT_SECONDS` para configurarlas. Redis caído produce 503; Keycloak caído
 impide nuevos logins, mientras las sesiones válidas continúan hasta vencer. Respuestas de auth: `no-store`.
 En modo local `off`, `/api/auth/config` informa el modo y las otras rutas de auth devuelven 404.

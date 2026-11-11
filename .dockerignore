@@ -9,6 +9,9 @@
 !frontend/**
 !docker/
 !docker/**
+!tools/
+!tools/auth/
+!tools/auth/**
 
 # Los datos, modelos, entornos locales y secretos nunca forman parte del contexto.
 Data/

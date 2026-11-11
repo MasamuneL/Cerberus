@@ -41,6 +41,11 @@ ambos tamaños cubren pestañas, tablas, datos reales, estudio distinto, aviso d
 
 Con Docker Compose levantado y la muestra `Data/001` descargada mediante Git LFS:
 
+El Compose predeterminado incluye login. Para este smoke, proporciona un archivo `storageState` de
+Playwright obtenido mediante login real de un analista, usando `CERBERUS_QA_STORAGE_STATE=/ruta/estado.json`.
+Se aplica también al contexto de caché. El archivo contiene cookies de sesión: mantenlo fuera del repositorio
+con permisos 0600 y elimina la sesión/archivo al terminar. El runner no desactiva autenticación ni permisos.
+
 ```bash
 cd tools/e2e
 npm ci
