@@ -32,6 +32,16 @@ Abre las PNG y revísalas: **no te fíes solo de los ✅**. Leer píxeles del ca
 
 ## 2. Estado actual
 
+**F12 · integración PR #15 · 2026-11-11 · en validación:** worktree aislado
+`/private/tmp/cerberus-pr15`, rama `feat/viewer-3d-integration`, base main CP-051.
+Se incorpora la contribución de BiomedicLJZ (`bbb72ed`) conservando su historial. Superficie GTV,
+máscara cerebral y controles de render/cámara/corte. Corregidos pérdida de focos por remuestreo,
+suavizado de componentes mínimos, liberación de mallas y compatibilidad de las pruebas de auth.
+La modulación exige dimensiones y affine compatibles; si no, se conserva la anatomía y se explica
+el motivo en el panel. Revisión independiente sin bloqueantes pendientes; Ruff/formato/Pyright,
+799 tests rápidos (5 slow excluidos), build y regresiones Node correctos. QA visual final en curso;
+no declarar integrado ni actualizar Docker hasta registrar la evidencia final. D3 se desarrolla aparte.
+
 **CP-051 · A1c · Compose con un comando · 2026-11-11:** integrado el
 [PR #14](https://github.com/MasamuneL/Cerberus/pull/14), merge `0c03465`.
 `docker compose up -d --build` incluye OIDC, PostgreSQL/Keycloak y demo/demo; ya no requiere bootstrap,

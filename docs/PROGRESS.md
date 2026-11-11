@@ -7,6 +7,7 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 
 | Ticket | Estado | Rama | Commit | Fecha | Responsable / herramienta | Notas |
 |---|---|---|---|---|---|---|
+| F12 · vista 3D y superficie GTV (§20) | 🟡 | feat/viewer-3d-integration | — | 2026-11-11 | BiomedicLJZ / Codex | PR #15 con correcciones y QA final en curso |
 | A1c · Compose con un comando (§17) | ✅ | feat/A1c-compose-one-command | 0c03465 | 2026-11-11 | Codex | PR #14; 799 tests, smoke autenticado 15/15 y migración local; CP-051 |
 | A1b · cuenta de demo automática (§17) | ✅ | feat/A1-demo-account | 47c02c2 | 2026-11-11 | Codex | PR #13; 776 tests y QA real de importación/login/preservación; CP-049 |
 | B13 · Métricas y guía de segmentación | ✅ | feat/B13-segmentation-metrics | d68262a | 2026-11-10 | Codex | PR #11; integrado con A4, 766 tests y visual 33/33; CP-046 |
