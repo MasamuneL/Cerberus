@@ -4,7 +4,7 @@
 > checkpoint. El historial completo está en [`PROGRESS.md`](PROGRESS.md) y el alcance y los contratos en
 > [`PLAN_MVP.md`](PLAN_MVP.md). Las reglas de trabajo están en [`../AGENTS.md`](../AGENTS.md).
 
-**Última actualización:** 2026-11-10 · último checkpoint: CP-047 · rama base: `main`
+**Última actualización:** 2026-11-11 · último checkpoint: CP-048 · rama base: `main`
 
 ## 1. Arranque rápido
 
@@ -32,7 +32,8 @@ Abre las PNG y revísalas: **no te fíes solo de los ✅**. Leer píxeles del ca
 
 ## 2. Estado actual
 
-**D2b · corrección Windows · 2026-11-11:** rama `feat/D2b-windows-entrypoint`.
+**CP-048 · D2b · corrección Windows · 2026-11-11:** integrado el
+[PR #12](https://github.com/MasamuneL/Cerberus/pull/12), merge `7644d87`.
 Reproducido el error `exec /usr/local/bin/cerberus-nginx: no such file or directory`
 con un Dockerfile CRLF: el heredoc conserva CR en el shebang. El build normaliza el script
 y `.gitattributes` fija LF para los Dockerfiles; README incluye reconstrucción y diagnóstico.
@@ -47,7 +48,8 @@ para exigir descargas posteriores completas, sin ignorar errores HTTP ni cancela
 cinco casos positivos/negativos y repetición completa correctos. Diagnóstico intermedio interrumpido
 tras localizar el fallo del runner; la aprobación corresponde a la repetición final.
 La pantalla «Servicio no disponible» del profesor requiere sus logs para determinar la causa.
-Pendiente integrar PR y registrar checkpoint tras merge.
+Árbol del merge idéntico al head validado `027c6c6`. Siguiente paso: actualizar y reconstruir el
+frontend en Windows; si persiste el error de sesión, recoger logs del equipo afectado.
 
 **CP-047 · 2026-11-10:** README amplía la explicación del mapeo de Brodmann: herramientas,
 registro, exclusión GTV+5 mm, transformaciones inversas, fórmulas y límites. Hallazgo pendiente:

@@ -780,3 +780,24 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
   después de localizarlos. El runner ahora registra cancelaciones NIfTI y exige un reemplazo
   posterior completo; cinco casos positivos/negativos confirman que errores HTTP, descargas
   antiguas, otros archivos y falta de reemplazo siguen bloqueando. Repetición completa correcta.
+
+### CP-048 · 2026-11-11 · D2b: Docker compatible con CRLF de Windows
+
+- **Integración autorizada tras QA:** [PR #12](https://github.com/MasamuneL/Cerberus/pull/12),
+  merge `7644d87`; árbol idéntico al head validado `027c6c6`.
+- `docker/frontend.Dockerfile` normaliza el script de entrada; `.gitattributes` conserva LF
+  en Dockerfiles. README documenta reconstrucción y diagnóstico de sesión. Build completo LF/CRLF,
+  arranque sin privilegios con raíz de solo lectura, `nginx -t` y checkout con autocrlf correctos.
+- **QA:** Ruff/formato/pyright, 766 tests rápidos (5 slow excluidos), build frontend y 15 pruebas
+  Node correctos. Visual Vite 33/33, 14 auditorías axe sin violaciones automáticas y 27 capturas;
+  smoke Docker 15/15 sin pendientes y 11 capturas. Revisadas ambas resoluciones. Auth UI 12/12 y
+  continuidad/sesión 8/8; Keycloak real: login, `prompt=login`, catálogo autenticado en imagen CRLF
+  y logout que devuelve sesión/catálogo a 401.
+- El smoke detectó cancelaciones previstas al llegar reportes de capas. Se corrigió el runner
+  para exigir un reemplazo posterior completo por volumen, con cinco casos positivos/negativos.
+  Se conserva la evidencia del fallo inicial y la interrupción diagnóstica en la entrada anterior;
+  la aprobación final corresponde a una ejecución completa posterior, sin relajar errores HTTP.
+- No se ejecutaron modelos, subidas reales ni Windows nativo: se reprodujo CRLF y autocrlf
+  desde macOS/Docker. La demo existente conserva sus contenedores; solo se usaron servicios QA aislados.
+- **Siguiente paso:** actualizar el repositorio y reconstruir el frontend del profesor en Windows.
+  La segunda captura requiere logs si persiste «Servicio no disponible». A5 y ola P siguen pendientes.
