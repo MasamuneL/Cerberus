@@ -997,3 +997,29 @@ No se muestran umbrales universales de aprobación ni cifras de interobservador 
 
 Referencias metodológicas: [MONAI](https://monai.readthedocs.io/en/stable/metrics.html),
 [Metrics Reloaded](https://pmc.ncbi.nlm.nih.gov/articles/PMC11182665/).
+
+
+## 19. D3 · Instalación y distribución sencilla (planificado)
+
+Solicitud del 2026-11-11: simplificar la instalación para probadores y preparar ejecución por Sol
+con subagentes según cada tarea. Plan completo, dependencias y aceptación en
+[`D3 — instalación sencilla`](superpowers/plans/2026-11-11-D3-simple-setup.md).
+Rama nueva: `feat/D3-simple-setup`. Esta sección registra alcance futuro; no cambia los contratos §6/§7.
+
+| Ticket | Entregable | Dependencias principales | Estado |
+|---|---|---|---|
+| D3a | Contrato de paquete, configuración y migración | A1c | Planificado |
+| D3b | Imágenes versionadas y release autocontenida | D3a | Planificado |
+| D3c | Muestra automática con integridad y conservación | D3a; D3b para publicación | Planificado |
+| D3d | Lanzadores Windows/macOS/Linux y puertos | D3a, D3b, D3c, D3e | Planificado |
+| D3e | Diagnóstico seguro | D3a | Planificado |
+| D3f | Versión visible y verificable | D3a, D3b | Planificado |
+| D3g | Actualización y recuperación conservando datos | D3b, D3d, D3e | Planificado |
+| D3h | QA de instalación, migración y artefactos | D3b–D3g; preparación desde D3a | Planificado |
+| D3i | Documentación orientada al usuario y entrega | D3a; cierre tras D3h | Planificado |
+
+Sol integra en la rama de la iniciativa y puede usar worktrees temporales por subagente.
+Los archivos compartidos tienen un único responsable; publicación y merge requieren QA del artefacto.
+Se conserva el acceso mediante Compose directo, la configuración previa y el modo de desarrollo.
+La distribución de la muestra exige verificar sus condiciones; soporte por plataforma requiere
+evidencia real. No incluye despliegue público ni sustituye la aceptación A5 o las correcciones de ola P.

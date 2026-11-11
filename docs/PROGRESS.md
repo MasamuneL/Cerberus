@@ -902,3 +902,14 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
 - Los archivos de sesión temporal y el proyecto QA aislado se eliminaron al terminar. Se conservaron
   todos los volúmenes locales de la aplicación. No se ejecutaron modelos, subidas ni suite Vite completa.
   A5 y ola P siguen pendientes. **Siguiente paso:** actualizar el clon del profesor y arrancar en 8082.
+
+
+### Planificado · 2026-11-11 · D3: simplificar instalación y distribución
+
+- Rama nueva `feat/D3-simple-setup`, base main CP-051 (`393e202`).
+- [Plan de ejecución por Sol](superpowers/plans/2026-11-11-D3-simple-setup.md): D3a–D3i,
+  dependencias, criterios de aceptación, delegación por olas y QA de artefactos.
+- Revisión independiente de riesgos incorporada: recursos de Keycloak, persistencia entre releases,
+  ambos puertos, muestra íntegra, diagnóstico sin secretos y límites de recuperación.
+- Entrega documental; implementación, CI, publicación y QA de aplicación pendientes.
+  No es un checkpoint de merge ni una funcionalidad disponible en main.

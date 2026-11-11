@@ -32,6 +32,14 @@ Abre las PNG y revísalas: **no te fíes solo de los ✅**. Leer píxeles del ca
 
 ## 2. Estado actual
 
+**Plan D3 · 2026-11-11 · pendiente de implementación:** rama `feat/D3-simple-setup`, creada
+desde main CP-051. El usuario solicitó planificar una instalación más sencilla y ejecución por Sol
+con subagentes por tarea. Ver [plan D3](superpowers/plans/2026-11-11-D3-simple-setup.md) y PLAN_MVP §19.
+Nueve tickets cubren distribución sin build, muestra, lanzadores, diagnóstico, versión visible,
+actualización/recuperación, QA y documentación. Solo se modifican documentos; no se han publicado
+imágenes ni releases, cambiado servicios ni implementado esas funcionalidades. Próximo paso al ejecutar:
+D3a, después las olas y propietarios definidos en el plan. CP-051 sigue siendo la última entrega integrada.
+
 **CP-051 · A1c · Compose con un comando · 2026-11-11:** integrado el
 [PR #14](https://github.com/MasamuneL/Cerberus/pull/14), merge `0c03465`.
 `docker compose up -d --build` incluye OIDC, PostgreSQL/Keycloak y demo/demo; ya no requiere bootstrap,
