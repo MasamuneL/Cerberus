@@ -107,3 +107,17 @@ expiración y coordinación entre pestañas. Solo un Chrome/SwiftShader de QA a 
 Estas pruebas de UI no validan Keycloak ni sustituyen el QA real con cuentas temporales. Los reportes y
 capturas se guardan bajo `shots/auth-ui/` y `shots/auth-session-ui/`, ignorados por Git. La entrega requiere
 además `verify.mjs`, smoke Docker y el flujo real con el proveedor, revisando capturas y fechas actuales.
+
+
+## Vista 3D y superficie GTV (F12)
+
+`npm run test:viewer` ejecuta sin navegador las regresiones geométricas y de ciclo de vida del visor:
+focos GTV pequeños aislados/junto a componentes mayores, affine, malla cerrada, restauración 2D y
+cancelación de la máscara cerebral al recargar secuencia, capas o estudio.
+
+Con API y Vite activos, `CERBERUS_UI=http://localhost:5186 npm run verify:3d` usa Chrome con los volúmenes
+reales de 001/t0. Comprueba superficie, modulación cerebral, controles/corte/cámara, visibilidad GTV,
+cambio de secuencia, vuelta a 2D y axe del panel nuevo a 1440×900 y 1280×800. Guarda capturas y reporte
+en `shots/viewer-3d/`; revisarlas manualmente. Ejecutar después de `verify.mjs`, nunca en paralelo con
+otro Chrome/SwiftShader. No hace subidas ni ejecuta trabajos/modelos. Requiere API local en modo off,
+igual que la suite Vite principal; las regresiones auth se ejecutan por separado.

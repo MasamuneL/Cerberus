@@ -2,11 +2,13 @@
   "name": "cerberus-e2e",
   "private": true,
   "type": "module",
-  "description": "Verificación visual de la UI con Playwright (Chrome instalado, headless, WebGL por SwiftShader)",
+  "description": "Verificaci\u00f3n visual de la UI con Playwright (Chrome instalado, headless, WebGL por SwiftShader)",
   "scripts": {
     "verify": "node verify.mjs",
     "test:auth": "node verify-auth-media.mjs && node verify-auth-session.mjs",
-    "verify:auth-ui": "node verify-auth-ui.mjs && node verify-auth-session-ui.mjs"
+    "verify:auth-ui": "node verify-auth-ui.mjs && node verify-auth-session-ui.mjs",
+    "test:viewer": "node verify-mask-surface.mjs && node verify-auth-media.mjs",
+    "verify:3d": "node verify-viewer-3d.mjs"
   },
   "dependencies": {
     "@axe-core/playwright": "4.14.0",
