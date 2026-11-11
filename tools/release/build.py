@@ -49,7 +49,13 @@ def release_manifest(version: str, revision: str, backend: str, frontend: str) -
             raise ValueError("Las imágenes requieren digest SHA-256")
         if ":latest@" in image:
             raise ValueError("No se permite latest en la distribución")
-    return {"format": 1, "version": version, "revision": revision, "images": {"backend": backend, "frontend": frontend}}
+    return {
+        "format": 1,
+        "state_format": 1,
+        "version": version,
+        "revision": revision,
+        "images": {"backend": backend, "frontend": frontend},
+    }
 
 
 def allowed_resource(name: str) -> bool:

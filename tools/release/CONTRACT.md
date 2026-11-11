@@ -9,7 +9,7 @@ El ZIP contiene compose.yaml generado de la raíz (JSON compatible con YAML), re
 SHA256SUMS, docker/keycloak/realm.json y tema completo, tools/setup, lanzadores e instrucciones.
 Imágenes backend/frontend fijadas por digest; api, worker e inicializadores comparten backend.
 Redis, PostgreSQL y Keycloak conservan exactamente los digests de la base. Las versiones de identidad
-no se actualizan junto con la aplicación. Metadatos: format=1, version, revision (SHA Git completo),
+no se actualizan junto con la aplicación. Metadatos: format=1, state_format=1 (compatibilidad del estado persistente), version, revision (SHA Git completo),
 images={backend,frontend}, sample opcional. No se aceptan latest ni referencias sin digest.
 
 La carpeta extraída es instalación persistente: Data/, storage/, models/ y .env local público.
