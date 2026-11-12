@@ -1012,12 +1012,12 @@ Esta fase no cambia los contratos §6/§7.
 | D3a | Contrato de paquete, configuración y migración | A1c | Implementado en rama; QA parcial |
 | D3b | Imágenes versionadas y release autocontenida | D3a | Implementado en rama; QA parcial |
 | D3c | Muestra automática con integridad y conservación | D3a; D3b para publicación | Implementado en rama; QA parcial |
-| D3d | Lanzadores Windows/macOS/Linux y puertos | D3a, D3b, D3c, D3e | En curso |
+| D3d | Lanzadores Windows/macOS/Linux y puertos | D3a, D3b, D3c, D3e | Implementado en rama; QA local aprobado |
 | D3e | Diagnóstico seguro | D3a | Implementado en rama; QA parcial |
 | D3f | Versión visible y verificable | D3a, D3b | Implementado en rama; QA parcial |
-| D3g | Actualización y recuperación conservando datos | D3b, D3d, D3e | En curso |
-| D3h | QA de instalación, migración y artefactos | D3b–D3g; preparación desde D3a | En curso |
-| D3i | Documentación orientada al usuario y entrega | D3a; cierre tras D3h | En curso |
+| D3g | Actualización y recuperación conservando datos | D3b, D3d, D3e | Implementado en rama; QA local aprobado |
+| D3h | QA de instalación, migración y artefactos | D3b–D3g; preparación desde D3a | QA local aprobado; matriz/publicación pendientes |
+| D3i | Documentación orientada al usuario y entrega | D3a; cierre tras D3h | Documentado; entrega pública pendiente |
 
 Sol integra en la rama de la iniciativa y puede usar worktrees temporales por subagente.
 Los archivos compartidos tienen un único responsable; publicación y merge requieren QA del artefacto.

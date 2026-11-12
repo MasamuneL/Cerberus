@@ -4,7 +4,7 @@
 > checkpoint. El historial completo está en [`PROGRESS.md`](PROGRESS.md) y el alcance y los contratos en
 > [`PLAN_MVP.md`](PLAN_MVP.md). Las reglas de trabajo están en [`../AGENTS.md`](../AGENTS.md).
 
-**Última actualización:** 2026-11-11 · último checkpoint: CP-051 · rama base: `main`
+**Última actualización:** 2026-11-12 · último checkpoint: CP-051 · rama base: `main`
 
 ## 1. Arranque rápido
 
@@ -32,14 +32,15 @@ Abre las PNG y revísalas: **no te fíes solo de los ✅**. Leer píxeles del ca
 
 ## 2. Estado actual
 
-**D3 · en implementación, sin merge · 2026-11-11:** rama `feat/D3-simple-setup`, actualizada desde
-origin al iniciar. D3a/b/c/e/f integrados en la rama; D3d y D3g en cierre mediante worktrees independientes.
-Ver [evidencia de ejecución y bloqueos](qa/D3_EXECUTION.md), [plan](superpowers/plans/2026-11-11-D3-simple-setup.md)
-y [guía de instalación](INSTALL.md). QA local aislado: 915 pruebas rápidas en la base integrada,
-visual 33/33, autenticación UI 20 escenarios y smoke Docker real 15/15; inferencia y conservación
-tras cambiar ambos puertos comprobadas. No se modificó Docker diario; no se publicaron imágenes,
-muestra ni releases. D3 no está aceptado: faltan cierre de recuperación, matriz real y QA de digests
-remotos del mismo commit. No anunciar un paquete descargable. CP-051 sigue siendo el último merge.
+**D3 · implementación en rama, sin merge · 2026-11-12:** `feat/D3-simple-setup`. Código D3a–D3g
+integrado mediante worktrees y subagentes; D3h con QA local aprobado y D3i documentado. Ver
+[evidencia y bloqueos](qa/D3_EXECUTION.md), [instalación](INSTALL.md) y [actualización/recuperación](D3_UPDATE.md).
+1016 pruebas rápidas, Ruff/formato/Pyright y build correctos; visual 33/33, 20 escenarios de auth UI,
+smoke real 15/15, inferencia y conservación de cuentas/secretos/resultados comprobados. Actualización,
+fallo posterior, retorno y restauración reales en proyectos QA separados; Compose 2.30 y 5.7 probados.
+Docker diario conserva sus contenedores. Sin publicación externa, release ni merge; CP-051 sigue siendo
+el último checkpoint integrado. Gates pendientes: muestra/GHCR públicos autorizados, matriz nativa,
+mediciones frías/picos y repetición sobre el candidato remoto final. No anunciar un paquete descargable.
 
 **CP-051 · A1c · Compose con un comando · 2026-11-11:** integrado el
 [PR #14](https://github.com/MasamuneL/Cerberus/pull/14), merge `0c03465`.

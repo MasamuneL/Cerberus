@@ -1,4 +1,4 @@
-# Ejecución D3 · 2026-11-11
+# Ejecución D3 · 2026-11-11–12
 
 Rama: `feat/D3-simple-setup`. Base: `0ddd560`. Sin publicación ni merge autorizados.
 Docker diario conservado: seis contenedores con los mismos IDs antes y después de QA.
@@ -11,21 +11,21 @@ Docker diario conservado: seis contenedores con los mismos IDs antes y después 
 | D3a | Integrado en rama | Contrato, Compose generado, migración explícita y verificación de escritura con UID operativo |
 | D3b | Integrado en rama | ZIP determinista, allowlist, OCI y workflows protegidos; GHCR pendiente |
 | D3c | Integrado en rama | Cuatro NIfTI públicos, hashes y TAR determinista; artefacto remoto pendiente |
-| D3d | En cierre | Lanzadores Bash/PowerShell en worktree propio; sin validación Windows real |
+| D3d | Implementado y probado localmente | Bash y PowerShell; Docker Desktop en macOS y Compose 2.30/5.7; Windows real pendiente |
 | D3e | Integrado en rama | Whitelist, diagnóstico parcial, metadatos públicos y `.env` migrada entre comillas |
 | D3f | Integrado en rama | `dev` honesto y metadatos de compilación visibles; capturas revisadas |
-| D3g | En cierre | Guardas de integridad, identidad y cola; backup/restauración en implementación |
-| D3h | Parcial | Suites y Docker aislado comprobados; matriz, recuperación y digests remotos pendientes |
-| D3i | Parcial | README separa usuario/desarrollo; guía y estado se cierran tras QA |
+| D3g | Implementado y probado localmente | Backup, actualización repetida, fallo posterior, retorno y restauración reales |
+| D3h | QA local aprobado; aceptación parcial | Suites y artefactos con digests locales; matriz nativa, mediciones y GHCR pendientes |
+| D3i | Documentado | README, instalación, actualización y evidencia; entrega pública pendiente |
 
 Revisión independiente de base: corregidos frontend amd64 sin `platform`, puertos migrados entre
-comillas, omisión de `setup-sample` en diagnóstico y metadatos ausentes del reporte. D3g debe comprobar
+comillas, omisión de `setup-sample` en diagnóstico y metadatos ausentes del reporte. D3g comprueba
 también el digest del inicializador de muestra al verificar un paquete.
 
 ## Pruebas realizadas
 
-- Suite integrada previa al cierre de lanzadores/recuperación: **915 rápidas**, 5 slow excluidas;
-  Ruff, formato y Pyright correctos. Las cifras finales se registrarán al integrar ambos tickets.
+- Suite integrada final: **1016 rápidas**, 5 slow excluidas, incluida ejecución de PowerShell real
+  en macOS con Docker simulado. Ruff, formato y Pyright correctos. Los modelos se verificaron aparte.
 - Auth: 5 pruebas de volúmenes y 10 pruebas Node; 12 escenarios UI y 8 de sesión/continuidad correctos.
 - Vite/API separados del Docker diario: **33/33** comprobaciones visuales, **14 auditorías axe**
   sin violaciones automáticas; capturas 1440×900 y 1280×800 revisadas.
@@ -80,10 +80,11 @@ Las capturas no demuestran por sí solas conformidad de accesibilidad completa.
    ni sustituir ese gate por imágenes locales.
 2. Matriz real Linux amd64, Windows con Docker Linux, macOS Apple Silicon e Intel cuando se declare:
    solo hay evidencia Docker Desktop de este Mac; analizar scripts o ejecutar PowerShell en macOS no
-   demuestra instalación en Windows. Compose mínimo declarado 2.30.0, prueba local con 5.7.0.
-3. Ejercicio operativo de actualización, fallo de pull y restauración privada en proyecto aislado.
-4. QA final sobre los mismos digests del mismo commit antes de promover una release; mediciones frías,
-   disco máximo y memoria pico del conjunto.
+   demuestra instalación en Windows. Compose 2.30.0 y 5.7.0 probados en este Mac.
+3. Completar mediciones de descarga fría, tráfico, disco máximo y RAM pico del conjunto; la prueba
+   local utilizó imágenes y muestra precargadas.
+4. Repetir QA con el candidato remoto autorizado antes de promover una release. Los paquetes locales
+   prueban backend/frontend del mismo commit; no prueban la disponibilidad pública de esos digests.
 5. A5 y ola P del QA previo siguen independientes; D3 no las cierra automáticamente.
 
 ## Cierre de implementación y ensayo de paquetes locales
@@ -104,3 +105,42 @@ loopback `localhost:15000`, separado del proyecto diario. Paquete QA3: revisión
 `a7ca995bd6c84912ed744c210f69d1e2385c624bcb8dae501ba1bcdcd34cc692`, backend y frontend compilados del
 mismo commit y fijados por digest. Los paquetes locales no sustituyen visibilidad anónima de GHCR
 ni una release descargable, que siguen prohibidas durante esta sesión.
+
+
+## Recuperación y compatibilidad operativas · 2026-11-12
+
+- Paquete QA4: revisión `2a5ce2b`, ZIP SHA-256
+  `92632212932a9182196441f5c69d0e5bcb3780c29d6292e35d40978d33761d1b`.
+  Backend/frontend del mismo commit, ambos por digest en el registro local.
+- Arranque por `start.sh` del paquete QA3 correcto: etapas, caché sin pull, salud, origen, issuer y callback.
+- Backup real privado: dump PostgreSQL consistente, seis volúmenes fríos, configuración, Data, storage
+  y modelos. Se excluyeron temporales DICOM/logs. No se copió ningún backup al repositorio.
+- Restauración en proyecto nuevo `cerberus-restore-d3`, con puertos 18086/18087: arranque real correcto
+  con registro local detenido, sin descargar imágenes. Huellas de usuarios/roles/credenciales y secretos
+  idénticas al origen; hashes de datos, resultados y modelos idénticos. Login con contraseña modificada,
+  smoke 15/15 y logout con catálogo/NIfTI a 401. Capturas de ambas resoluciones revisadas.
+- Registro local detenido durante actualización explícita: fallo de pull antes de pausar servicios;
+  mismos IDs de contenedores activos y versión anterior conservada.
+- Trabajo futuro sintético en Redis: guard bloqueó antes de descargar. Se retiró únicamente esa fixture.
+  Un primer ensayo de fallo posterior quedó bloqueado por una limpieza incompleta de la fixture;
+  se corrigió la limpieza y se repitió antes de registrar la aprobación siguiente.
+- Puerto QA ocupado después de pausar la aplicación: fallo posterior a activación reproducido,
+  aplicación detenida y backup/paquete anterior retenidos. Retorno explícito a QA3 completado.
+- Actualización QA3 a QA4 y repetición de QA4 completadas. Se conservaron cuentas modificadas,
+  reader, deshabilitado, acciones requeridas, secretos y hashes de datos/resultados/modelos.
+  Smoke posterior 15/15, versión QA4 visible y logout/401 correctos.
+- Diagnóstico real del paquete QA4 correcto: versión, revisión, digests y puertos presentes; sin rutas
+  personales, referencias de registro, contraseñas ni datos de estudios en el reporte compartible.
+- Compose 2.30.0 oficial descargado en temporal y verificado contra su SHA-256 publicado: configuración
+  y arranque real del paquete correctos. No se reemplazó el Compose habitual 5.7.0. El generador requiere
+  5.7.0 por `--no-env-resolution`; CI lo fija explícitamente. El mínimo del usuario sigue siendo 2.30.0.
+- Tras QA se corrigió la lectura del backup privado para UID de Linux diferente del propietario:
+  verificador con UID 0, `DAC_OVERRIDE`, raíz y montaje de backup de solo lectura. Regresiones Bash y
+  PowerShell aprobadas; esta corrección no constituye ejecución nativa de Docker en Linux/Windows.
+- PowerShell 7.7 se ejecutó realmente sobre macOS con Docker simulado. PowerShell 5.1/NTFS y Docker
+  Desktop Windows siguen sin evidencia nativa. Ctrl+C en `pwsh -File` puede devolver 0 aunque cancela,
+  libera el lock y no informa éxito; los timeouts sí devuelven código distinto de cero.
+
+No se promovieron artefactos ni se ejecutó el workflow de publicación. No hay aceptación global D3,
+release pública ni checkpoint de merge. La revisión y el QA local permiten revisar el código en PR;
+los gates externos anteriores siguen pendientes por separado.

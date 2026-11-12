@@ -926,3 +926,18 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
   Muestra presente verificada con red deshabilitada. Docker diario conserva sus seis contenedores.
 - Sin release, GHCR, merge ni checkpoint de entrega: publicación prohibida durante esta ejecución.
   Pendientes: recuperación operativa, matriz multiplataforma y validación del artefacto remoto final.
+
+
+### En rama · 2026-11-12 · D3: implementación y QA local de recuperación
+
+- D3a–D3g integrados en `feat/D3-simple-setup`; D3h con QA local aprobado y D3i documentado.
+- 1016 pruebas rápidas, 5 slow excluidas; Ruff/formato/Pyright y frontend build correctos.
+  Visual 33/33, 20 escenarios auth UI y smoke Docker real 15/15, capturas de ambos tamaños revisadas.
+- Registro exclusivamente local: paquetes QA3 (`fcc9fb3`) y QA4 (`2a5ce2b`), cada uno con
+  backend/frontend del mismo commit fijados por digest. Sin publicación externa.
+- Backup/restauración, fallo de pull, bloqueo por cola, fallo tras activar, retorno explícito,
+  actualización repetida y diagnóstico comprobados en Docker aislado. Cuentas, roles, claves,
+  resultados y modelos conservados; arranque del restore con registro detenido y cachés correcto.
+- Compose 2.30.0 y 5.7.0 comprobados; el generador/CI fija 5.7.0 para no resolver secretos.
+  Bash y PowerShell reales con Docker simulado; Windows 5.1/NTFS y matriz nativa pendientes.
+- No hay release, merge ni checkpoint nuevo. Gates externos y evidencia completa en [QA D3](qa/D3_EXECUTION.md).

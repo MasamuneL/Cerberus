@@ -120,6 +120,9 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\setup\update.ps1 `
 La imagen helper verifica el backup antes de copiar, crea seis volúmenes nuevos y restaura únicamente
 destinos vacíos. Mantiene el paquete y credenciales respaldados; reescribe solo el nombre del proyecto
 y las rutas Data/storage/models para que apunten a la nueva carpeta. Conserva `.env.auth` cuando existe.
+Compose puede avisar que los volúmenes restaurados se crearon fuera de Compose: los creó el helper
+en el proyecto nuevo y ese aviso no justifica borrarlos.
+
 **No inicia servicios automáticamente.** Si la copia falla a medias, conserva el backup; repite con
 otra carpeta vacía y otro proyecto nuevo, sin reutilizar destinos parcialmente restaurados.
 
