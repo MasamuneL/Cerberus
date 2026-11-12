@@ -85,3 +85,22 @@ Las capturas no demuestran por sí solas conformidad de accesibilidad completa.
 4. QA final sobre los mismos digests del mismo commit antes de promover una release; mediciones frías,
    disco máximo y memoria pico del conjunto.
 5. A5 y ola P del QA previo siguen independientes; D3 no las cierra automáticamente.
+
+## Cierre de implementación y ensayo de paquetes locales
+
+D3d y D3g ya están implementados en la rama: lanzadores y actualización/backup/retorno/restauración.
+Revisión independiente sobre `fc75146`: sin P1/P2 estáticos pendientes; corregida también la protección
+de instalaciones detenidas en otra carpeta. La migración descubre contenedores reales (proyecto elegido
+con `-p`, puertos solo presentes en aquella shell y montajes efectivos). Preparar `.env` antes de retirar
+contenedores anteriores con `down` sin borrar volúmenes; solo `stop` no permite adoptar desde otra carpeta.
+
+QA real detectó que Compose 5.7 devuelve dependencias al ejecutar `config --images <servicio>`.
+Se descartaron los primeros intentos de arranque del paquete; no alteraron datos ni la demo diaria.
+Los wrappers leen ahora referencias exactas del manifest y contrastan JSON de Compose/etiquetas OCI;
+regresiones de salida múltiple, manifest minificado y configuración mezclada incorporadas.
+
+Para ensayar artefactos completos sin publicación externa se usa un registro Docker **local** en
+loopback `localhost:15000`, separado del proyecto diario. Paquete QA3: revisión `fcc9fb3`, ZIP SHA-256
+`a7ca995bd6c84912ed744c210f69d1e2385c624bcb8dae501ba1bcdcd34cc692`, backend y frontend compilados del
+mismo commit y fijados por digest. Los paquetes locales no sustituyen visibilidad anónima de GHCR
+ni una release descargable, que siguen prohibidas durante esta sesión.
