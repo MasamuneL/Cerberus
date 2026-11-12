@@ -116,6 +116,16 @@ def prepare_writable_directory(path: Path, uid: int, gid: int) -> None:
         os.chown(path, uid, gid)
 
 
+def verify_writable_directories(environment: Mapping[str, str]) -> None:
+    """Comprueba escritura con el UID operativo antes de iniciar API o worker."""
+    if environment.get("CERBERUS_VERIFY_WRITABLE") != "true":
+        return
+    for key, fallback in (("DATA", "/app/Data"), ("STORAGE", "/app/storage"), ("MODELS", "/app/models")):
+        directory = Path(environment.get(f"CERBERUS_{key}_DIR", fallback))
+        with tempfile.TemporaryFile(dir=directory):
+            pass
+
+
 def synchronize_identity(
     root: Path, environment: Mapping[str, str], transport: httpx.BaseTransport | None = None
 ) -> list[str]:
@@ -147,7 +157,10 @@ def main(argv: Sequence[str] | None = None, environment: Mapping[str, str] | Non
             prepare_secrets(root, Path("/run/cerberus-existing-db"), environment)
             uid = int(environment.get("CERBERUS_CONTAINER_UID", "1000"))
             gid = int(environment.get("CERBERUS_CONTAINER_GID", "1000"))
-            for directory in (Path("/app/storage"), Path("/app/models")):
+            directories = [Path("/app/storage"), Path("/app/models")]
+            if environment.get("CERBERUS_PREPARE_DATA") == "true":
+                directories.append(Path("/app/Data"))
+            for directory in directories:
                 prepare_writable_directory(directory, uid, gid)
             print("Secretos persistentes preparados; valores existentes conservados.")
         elif args.mode == "sync":
@@ -156,6 +169,7 @@ def main(argv: Sequence[str] | None = None, environment: Mapping[str, str] | Non
         else:
             if not args.arguments:
                 raise ValueError("Falta el comando del contenedor")
+            verify_writable_directories(environment)
             os.execvpe(args.arguments[0], args.arguments, backend_environment(environment))
     except (OSError, ValueError, KeyError, httpx.HTTPError):
         print(

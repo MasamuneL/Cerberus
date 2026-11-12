@@ -942,3 +942,48 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
   auth UI con HTTP controlado, sin nueva prueba de Keycloak real. Sin inferencias ni subidas.
 - README, plan §20, runners y handoff actualizados. Contratos §6/§7 intactos. D3 sigue separado;
   A5 y las correcciones de la ola P siguen pendientes.
+
+### Planificado · 2026-11-11 · D3: simplificar instalación y distribución
+
+- Rama nueva `feat/D3-simple-setup`, base main CP-051 (`393e202`).
+- [Plan de ejecución por Sol](superpowers/plans/2026-11-11-D3-simple-setup.md): D3a–D3i,
+  dependencias, criterios de aceptación, delegación por olas y QA de artefactos.
+- Revisión independiente de riesgos incorporada: recursos de Keycloak, persistencia entre releases,
+  ambos puertos, muestra íntegra, diagnóstico sin secretos y límites de recuperación.
+- Entrega documental; implementación, CI, publicación y QA de aplicación pendientes.
+  No es un checkpoint de merge ni una funcionalidad disponible en main.
+
+
+### En rama · 2026-11-11 · D3: ejecución sin publicación ni merge
+
+- Rama `feat/D3-simple-setup`, base `0ddd560`, sincronizada con origin antes de implementar.
+- D3a/b/c/e/f integrados en rama; D3d/g en cierre. Detalles y evidencia en
+  [QA D3](qa/D3_EXECUTION.md), con revisiones, límites y gates externos explícitos.
+- Base integrada: 915 pruebas rápidas; Ruff/formato/Pyright correctos. Visual 33/33 y 20 escenarios
+  de autenticación UI; Docker aislado con login real y smoke 15/15. Inferencia real correcta.
+- Preservación tras cambio de ambos puertos: cuentas/roles/credenciales, claves, datos y resultados.
+  Muestra presente verificada con red deshabilitada. Docker diario conserva sus seis contenedores.
+- Sin release, GHCR, merge ni checkpoint de entrega: publicación prohibida durante esta ejecución.
+  Pendientes: recuperación operativa, matriz multiplataforma y validación del artefacto remoto final.
+
+
+### En rama · 2026-11-12 · D3: implementación y QA local de recuperación
+
+- D3a–D3g integrados en `feat/D3-simple-setup`; D3h con QA local aprobado y D3i documentado.
+- 1016 pruebas rápidas, 5 slow excluidas; Ruff/formato/Pyright y frontend build correctos.
+  Visual 33/33, 20 escenarios auth UI y smoke Docker real 15/15, capturas de ambos tamaños revisadas.
+- Registro exclusivamente local: paquetes QA3 (`fcc9fb3`) y QA4 (`2a5ce2b`), cada uno con
+  backend/frontend del mismo commit fijados por digest. Sin publicación externa.
+- Backup/restauración, fallo de pull, bloqueo por cola, fallo tras activar, retorno explícito,
+  actualización repetida y diagnóstico comprobados en Docker aislado. Cuentas, roles, claves,
+  resultados y modelos conservados; arranque del restore con registro detenido y cachés correcto.
+- Compose 2.30.0 y 5.7.0 comprobados; el generador/CI fija 5.7.0 para no resolver secretos.
+  Bash y PowerShell reales con Docker simulado; Windows 5.1/NTFS y matriz nativa pendientes.
+- No hay release, merge ni checkpoint nuevo. Gates externos y evidencia completa en [QA D3](qa/D3_EXECUTION.md).
+
+
+- Actualización de la rama D3 con origin/main CP-052 (`9474665`) en `c189cee`: F12 y documentos
+  conservados, sin modificar main. Checks repetidos: 1016 rápidas, build, Ruff/formato/Pyright,
+  geometría y Node/auth, 20 escenarios auth UI, visual 33/33 y 3D 7/7. Se ajustó únicamente el
+  presupuesto de captura del runner para el render 3D por software. PR #17 continúa en borrador;
+  no se integrará D3 en main sin visto bueno explícito del usuario.

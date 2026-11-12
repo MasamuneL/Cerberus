@@ -6,9 +6,20 @@ COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci --no-audit --no-fund
 
 COPY frontend/ ./
+ARG CERBERUS_VERSION=dev
+ARG CERBERUS_REVISION=dev
+ENV VITE_CERBERUS_VERSION=$CERBERUS_VERSION \
+    VITE_CERBERUS_REVISION=$CERBERUS_REVISION
 RUN npm run build
 
 FROM nginx:1.28.3-alpine@sha256:a8b39bd9cf0f83869a2162827a0caf6137ddf759d50a171451b335cecc87d236
+
+ARG CERBERUS_VERSION=dev
+ARG CERBERUS_REVISION=dev
+LABEL org.opencontainers.image.title="Cerberus frontend" \
+    org.opencontainers.image.source="https://github.com/MasamuneL/Cerberus" \
+    org.opencontainers.image.version=$CERBERUS_VERSION \
+    org.opencontainers.image.revision=$CERBERUS_REVISION
 
 # Arranque mínimo sin los scripts de entrada de la imagen (escriben en /etc/nginx): solo genera en /tmp el
 # límite de cuerpo a partir de CERBERUS_MAX_UPLOAD_MB, con 64 MiB de margen para el multipart.

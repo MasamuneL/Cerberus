@@ -12,6 +12,8 @@
 !tools/
 !tools/auth/
 !tools/auth/**
+!tools/release/
+!tools/release/**
 
 # Los datos, modelos, entornos locales y secretos nunca forman parte del contexto.
 Data/

@@ -1,5 +1,9 @@
 # Los heredocs de arranque deben conservar finales Unix también en checkouts de Windows.
 docker/*.Dockerfile text eol=lf
+start.sh text eol=lf
+start.command text eol=lf
+tools/setup/*.sh text eol=lf
+*.ps1 text eol=lf
 
 # Volúmenes médicos e imágenes pesadas -> Git LFS
 *.nii.gz filter=lfs diff=lfs merge=lfs -text

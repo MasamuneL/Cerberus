@@ -1,0 +1,44 @@
+{
+  "format": 1,
+  "version": "cfb-gbm-001-t0-v1",
+  "archive": {
+    "url": "https://github.com/MasamuneL/Cerberus/releases/download/sample-cfb-gbm-001-t0-v1/cerberus-sample-cfb-gbm-001-t0-v1.tar",
+    "size": 144302080,
+    "sha256": "1d814107ba6858d4eabbb70d43ff09387349efc701cb1d29d9f8d2ddcdf4012f"
+  },
+  "files": [
+    {
+      "path": "001/t0/1_t0_brain_mask.nii.gz",
+      "size": 186384,
+      "sha256": "022e8a70d9e59c6250ccd8a73e9292c155ab6ac98fca4f0d3b6c36e301f60a43"
+    },
+    {
+      "path": "001/t0/1_t0_flair.nii.gz",
+      "size": 69356043,
+      "sha256": "f7c3780959feaafaa09b3af8bb79f12f251e5481c2325f6b695d484cadd31e42"
+    },
+    {
+      "path": "001/t0/1_t0_gtv.nii.gz",
+      "size": 114558,
+      "sha256": "c61f8146d409b1abac6bb33100f2d9a01224bd3637eddb95f65f15f94fabe3ff"
+    },
+    {
+      "path": "001/t0/1_t0_t1gd.nii.gz",
+      "size": 74634926,
+      "sha256": "1267af830abc732c01bf62a1ac025cfcd87a23b9998e0427f8e44cc276eefb35"
+    }
+  ],
+  "source": {
+    "url": "https://www.cancerimagingarchive.net/collection/cfb-gbm/",
+    "doi": "https://doi.org/10.7937/v9pn-2f72",
+    "license": "CC-BY-4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "policy_url": "https://www.cancerimagingarchive.net/data-usage-policies-and-restrictions/",
+    "reviewed": "2026-11-11",
+    "upstream_version": "No verificada por archivo; bytes públicos heredados del repositorio, conservados sin modificación.",
+    "citation": "Moreau, N., Leclercq, A., Desmonts, A., Poirier, Y., Dubru, A., Guillemette, L., Lecoeur, P., Lemasson, K., Jaudet, C., Brunaud, C., Valable, S., Geffrelot, J., Stefan, D., Leleu, T., Raboutet, C., Le Henaff, L., Batalla, A., Lacroix, J., Rouzier, R., & Corroyer-Dulmont, A. (2025). Pre and post treatment MRI and radiotherapy plans of patients with glioblastoma: the CFB-GBM cohort (CFB-GBM) (Version 4) [dataset]. The Cancer Imaging Archive. https://doi.org/10.7937/v9pn-2f72",
+    "changes": "Selección de cuatro NIfTI públicos de 001/t0; archivos originales sin modificación ni recomprensión.",
+    "publication_status": "pending; comprobar descarga anónima del artefacto exacto antes de publicar la release de aplicación.",
+    "downstream_terms": "Al usar o redistribuir estos datos, conserve la atribución completa, DOI y licencia, enlace a la política TCIA y exija lo mismo a usuarios posteriores. No intente identificar ni contactar participantes."
+  }
+}

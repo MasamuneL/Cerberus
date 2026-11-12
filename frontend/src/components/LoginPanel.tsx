@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import type { AuthControl } from "../hooks/useAuth";
 import "./auth.css";
+import BuildVersion from "./BuildVersion";
 
 export default function LoginPanel({ auth }: { auth: AuthControl }) {
   const heading = useRef<HTMLHeadingElement>(null);
@@ -14,6 +15,7 @@ export default function LoginPanel({ auth }: { auth: AuthControl }) {
   useEffect(() => { if (!busy) heading.current?.focus(); }, [auth.status, busy]);
   return <main className="auth-page">
     <section className="auth-card" aria-labelledby="auth-heading" aria-describedby="auth-description" aria-busy={busy}>
+      <BuildVersion />
       <p className="auth-brand">CERBERUS <span>Demo académica</span></p>
       <h1 id="auth-heading" ref={heading} tabIndex={-1}>{title}</h1>
       <p id="auth-description" role={busy ? "status" : undefined}>{description}</p>

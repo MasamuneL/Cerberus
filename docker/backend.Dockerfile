@@ -1,7 +1,14 @@
 # La versión de Python coincide con .python-version; uv.lock fija las dependencias.
-FROM python:3.11-slim-bookworm
+FROM python:3.11-slim-bookworm@sha256:a83ba18aef0f865b1a4a611c2cf460fe446f2795673bbb9fe43be570439e3b39
 
-COPY --from=ghcr.io/astral-sh/uv:0.10.9 /uv /usr/local/bin/uv
+COPY --from=ghcr.io/astral-sh/uv:0.10.9@sha256:10902f58a1606787602f303954cea099626a4adb02acbac4c69920fe9d278f82 /uv /usr/local/bin/uv
+
+ARG CERBERUS_VERSION=dev
+ARG CERBERUS_REVISION=dev
+LABEL org.opencontainers.image.title="Cerberus backend" \
+    org.opencontainers.image.source="https://github.com/MasamuneL/Cerberus" \
+    org.opencontainers.image.version=$CERBERUS_VERSION \
+    org.opencontainers.image.revision=$CERBERUS_REVISION
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -24,6 +31,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 COPY backend/cerberus_api ./backend/cerberus_api
 COPY tools/auth ./tools/auth
+COPY tools/release ./tools/release
 COPY docker/keycloak/realm.json ./docker/keycloak/realm.json
 
 RUN useradd --create-home --uid 1000 cerberus \

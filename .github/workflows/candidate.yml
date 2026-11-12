@@ -1,0 +1,120 @@
+name: Candidato por commit (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      authorize_publication:
+        description: 'Autorizar la publicación del candidato de este commit en GHCR'
+        type: boolean
+        required: true
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: candidate-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  candidate:
+    if: ${{ inputs.authorize_publication }}
+    environment: candidate-publication
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    permissions:
+      contents: read
+      packages: write
+    env:
+      VERSION: candidate-${{ github.sha }}
+      REVISION: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: docker/setup-compose-action@54042514f505b273907334ae2b9cdbb9a0213c1a # v2
+        with:
+          version: v5.7.0
+      - name: Requerir recursos de instalación completos
+        run: |
+          test -f start.sh
+          test -f start.command
+          test -f start.ps1
+          test -d tools/setup
+          test -f tools/release/sample-manifest.json
+          test -f docs/D3_SAMPLE.md
+      - name: Preparar nombres de imágenes
+        env:
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          base="ghcr.io/${REPOSITORY,,}"
+          echo "BACKEND=$base-backend" >> "$GITHUB_ENV"
+          echo "FRONTEND=$base-frontend" >> "$GITHUB_ENV"
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - name: Autenticar publicación GHCR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_ACTOR: ${{ github.actor }}
+        run: printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$GH_ACTOR" --password-stdin
+      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        id: backend
+        with:
+          context: .
+          file: docker/backend.Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ env.BACKEND }}:${{ env.VERSION }}
+          build-args: |
+            CERBERUS_VERSION=${{ env.VERSION }}
+            CERBERUS_REVISION=${{ env.REVISION }}
+          cache-from: type=gha,scope=backend-amd64
+          cache-to: type=gha,mode=max,scope=backend-amd64
+      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        id: frontend
+        with:
+          context: .
+          file: docker/frontend.Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ env.FRONTEND }}:${{ env.VERSION }}
+          build-args: |
+            CERBERUS_VERSION=${{ env.VERSION }}
+            CERBERUS_REVISION=${{ env.REVISION }}
+          cache-from: type=gha,scope=frontend-amd64
+          cache-to: type=gha,mode=max,scope=frontend-amd64
+      - name: Verificar descarga anónima e identidad exacta
+        env:
+          BACKEND_DIGEST: ${{ steps.backend.outputs.digest }}
+          FRONTEND_DIGEST: ${{ steps.frontend.outputs.digest }}
+        run: |
+          export DOCKER_CONFIG
+          DOCKER_CONFIG=$(mktemp -d)
+          trap 'rm -rf "$DOCKER_CONFIG"' EXIT
+          for image in "$BACKEND@$BACKEND_DIGEST" "$FRONTEND@$FRONTEND_DIGEST"; do
+            docker pull --platform linux/amd64 "$image"
+            test "$(docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}' "$image")" = "$REVISION"
+            test "$(docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.version" }}' "$image")" = "$VERSION"
+            test "$(docker image inspect --format '{{.Os}}/{{.Architecture}}' "$image")" = linux/amd64
+          done
+      - name: Verificar muestra remota antes de empaquetar
+        env:
+          BACKEND_DIGEST: ${{ steps.backend.outputs.digest }}
+        run: |
+          docker run --rm --platform linux/amd64 --entrypoint python "$BACKEND@$BACKEND_DIGEST" \
+            -m cerberus_api.sample --manifest /app/tools/release/sample-manifest.json --data /app/Data
+      - name: Crear paquete fijado a los digests publicados
+        env:
+          BACKEND_DIGEST: ${{ steps.backend.outputs.digest }}
+          FRONTEND_DIGEST: ${{ steps.frontend.outputs.digest }}
+        run: |
+          mkdir -p dist
+          python3 tools/release/build.py --version "$VERSION" --revision "$REVISION" \
+            --backend "$BACKEND@$BACKEND_DIGEST" --frontend "$FRONTEND@$FRONTEND_DIGEST" \
+            --output "dist/cerberus-$VERSION.zip" > dist/SHA256SUMS
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: cerberus-${{ env.VERSION }}
+          path: dist/
+          if-no-files-found: error
+          retention-days: 30
+      # No crea una release estable. D3h debe probar estos mismos digests antes de promoverlos.

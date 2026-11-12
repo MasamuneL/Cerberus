@@ -25,7 +25,7 @@ async function check(name, fn) {
 }
 async function shot(name) {
   const filename = `${size}_${name}.png`;
-  await page.screenshot({ path: OUT + filename, animations: "disabled" });
+  await page.screenshot({ path: OUT + filename, animations: "disabled", timeout: TIMEOUT });
   report.screenshots.push(filename);
 }
 async function eventually(fn, message, timeout = 10000) {

@@ -4,7 +4,7 @@
 > checkpoint. El historial completo está en [`PROGRESS.md`](PROGRESS.md) y el alcance y los contratos en
 > [`PLAN_MVP.md`](PLAN_MVP.md). Las reglas de trabajo están en [`../AGENTS.md`](../AGENTS.md).
 
-**Última actualización:** 2026-11-11 · último checkpoint: CP-052 · rama base: `main`
+**Última actualización:** 2026-11-12 · último checkpoint: CP-052 · rama base: `main`
 
 ## 1. Arranque rápido
 
@@ -31,6 +31,17 @@ Abre las PNG y revísalas: **no te fíes solo de los ✅**. Leer píxeles del ca
 (`preserveDrawingBuffer=false`), así que esos chequeos de píxeles no son confiables.
 
 ## 2. Estado actual
+
+**D3 · implementación en rama, sin merge · 2026-11-12:** `feat/D3-simple-setup`. Código D3a–D3g
+integrado mediante worktrees y subagentes; D3h con QA local aprobado y D3i documentado. Ver
+[evidencia y bloqueos](qa/D3_EXECUTION.md), [instalación](INSTALL.md) y [actualización/recuperación](D3_UPDATE.md).
+1016 pruebas rápidas, Ruff/formato/Pyright y build correctos; visual 33/33, 20 escenarios de auth UI,
+smoke real 15/15, inferencia y conservación de cuentas/secretos/resultados comprobados. Actualización,
+fallo posterior, retorno y restauración reales en proyectos QA separados; Compose 2.30 y 5.7 probados.
+Docker diario conserva sus contenedores. Sin publicación externa ni integración D3 en main;
+CP-052 es el último checkpoint integrado. F12 de main se conserva en esta rama. Gates pendientes: muestra/GHCR públicos autorizados, matriz nativa,
+mediciones frías/picos y repetición sobre el candidato remoto final. No anunciar un paquete descargable. El usuario acepta por ahora clonar + Git LFS + Compose;
+el ZIP queda para una entrega posterior, sin autorizar publicación ni merge a main.
 
 **CP-052 · F12 · vista 3D integrada · 2026-11-11:** el
 [PR #15 de BiomedicLJZ](https://github.com/MasamuneL/Cerberus/pull/15) quedó incorporado mediante el
