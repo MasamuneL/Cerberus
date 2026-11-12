@@ -144,3 +144,13 @@ ni una release descargable, que siguen prohibidas durante esta sesión.
 No se promovieron artefactos ni se ejecutó el workflow de publicación. No hay aceptación global D3,
 release pública ni checkpoint de merge. La revisión y el QA local permiten revisar el código en PR;
 los gates externos anteriores siguen pendientes por separado.
+
+
+## Avisos de terceros y estado de entrega
+
+Se añadieron `NOTICE` y `frontend/public/THIRD_PARTY_NOTICES.txt`: licencias de los 19 paquetes de
+producción y avisos identificados en las copias incluidas por Niivue, con versiones, fuentes e integridades.
+Vite conserva el archivo en dist; el frontend lo distribuye en `/THIRD_PARTY_NOTICES.txt`. El ZIP incluye
+NOTICE y las licencias de identidad. No se afirma una auditoría exhaustiva de todas las imágenes/datos.
+Los avisos se incorporaron después del ensayo QA3/QA4; su build y copia al artefacto se verifican aparte.
+El candidato público final deberá compilar de nuevo este árbol completo cuando se autorice publicarlo.
