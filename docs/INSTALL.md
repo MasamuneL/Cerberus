@@ -54,7 +54,15 @@ ni limpieza global de Docker para reparar un error.
 
 ## Diagnóstico y recuperación
 
-Ejecuta el diagnóstico del paquete desde su carpeta. El reporte compartible contiene códigos de
+Desde la carpeta del paquete, ejecuta:
+
+```bash
+bash tools/setup/diagnose.sh
+```
+
+En PowerShell: `.\tools\setup\diagnose.ps1`. Para conservar el reporte, redirige la salida a un
+archivo nuevo, por ejemplo `bash tools/setup/diagnose.sh > diagnostico.json`.
+El reporte compartible contiene códigos de
 comprobación y acciones; no necesita contraseñas ni logs completos. No compartas `.env.auth`, backups,
 cookies, tokens ni capturas con información privada. El diagnóstico no envía nada automáticamente.
 

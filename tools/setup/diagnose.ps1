@@ -1,4 +1,4 @@
-# Diagnóstico local sin logs ni errores originales. No descarga imágenes.
+﻿# Diagnóstico local sin logs ni errores originales. No descarga imágenes.
 $ErrorActionPreference = 'Stop'
 $dockerReady = $false
 
