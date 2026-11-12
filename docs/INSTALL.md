@@ -29,7 +29,7 @@ docker compose up -d --wait --wait-timeout 600
 Abre `http://localhost:8080`. Keycloak utiliza también 8081. Si otro programa ocupa esos puertos,
 no lo detengas: el lanzador selecciona puertos predeterminados libres y conserva la selección.
 Un puerto fijado explícitamente que esté ocupado requiere corregir la configuración o liberar ese
-puerto por decisión del propietario. Los dos inicializadores con salida 0 son normales.
+puerto por decisión del propietario. Los tres inicializadores con salida 0 son normales.
 
 La primera descarga requiere red. La muestra se verifica por tamaño y SHA-256, sin sobrescribir
 archivos distintos. Una muestra válida no vuelve a descargarse. Los modelos MONAI y atlas se

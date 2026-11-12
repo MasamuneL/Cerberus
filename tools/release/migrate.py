@@ -140,7 +140,8 @@ def main() -> None:
     values = migration_environment(runtime_config(json.loads(inspected.stdout), checkout), checkout)
     write_environment(args.installation.resolve() / ".env", values)
     print(
-        "Configuración preparada. Termina trabajos y retira contenedores antiguos conservando volúmenes antes de iniciar."
+        "Configuración preparada. Termina trabajos y retira contenedores antiguos "
+        "conservando volúmenes antes de iniciar."
     )
 
 
