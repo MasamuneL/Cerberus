@@ -154,3 +154,8 @@ Vite conserva el archivo en dist; el frontend lo distribuye en `/THIRD_PARTY_NOT
 NOTICE y las licencias de identidad. No se afirma una auditoría exhaustiva de todas las imágenes/datos.
 Los avisos se incorporaron después del ensayo QA3/QA4; su build y copia al artefacto se verifican aparte.
 El candidato público final deberá compilar de nuevo este árbol completo cuando se autorice publicarlo.
+
+Cierre local: avisos idénticos en public, dist y una imagen frontend reconstruida de verificación;
+31 pruebas focalizadas del paquete posteriores a su incorporación correctas. Al terminar se detuvieron
+exclusivamente los servicios y registro QA, conservando sus backups/resultados. Los seis contenedores
+diarios mantienen exactamente sus IDs iniciales. `.omo/` preexistente permanece fuera de los commits.
