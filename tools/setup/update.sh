@@ -101,8 +101,8 @@ if [ "$mode" = restore ]; then
   IFS= read -r helper < "$backup/helper-image.txt" || fail
   [[ "$helper" =~ ^[a-z0-9./:_-]+@sha256:[a-f0-9]{64}$ ]] || fail
   docker image inspect "$helper" >/dev/null 2>&1 || fail
-  docker run --rm --pull never --network none --platform linux/amd64 --read-only --tmpfs /tmp \
-    --security-opt no-new-privileges:true --cap-drop ALL --entrypoint python \
+  docker run --rm --pull never --network none --platform linux/amd64 --user 0:0 --read-only --tmpfs /tmp \
+    --security-opt no-new-privileges:true --cap-drop ALL --cap-add DAC_OVERRIDE --entrypoint python \
     --volume "$backup:/backup:ro" "$helper" -m cerberus_api.release_state \
     --operation verify-backup --backup /backup >/dev/null 2>&1 || fail
   mounts=()

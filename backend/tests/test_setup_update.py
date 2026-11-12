@@ -182,6 +182,12 @@ def test_restore_is_new_project_only_and_never_starts(updater: tuple[Path, list[
     assert not any(call[0] == "compose" for call in calls)
     assert not any("up" in call or "stop" in call for call in calls)
     assert len([call for call in calls if call[:2] == ["volume", "inspect"]]) == 6
+    verification = next(call for call in calls if "verify-backup" in call)
+    assert verification[verification.index("--user") + 1] == "0:0"
+    assert verification[verification.index("--cap-add") + 1] == "DAC_OVERRIDE"
+    assert "--read-only" in verification
+    assert any(item.endswith(":/backup:ro") for item in verification)
+    assert "CHOWN" not in verification and "FOWNER" not in verification
     assert "--operation" in calls[-1] and "restore" in calls[-1]
     assert not (destination / ".cerberus-setup.lock").exists()
 

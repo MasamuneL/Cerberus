@@ -110,7 +110,7 @@ try {
         $helper = (Get-Content -LiteralPath (Join-Path $backupPath 'helper-image.txt') -Raw).Trim()
         if ($helper -cnotmatch $imagePattern) { throw 'Imagen de recuperación inválida.' }
         Invoke-Docker -Arguments @('image', 'inspect', $helper) | Out-Null
-        Invoke-Docker -Arguments ($isolatedHelper + @('--entrypoint', 'python', '--volume', "${backupPath}:/backup:ro", $helper,
+        Invoke-Docker -Arguments ($isolatedHelper + @('--user', '0:0', '--cap-add', 'DAC_OVERRIDE', '--entrypoint', 'python', '--volume', "${backupPath}:/backup:ro", $helper,
             '-m', 'cerberus_api.release_state', '--operation', 'verify-backup', '--backup', '/backup')) | Out-Null
         $mounts = @()
         foreach ($volume in $volumeNames) {
