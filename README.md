@@ -2,10 +2,24 @@
 
 ## Usar la demo
 
-**D3 en implementación; todavía sin paquete publicado ni matriz de plataformas aprobada.**
-El paquete previsto requiere Docker: descargar, descomprimir, iniciar y entrar con `demo` / `demo`.
+Instala **Docker Desktop, Git y Git LFS**. Para probar D3 en una computadora nueva:
+
+```bash
+git lfs install
+git clone --branch feat/D3-simple-setup --single-branch https://github.com/MasamuneL/Cerberus.git
+cd Cerberus
+git lfs pull
+docker compose up -d --build --wait --wait-timeout 600
+```
+
+Abre **http://localhost:8080** e inicia sesión con **demo / demo**. En Windows, selecciona
+contenedores Linux. Docker construye la aplicación; no necesitas Python, Node ni uv en el host.
+Estos comandos son para una instalación nueva; conserva la configuración y los datos si ya tienes una.
+
+El usuario acepta **clonar + Git LFS + Compose** como entrada actual. El paquete ZIP con imágenes
+precompiladas queda para una fase posterior; todavía no está publicado. Los lanzadores `start.*`
+corresponden a ese paquete; desde el clon usa Compose.
 [Guía de instalación, datos, diagnóstico y actualización](docs/INSTALL.md).
-Mientras se valida D3, siguen disponibles los comandos Compose del checkout descritos abajo.
 
 ## Desarrollar
 

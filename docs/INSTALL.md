@@ -1,8 +1,33 @@
 # Usar la demo
 
-El paquete D3 todavía es candidato: no hay release D3 publicada ni matriz multiplataforma aprobada.
-El flujo siguiente describe el paquete generado, que debe superar los gates de
-[QA D3](qa/D3_EXECUTION.md) antes de recomendarlo a otras personas.
+## Arranque actual: clonar y usar Docker
+
+Instala **Docker Desktop, Git y Git LFS**. Para probar D3 en una computadora nueva:
+
+```bash
+git lfs install
+git clone --branch feat/D3-simple-setup --single-branch https://github.com/MasamuneL/Cerberus.git
+cd Cerberus
+git lfs pull
+docker compose up -d --build --wait --wait-timeout 600
+```
+
+Abre **http://localhost:8080** e inicia sesión con **demo / demo**. En Windows, selecciona
+contenedores Linux. Docker construye la aplicación; no necesitas Python, Node ni uv en el host.
+Estos comandos son para una instalación nueva; conserva la configuración y los datos si ya tienes una.
+
+Para detener sin borrar datos: `docker compose stop`. Para iniciar después, desde el mismo clon:
+`docker compose up -d --wait --wait-timeout 600`. Si modificaste el código, vuelve a usar `--build`.
+
+Los puertos predeterminados son 8080 (aplicación) y 8081 (Keycloak). La primera compilación y la muestra
+requieren red. Mantén la carpeta del clon: contiene Data, storage y modelos persistentes.
+
+## Paquete ZIP: entrega posterior
+
+Clonar el repositorio es la entrada aceptada actualmente. El paquete D3 todavía es candidato: no hay
+release D3 publicada ni matriz multiplataforma aprobada. El flujo siguiente describe ese paquete futuro,
+que debe superar los gates de [QA D3](qa/D3_EXECUTION.md) antes de recomendarlo a otras personas.
+Los lanzadores `start.*` de la raíz corresponden al paquete, no al arranque desde el checkout.
 
 ## Primera instalación con paquete
 

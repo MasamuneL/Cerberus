@@ -40,7 +40,8 @@ smoke real 15/15, inferencia y conservación de cuentas/secretos/resultados comp
 fallo posterior, retorno y restauración reales en proyectos QA separados; Compose 2.30 y 5.7 probados.
 Docker diario conserva sus contenedores. Sin publicación externa ni integración D3 en main;
 CP-052 es el último checkpoint integrado. F12 de main se conserva en esta rama. Gates pendientes: muestra/GHCR públicos autorizados, matriz nativa,
-mediciones frías/picos y repetición sobre el candidato remoto final. No anunciar un paquete descargable.
+mediciones frías/picos y repetición sobre el candidato remoto final. No anunciar un paquete descargable. El usuario acepta por ahora clonar + Git LFS + Compose;
+el ZIP queda para una entrega posterior, sin autorizar publicación ni merge a main.
 
 **CP-052 · F12 · vista 3D integrada · 2026-11-11:** el
 [PR #15 de BiomedicLJZ](https://github.com/MasamuneL/Cerberus/pull/15) quedó incorporado mediante el

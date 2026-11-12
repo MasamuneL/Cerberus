@@ -178,3 +178,11 @@ capturas revisadas. También se verificaron 60 enlaces locales de la documentaci
 Los ensayos Docker de recuperación anteriores pertenecen a los paquetes QA3/QA4 registrados arriba;
 no se presentan como ejecución de un artefacto nuevo que incluya F12. El candidato público final
 requiere nuevamente sus gates cuando se autorice publicar.
+
+
+## Entrada actual aceptada por el usuario
+
+El usuario acepta iniciar clonando el repositorio por ahora. README e INSTALL priorizan Git/Git LFS
+más `docker compose up -d --build --wait`; Docker instala las dependencias internas. El ZIP y las
+imágenes precompiladas quedan como entrega posterior: su publicación no es necesaria para probar
+la rama mediante el clon. Esta decisión no autoriza releases ni merge a main; PR #17 sigue en borrador.
