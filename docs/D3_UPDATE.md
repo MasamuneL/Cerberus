@@ -20,9 +20,11 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\setup\update.ps1 -Ca
 ```
 
 El backend **actual** comprueba primero los checksums, los digests y la compatibilidad del paquete;
+verifica también la configuración y las etiquetas de las imágenes actuales con el backend actual,
 consulta Redis y pospone si hay trabajos en cola o en ejecución. Descarga las imágenes sin detener la
 instalación y verifica sus etiquetas OCI de versión, revisión y plataforma Linux amd64. No ejecuta
-scripts ni código del candidato durante esas comprobaciones. Un SHA-256 comprueba integridad; la
+scripts ni código del candidato durante esas comprobaciones. Las referencias individuales proceden
+de `release.json`: `compose config --images <servicio>` puede incluir imágenes de sus dependencias. Un SHA-256 comprueba integridad; la
 procedencia se establece descargando el paquete y su checksum desde la release confiable.
 
 Después detiene frontend, API y worker, vuelve a comprobar Redis para detectar trabajos que entraron

@@ -35,7 +35,7 @@ elif a[0]=="run":
     operation=a[a.index("--operation")+1]
     if stage==operation: sys.exit(1)
 elif a[0]=="compose":
-    if "--images" in a: print(helper)
+    if "--images" in a: print(helper+"\nredis@sha256:"+"b"*64+"\npostgres@sha256:"+"c"*64)
     elif "pull" in a:
         if stage=="sleep-pull":
             Path(os.environ["UPDATE_DOCKER_LOG"]+".sleep").touch()
@@ -64,6 +64,14 @@ def updater(request: pytest.FixtureRequest, tmp_path: Path) -> tuple[Path, list[
     candidate.mkdir()
     (root / ".env").write_text("PRIVATE_STATE='unchanged'\n")
     (root / "compose.yaml").write_text("{}")
+    manifest = {
+        "images": {
+            "backend": "ghcr.io/example/backend@sha256:" + "a" * 64,
+            "frontend": "ghcr.io/example/frontend@sha256:" + "d" * 64,
+        }
+    }
+    for directory in (root, candidate):
+        (directory / "release.json").write_text(json.dumps(manifest))
     binary = tmp_path / "bin"
     binary.mkdir()
     docker = binary / "docker"
@@ -114,6 +122,13 @@ def test_update_full_order_and_trusted_backup_helper(updater: tuple[Path, list[s
     stop_db = next(index for index, call in enumerate(calls) if "stop" in call and "auth-db" in call)
     backup = next(index for index, call in enumerate(calls) if "--operation" in call and "backup" in call)
     activation = next(index for index, call in enumerate(calls) if "--operation" in call and "activate" in call)
+    initial_verification = next(index for index, call in enumerate(calls) if "verify-images" in call)
+    assert initial_verification < guards[0]
+    assert not any("--images" in call for call in calls)
+    inspected = [call[-1] for call in calls if call[:2] == ["image", "inspect"] and "--format" in call]
+    assert "ghcr.io/example/backend@sha256:" + "a" * 64 in inspected
+    assert "ghcr.io/example/frontend@sha256:" + "d" * 64 in inspected
+    assert all("\n" not in reference for reference in inspected)
     assert guards[0] < pull < stop_app < guards[1] < dump < stop_db < backup < activation
     assert "--volumes-from" in calls[backup] and calls[backup][0] == "run"
     assert len([item for item in calls[backup] if ":/run/cerberus-backup/" in item]) == 6

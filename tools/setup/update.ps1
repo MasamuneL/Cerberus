@@ -123,25 +123,33 @@ try {
             @($helper, '-m', 'cerberus_api.release_state', '--operation', 'restore', '--backup', '/backup', '--destination', '/restore', '--project', $Project)) | Out-Null
         Write-Host 'Restauración preparada en proyecto nuevo, sin iniciar servicios. Revisa puertos y ejecuta su lanzador.'
     } else {
-        $helper = Invoke-Compose -Arguments @('config', '--images', 'api')
+        $helper = (Get-Content -LiteralPath (Join-Path $installation 'release.json') -Raw | ConvertFrom-Json).images.backend
         if ($helper -cnotmatch $imagePattern) { throw 'La instalación requiere una release con digest.' }
         Invoke-Docker -Arguments @('image', 'inspect', $helper) | Out-Null
-        Invoke-Guard
-        if ($mode -ne 'Backup') {
-            Write-Host 'Descargando versión explícita; la instalación actual continúa disponible.'
-            Invoke-Docker -Arguments @('compose', '--project-directory', $installation, '-f', (Join-Path $Candidate 'compose.yaml'), '-p', $runtimeProject, 'pull') | Out-Null
+        function Confirm-Images {
+            param([string]$Package)
+            # --images puede incluir dependencias; solo el manifest identifica cada componente.
+            $metadata = Get-Content -LiteralPath (Join-Path $Package 'release.json') -Raw | ConvertFrom-Json
             $labels = @{}
             foreach ($component in @('backend', 'frontend')) {
-                $service = if ($component -eq 'backend') { 'api' } else { 'frontend' }
-                $image = Invoke-Docker -Arguments @('compose', '--project-directory', $installation, '-f', (Join-Path $Candidate 'compose.yaml'), '-p', $runtimeProject, 'config', '--images', $service)
+                $image = $metadata.images.$component
+                if ($image -cnotmatch $imagePattern) { throw 'Referencia de componente inválida.' }
                 $template = '{"version":{{json (index .Config.Labels "org.opencontainers.image.version")}},"revision":{{json (index .Config.Labels "org.opencontainers.image.revision")}},"architecture":{{json .Architecture}},"os":{{json .Os}}}'
                 $labels[$component] = (Invoke-Docker -Arguments @('image', 'inspect', '--format', $template, $image)) | ConvertFrom-Json
             }
             $labelsPath = Join-Path $lock 'labels.json'
             [System.IO.File]::WriteAllText($labelsPath, ($labels | ConvertTo-Json -Depth 6), (New-Object System.Text.UTF8Encoding($false)))
-            Invoke-Compose -Arguments @('run', '--rm', '--no-deps', '--pull', 'never', '-T', '--entrypoint', 'python',
-                '--volume', "${installation}:/release/current:ro", '--volume', "${Candidate}:/release/candidate:ro", '--volume', "${labelsPath}:/release/labels.json:ro", 'api',
-                '-m', 'cerberus_api.release_state', '--operation', 'verify-images', '--current', '/release/current', '--candidate', '/release/candidate', '--labels', '/release/labels.json') | Out-Null
+            Invoke-Docker -Arguments ($isolatedHelper + @('--user', '0:0', '--cap-add', 'DAC_OVERRIDE', '--entrypoint', 'python',
+                '--volume', "${installation}:/release/current:ro", '--volume', "${Package}:/release/candidate:ro", '--volume', "${labelsPath}:/release/labels.json:ro", $helper,
+                '-m', 'cerberus_api.release_state', '--operation', 'verify-images', '--current', '/release/current', '--candidate', '/release/candidate', '--labels', '/release/labels.json')) | Out-Null
+        }
+        # El helper actual comprueba configuración/etiquetas antes del primer Compose run.
+        Confirm-Images -Package $installation
+        Invoke-Guard
+        if ($mode -ne 'Backup') {
+            Write-Host 'Descargando versión explícita; la instalación actual continúa disponible.'
+            Invoke-Docker -Arguments @('compose', '--project-directory', $installation, '-f', (Join-Path $Candidate 'compose.yaml'), '-p', $runtimeProject, 'pull') | Out-Null
+            Confirm-Images -Package $Candidate
         }
         Write-Host 'Pausando aplicación y comprobando de nuevo la cola.'
         $paused = $true

@@ -119,7 +119,14 @@ if [ "$mode" = restore ]; then
   exit 0
 fi
 
-helper=$(compose config --images api 2>/dev/null) || fail
+# Compose --images puede incluir dependencias; cada referencia sale del manifest.
+manifest_image() {
+  local image
+  image=$(tr -d '\r\n' < "$1/release.json" | tr ',' '\n' | sed -nE 's/.*"'"$2"'"[[:space:]]*:[[:space:]]*"([^"]*)".*/\1/p') || return 1
+  [[ "$image" =~ ^[a-z0-9./:_-]+@sha256:[a-f0-9]{64}$ ]] || return 1
+  printf '%s' "$image"
+}
+helper=$(manifest_image "$installation" backend) || fail
 [[ "$helper" =~ ^[a-z0-9./:_-]+@sha256:[a-f0-9]{64}$ ]] || fail
 docker image inspect "$helper" >/dev/null 2>&1 || fail
 if [ "$mode" = backup ]; then candidate=$installation; fi
@@ -130,24 +137,29 @@ guard() {
     --volume "$installation:/release/current:ro" --volume "$candidate:/release/candidate:ro" api \
     -m cerberus_api.release_state --current /release/current --candidate /release/candidate >/dev/null 2>&1
 }
+verify_images() {
+  local package=$1 component image
+  local records=()
+  for component in backend frontend; do
+    image=$(manifest_image "$package" "$component") || return 1
+    template='{"version":{{json (index .Config.Labels "org.opencontainers.image.version")}},"revision":{{json (index .Config.Labels "org.opencontainers.image.revision")}},"architecture":{{json .Architecture}},"os":{{json .Os}}}'
+    records+=("$(docker image inspect --format "$template" "$image" 2>/dev/null)") || return 1
+  done
+  printf '{"backend":%s,"frontend":%s}' "${records[0]}" "${records[1]}" > "$lock/labels.json"
+  docker run --rm --pull never --network none --platform linux/amd64 --user 0:0 --read-only --tmpfs /tmp \
+    --security-opt no-new-privileges:true --cap-drop ALL --cap-add DAC_OVERRIDE --entrypoint python \
+    --volume "$installation:/release/current:ro" --volume "$package:/release/candidate:ro" \
+    --volume "$lock/labels.json:/release/labels.json:ro" "$helper" -m cerberus_api.release_state --operation verify-images \
+    --current /release/current --candidate /release/candidate --labels /release/labels.json >/dev/null 2>&1
+}
+# El backend actual valida imágenes/configuración actuales antes de cualquier Compose run.
+verify_images "$installation" || fail
 # El backend actual valida ambos paquetes y la cola antes de descargar el candidato.
 guard || fail
 if [ "$mode" = update ]; then
   printf '%s\n' 'Descargando versión explícita; la instalación actual continúa disponible.'
   docker compose --project-directory "$installation" -f "$candidate/compose.yaml" -p "$project" pull >/dev/null 2>&1 || fail
-  label_records=()
-  for component in backend frontend; do
-    service=api
-    [ "$component" != frontend ] || service=frontend
-    image=$(docker compose --project-directory "$installation" -f "$candidate/compose.yaml" -p "$project" config --images "$service" 2>/dev/null) || fail
-    template='{"version":{{json (index .Config.Labels "org.opencontainers.image.version")}},"revision":{{json (index .Config.Labels "org.opencontainers.image.revision")}},"architecture":{{json .Architecture}},"os":{{json .Os}}}'
-    label_records+=("$(docker image inspect --format "$template" "$image" 2>/dev/null)") || fail
-  done
-  printf '{"backend":%s,"frontend":%s}' "${label_records[0]}" "${label_records[1]}" > "$lock/labels.json"
-  compose run --rm --no-deps --pull never -T --entrypoint python \
-    --volume "$installation:/release/current:ro" --volume "$candidate:/release/candidate:ro" \
-    --volume "$lock/labels.json:/release/labels.json:ro" api -m cerberus_api.release_state --operation verify-images \
-    --current /release/current --candidate /release/candidate --labels /release/labels.json >/dev/null 2>&1 || fail
+  verify_images "$candidate" || fail
 fi
 printf '%s\n' 'Pausando aplicación y comprobando de nuevo la cola.'
 paused=true
