@@ -44,3 +44,9 @@ storage-docker/
 
 # Graphify: artefactos locales regenerables
 graphify-out/
+
+# Estado privado y bloqueos de instalación D3; los backups incluyen sesiones y secretos.
+.cerberus-backups/
+.cerberus-versions/
+.cerberus-setup.lock/
+.env.setup.*

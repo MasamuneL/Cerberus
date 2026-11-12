@@ -32,3 +32,7 @@ Propietarios: coordinador integra package.py, Compose generado y documentación 
 build.py, workflows y Dockerfiles; D3c sample.py, sample manifest y tests; D3e diagnostics.py y tests.
 D3d posee tools/setup y lanzadores; D3f frontend; D3g update.py. Cada agente trabaja en worktree propio.
 Ninguno publica, modifica main ni inicia/recrea servicios del proyecto diario cerberus.
+
+Empaquetador: Compose 5.7.0 fijado en CI para generar sin resolver env_file ni secretos.
+Host del usuario: mínimo 2.30.0, validado con arranque real del paquete en el entorno QA de macOS.
+Son requisitos distintos; no se usa el Compose antiguo para generar los YAML de distribución.

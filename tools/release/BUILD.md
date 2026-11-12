@@ -46,3 +46,13 @@ QA D3h, tamaño transferido, disco máximo, RAM y tiempos fríos/calientes hasta
 han publicado imágenes ni ejecutado estos workflows durante la implementación. Registrar condiciones
 de medición (sistema, CPU, RAM, Docker, red y cachés); los tiempos del build de CI no equivalen a los
 tiempos de instalación de un usuario. Ninguna plataforma de escritorio se declara validada por este CI.
+
+
+## Compose del empaquetador y del usuario
+
+El paquete requiere Compose 2.30.0 o posterior en el host del usuario. La generación se ejecuta con
+Compose **5.7.0**, fijado en CI mediante `docker/setup-compose-action`; usa `config --no-env-resolution`
+para no leer secretos del checkout. Compose 2.30.0 no tiene esa opción y no sirve para ejecutar el
+empaquetador. No se elimina la protección ni se lee `.env.auth` para soportar un generador antiguo.
+La referencia de la acción y su entrada `version` se verificaron en su
+[action.yml oficial](https://github.com/docker/setup-compose-action/blob/54042514f505b273907334ae2b9cdbb9a0213c1a/action.yml).
