@@ -176,14 +176,22 @@ if [ "$all_cached" = true ]; then
 elif ! bounded "$pull_timeout" "${compose[@]}" pull; then
     fail 'La descarga falló o agotó su espera. Reintenta: los datos y volúmenes se conservaron.'
 fi
-backend=$("${compose[@]}" config --images api) || fail 'No se pudo resolver la imagen backend.'
-[[ "$backend" =~ @sha256:[a-f0-9]{64}$ ]] || fail 'El paquete requiere una imagen backend fijada por digest.'
-docker run --rm --network none --platform linux/amd64 --entrypoint python "$backend" -c 'import shutil; d=shutil.disk_usage("/"); print("Disco del entorno Docker: %d bytes libres, %d bytes totales." % (d.free,d.total))' || fail 'No se pudo ejecutar Linux amd64 o medir el disco Docker. Revisa emulación y espacio.'
-for component in api frontend; do
-    image=$("${compose[@]}" config --images "$component")
+# Compose puede incluir dependencias al pedir --images de un servicio.
+# Solo se extraen referencias únicas del manifest generado; su JSON se valida dentro de la imagen.
+manifest_text=$(tr '\r\n' '  ' < "$root/release.json")
+backend=$(printf '%s\n' "$manifest_text" | tr ',' '\n' | sed -nE 's/.*"backend"[[:space:]]*:[[:space:]]*"([^"]*)".*/\1/p')
+frontend=$(printf '%s\n' "$manifest_text" | tr ',' '\n' | sed -nE 's/.*"frontend"[[:space:]]*:[[:space:]]*"([^"]*)".*/\1/p')
+for image in "$backend" "$frontend"; do
+    [[ "$image" =~ ^[a-z0-9./:_-]+@sha256:[a-f0-9]{64}$ ]] || fail 'El manifest requiere una referencia única por componente fijada por digest.'
+done
+"${compose[@]}" config --format json | docker run --rm -i --network none --platform linux/amd64 --entrypoint python \
+    --mount "type=bind,src=$root/release.json,dst=/release.json,readonly" "$backend" -c 'import json,shutil,sys; m=json.load(open("/release.json")); c=json.load(sys.stdin); assert m["format"]==1 and c["services"]["api"]["image"]==m["images"]["backend"]==sys.argv[1] and c["services"]["frontend"]["image"]==m["images"]["frontend"]==sys.argv[2], "Compose no coincide con release.json"; d=shutil.disk_usage("/"); print("Disco del entorno Docker: %d bytes libres, %d bytes totales." % (d.free,d.total))' "$backend" "$frontend" || fail 'No se pudo validar Compose, ejecutar Linux amd64 o medir el disco Docker. Revisa el paquete, emulación y espacio.'
+for component in backend frontend; do
+    image=$backend
+    [ "$component" != frontend ] || image=$frontend
     labels=$(docker image inspect --format '{{json .Config.Labels}}' "$image") || fail 'No se pudieron inspeccionar las imágenes descargadas.'
     printf '%s' "$labels" | docker run --rm -i --network none --platform linux/amd64 --entrypoint python \
-        --mount "type=bind,src=$root/release.json,dst=/release.json,readonly" "$backend" -c 'import json,sys; m=json.load(open("/release.json")); l=json.load(sys.stdin); assert m["format"]==1 and m["images"][sys.argv[1]]==sys.argv[2] and l.get("org.opencontainers.image.revision")==m["revision"] and l.get("org.opencontainers.image.version")==m["version"], "La imagen no coincide con release.json"' "$(if [ "$component" = api ]; then printf backend; else printf frontend; fi)" "$image" || fail 'Las imágenes mezclan versiones o no coinciden con release.json.'
+        --mount "type=bind,src=$root/release.json,dst=/release.json,readonly" "$backend" -c 'import json,sys; m=json.load(open("/release.json")); l=json.load(sys.stdin); assert m["format"]==1 and m["images"][sys.argv[1]]==sys.argv[2] and l.get("org.opencontainers.image.revision")==m["revision"] and l.get("org.opencontainers.image.version")==m["version"], "La imagen no coincide con release.json"' "$component" "$image" || fail 'Las imágenes mezclan versiones o no coinciden con release.json.'
 done
 # Una descarga larga puede perder la reserva. Reintento acotado, solo para valores automáticos.
 if [ -z "$active" ]; then

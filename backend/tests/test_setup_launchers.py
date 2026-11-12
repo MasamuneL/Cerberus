@@ -52,6 +52,7 @@ elif a[:2]==["image","inspect"]:
     print(json.dumps({"org.opencontainers.image.version":"candidate-test",
                       "org.opencontainers.image.revision":os.environ.get("FAKE_IMAGE_REVISION","c"*40)}))
 elif a[0]=="run":
+    if a[a.index("-c")-1]!=backend: sys.exit("invalid reference format")
     code=a[a.index("-c")+1]; args=a[a.index("-c")+2:]
     saved_open=builtins.open
     def mapped_open(name,*args,**kwargs):
@@ -70,9 +71,12 @@ elif a[0]=="compose":
             Path(os.environ["FAKE_UP_STARTED"]).touch()
             time.sleep(0.2)
         sys.exit(int(os.environ.get("FAKE_UP_FAILURE","0")))
+    elif "--format" in a and "json" in a:
+        print(json.dumps({"services":{"api":{"image":os.environ.get("FAKE_CONFIG_BACKEND",backend)},
+                                      "frontend":{"image":frontend}}}))
     elif "--images" in a:
         if a[-1]=="--images": print(backend+"\n"+frontend+"\nredis@sha256:"+"e"*64)
-        else: print(backend if a[-1]=="api" else frontend)
+        else: print("redis@sha256:"+"e"*64+"\n"+(backend if a[-1]=="api" else frontend)+"\n"+backend)
     elif "exec" in a:
         code=a[a.index("-c")+1]; sys.argv=["-c",*a[a.index("-c")+2:]]
         os.environ["CERBERUS_OIDC_ISSUER_URL"]="http://localhost:"+os.environ["CERBERUS_KEYCLOAK_HTTP_PORT"]+"/realms/cerberus"
@@ -260,6 +264,30 @@ def test_restart_uses_all_cached_digests_without_pull(installation: tuple[Path, 
     inspected = [command[-1] for command in commands if command[:2] == ["image", "inspect"]]
     assert BACKEND in inspected and FRONTEND in inspected and "redis@sha256:" + "e" * 64 in inspected
     assert any("up" in command and "--pull" in command and "never" in command for command in commands)
+
+
+@pytest.mark.parametrize("pretty", [False, True])
+def test_manifest_selects_exact_images_despite_compose_dependency_list(
+    installation: tuple[Path, dict[str, str]], pretty: bool
+) -> None:
+    root, env = installation
+    manifest = root / "release.json"
+    manifest.write_text(json.dumps(json.loads(manifest.read_text()), indent=2 if pretty else None))
+    result = run_launcher(root, env)
+    assert result.returncode == 0, result.stdout + result.stderr
+    for command in docker_commands(env):
+        if command[0] == "run":
+            assert command[command.index("-c") - 1] == BACKEND
+
+
+def test_compose_image_assignment_must_match_manifest_before_up(
+    installation: tuple[Path, dict[str, str]], launcher: str
+) -> None:
+    root, env = installation
+    env["FAKE_CONFIG_BACKEND"] = FRONTEND
+    result = run_launcher(root, env, launcher=launcher)
+    assert result.returncode != 0
+    assert not any("up" in command for command in docker_commands(env))
 
 
 def test_default_busy_ports_are_selected_and_persisted(installation: tuple[Path, dict[str, str]]) -> None:

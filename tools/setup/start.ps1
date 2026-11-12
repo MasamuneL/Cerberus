@@ -182,16 +182,20 @@ try {
     }
     if ($allCached) { Write-Host 'Todas las imágenes por digest están en caché; no se requiere descarga.' }
     else { Invoke-DockerBounded ($composeArgs + @('pull')) $pullTimeout }
-    $backend = Invoke-Docker ($composeArgs + @('config', '--images', 'api'))
-    if ($backend -notmatch '@sha256:[a-f0-9]{64}$') { throw 'El backend debe estar fijado por digest.' }
-    Invoke-Docker @('run', '--rm', '--network', 'none', '--platform', 'linux/amd64', '--entrypoint', 'python', $backend, '-c', 'import shutil; d=shutil.disk_usage(''/''); print(''Disco Docker: %d bytes libres, %d totales'' % (d.free,d.total))') | Out-Host
     $manifest = Get-Content -LiteralPath 'release.json' -Raw | ConvertFrom-Json
-    foreach ($component in @('api', 'frontend')) {
-        $image = Invoke-Docker ($composeArgs + @('config', '--images', $component))
+    $backend = $manifest.images.backend
+    $frontend = $manifest.images.frontend
+    foreach ($image in @($backend, $frontend)) {
+        if ($image -cnotmatch '^[a-z0-9./:_-]+@sha256:[a-f0-9]{64}$') { throw 'Cada imagen del manifest debe estar fijada por digest.' }
+    }
+    # --images de un servicio también puede devolver sus dependencias; comparar el JSON exacto.
+    $configuration = ((Invoke-Docker ($composeArgs + @('config', '--format', 'json'))) -join "`n") | ConvertFrom-Json
+    if ($manifest.format -ne 1 -or $configuration.services.api.image -cne $backend -or $configuration.services.frontend.image -cne $frontend) { throw 'Compose no coincide con las imágenes de release.json.' }
+    Invoke-Docker @('run', '--rm', '--network', 'none', '--platform', 'linux/amd64', '--entrypoint', 'python', $backend, '-c', 'import shutil; d=shutil.disk_usage(''/''); print(''Disco Docker: %d bytes libres, %d totales'' % (d.free,d.total))') | Out-Host
+    foreach ($component in @('backend', 'frontend')) {
+        $image = $manifest.images.$component
         $labels = (Invoke-Docker @('image', 'inspect', '--format', '{{json .Config.Labels}}', $image)) | ConvertFrom-Json
-        $expected = $manifest.images.frontend
-        if ($component -eq 'api') { $expected = $manifest.images.backend }
-        if ($manifest.format -ne 1 -or $image -ne $expected -or $labels.'org.opencontainers.image.revision' -ne $manifest.revision -or $labels.'org.opencontainers.image.version' -ne $manifest.version) { throw 'Las imágenes mezclan versiones o no coinciden con release.json.' }
+        if ($labels.'org.opencontainers.image.revision' -ne $manifest.revision -or $labels.'org.opencontainers.image.version' -ne $manifest.version) { throw 'Las imágenes mezclan versiones o no coinciden con release.json.' }
     }
     if ($active.Count -eq 0) {
         for ($attempt = 0; $attempt -lt 2; $attempt++) {
