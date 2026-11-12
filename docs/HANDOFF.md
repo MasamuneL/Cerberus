@@ -32,13 +32,14 @@ Abre las PNG y revísalas: **no te fíes solo de los ✅**. Leer píxeles del ca
 
 ## 2. Estado actual
 
-**Plan D3 · 2026-11-11 · pendiente de implementación:** rama `feat/D3-simple-setup`, creada
-desde main CP-051. El usuario solicitó planificar una instalación más sencilla y ejecución por Sol
-con subagentes por tarea. Ver [plan D3](superpowers/plans/2026-11-11-D3-simple-setup.md) y PLAN_MVP §19.
-Nueve tickets cubren distribución sin build, muestra, lanzadores, diagnóstico, versión visible,
-actualización/recuperación, QA y documentación. Solo se modifican documentos; no se han publicado
-imágenes ni releases, cambiado servicios ni implementado esas funcionalidades. Próximo paso al ejecutar:
-D3a, después las olas y propietarios definidos en el plan. CP-051 sigue siendo la última entrega integrada.
+**D3 · en implementación, sin merge · 2026-11-11:** rama `feat/D3-simple-setup`, actualizada desde
+origin al iniciar. D3a/b/c/e/f integrados en la rama; D3d y D3g en cierre mediante worktrees independientes.
+Ver [evidencia de ejecución y bloqueos](qa/D3_EXECUTION.md), [plan](superpowers/plans/2026-11-11-D3-simple-setup.md)
+y [guía de instalación](INSTALL.md). QA local aislado: 915 pruebas rápidas en la base integrada,
+visual 33/33, autenticación UI 20 escenarios y smoke Docker real 15/15; inferencia y conservación
+tras cambiar ambos puertos comprobadas. No se modificó Docker diario; no se publicaron imágenes,
+muestra ni releases. D3 no está aceptado: faltan cierre de recuperación, matriz real y QA de digests
+remotos del mismo commit. No anunciar un paquete descargable. CP-051 sigue siendo el último merge.
 
 **CP-051 · A1c · Compose con un comando · 2026-11-11:** integrado el
 [PR #14](https://github.com/MasamuneL/Cerberus/pull/14), merge `0c03465`.

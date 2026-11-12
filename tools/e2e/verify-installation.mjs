@@ -18,7 +18,7 @@ try {
   await page.goto(base);
   await page.getByRole('link',{name:'Iniciar sesión',exact:true}).click();
   await page.locator('#username').fill('demo');
-  await page.locator('#password').fill('demo');
+  await page.locator('#password').fill(process.env.CERBERUS_QA_PASSWORD ?? 'demo');
   await page.locator('#kc-login').click();
   await page.getByRole('button',{name:'Cerrar sesión',exact:true}).waitFor({timeout:120000});
   const session=await context.request.get(base+'/api/auth/me');

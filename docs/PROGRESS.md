@@ -913,3 +913,16 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
   ambos puertos, muestra íntegra, diagnóstico sin secretos y límites de recuperación.
 - Entrega documental; implementación, CI, publicación y QA de aplicación pendientes.
   No es un checkpoint de merge ni una funcionalidad disponible en main.
+
+
+### En rama · 2026-11-11 · D3: ejecución sin publicación ni merge
+
+- Rama `feat/D3-simple-setup`, base `0ddd560`, sincronizada con origin antes de implementar.
+- D3a/b/c/e/f integrados en rama; D3d/g en cierre. Detalles y evidencia en
+  [QA D3](qa/D3_EXECUTION.md), con revisiones, límites y gates externos explícitos.
+- Base integrada: 915 pruebas rápidas; Ruff/formato/Pyright correctos. Visual 33/33 y 20 escenarios
+  de autenticación UI; Docker aislado con login real y smoke 15/15. Inferencia real correcta.
+- Preservación tras cambio de ambos puertos: cuentas/roles/credenciales, claves, datos y resultados.
+  Muestra presente verificada con red deshabilitada. Docker diario conserva sus seis contenedores.
+- Sin release, GHCR, merge ni checkpoint de entrega: publicación prohibida durante esta ejecución.
+  Pendientes: recuperación operativa, matriz multiplataforma y validación del artefacto remoto final.

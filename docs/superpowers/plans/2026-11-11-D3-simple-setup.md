@@ -1,6 +1,6 @@
 # D3 — Instalación y distribución sencilla de Cerberus
 
-Estado: plan de implementación; ninguna tarea D3 implementada todavía.
+Estado: implementación en curso en `feat/D3-simple-setup`; evidencia y bloqueos en [QA D3](../../qa/D3_EXECUTION.md).
 Fecha: 2026-11-11. Base: `main`, CP-051 (`393e202`).
 Rama de trabajo e integración: `feat/D3-simple-setup`.
 Responsable de ejecución: **Sol**, con subagentes por tarea cuando aporten independencia o revisión.
