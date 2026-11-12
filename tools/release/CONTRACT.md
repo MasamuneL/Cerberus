@@ -18,7 +18,9 @@ Compose directo funciona sin lanzador y crea los bind mounts. setup-secrets prep
 con UID/GID configurado; worker espera su finalización. La muestra debe completarse antes del catálogo.
 No se aplica chown recursivo ni se reemplazan archivos de usuario.
 
-Migración: detener explícitamente la instalación anterior antes de iniciar la nueva. Resolver Data,
+Migración: preparar primero la configuración desde contenedores anteriores identificables, incluso detenidos.
+Después terminar trabajos y retirar explícitamente los contenedores anteriores con `docker compose down`
+sin `-v`, conservando volúmenes y bind mounts, antes de iniciar desde la carpeta nueva. Resolver Data,
 storage, models y .env.auth contra el checkout anterior y guardar rutas absolutas en .env del paquete;
 conservar CERBERUS_UID/GID, puertos y origen personalizado. Adoptar el nombre de proyecto real obtenido
 con docker compose ls/labels, nunca inventar uno distinto. COMPOSE_PROJECT_NAME debe coincidir con ese

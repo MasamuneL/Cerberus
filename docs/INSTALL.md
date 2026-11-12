@@ -73,8 +73,14 @@ Una restauración de base exige su backup consistente y las mismas claves; cambi
 revierte migraciones. La recuperación debe ensayarse en un proyecto aislado antes de recomendarla.
 
 Migración desde checkout: usa la misma identidad real del proyecto y rutas absolutas a los datos
-anteriores, incluida `.env.auth` cuando exista. Detén la instancia anterior antes de iniciar la nueva;
-no inicies dos stacks compartiendo volúmenes. El [contrato](../tools/release/CONTRACT.md) detalla la
+anteriores, incluida `.env.auth` cuando exista. Primero prepara la configuración mientras existan los contenedores anteriores: la identidad real puede
+haber sido elegida con `-p` y los puertos mediante variables de aquella shell. El ayudante de migración
+del checkout (`uv run python tools/release/migrate.py <checkout-anterior> <paquete>`) obtiene esos valores
+reales y no ejecuta servicios. Si faltan contenedores o hay más de una instalación, bloquea la adopción.
+Termina trabajos y conserva un backup antes de retirar los contenedores antiguos: desde la carpeta
+anterior, con su proyecto real, ejecuta `docker compose down` **sin `-v`**. Este paso conserva los
+volúmenes y los archivos de datos, y permite al lanzador nuevo adoptar esa identidad; solo `stop`
+deja contenedores con la carpeta antigua y el lanzador los rechazará. No inicies dos stacks compartiendo volúmenes. El [contrato](../tools/release/CONTRACT.md) detalla la
 preservación. Si la identidad es ambigua o faltan claves, detente y recupera la configuración anterior.
 
 Demo académica local en loopback. No constituye despliegue hospitalario ni validación clínica.

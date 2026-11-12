@@ -139,7 +139,9 @@ def main() -> None:
     inspected = subprocess.run(["docker", "inspect", *found], check=True, capture_output=True, text=True, timeout=30)
     values = migration_environment(runtime_config(json.loads(inspected.stdout), checkout), checkout)
     write_environment(args.installation.resolve() / ".env", values)
-    print("Configuración de migración preparada. Detén explícitamente la instancia anterior antes de iniciar.")
+    print(
+        "Configuración preparada. Termina trabajos y retira contenedores antiguos conservando volúmenes antes de iniciar."
+    )
 
 
 if __name__ == "__main__":
