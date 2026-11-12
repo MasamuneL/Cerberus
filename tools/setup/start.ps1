@@ -116,13 +116,16 @@ try {
     Write-Host "Docker: $($info[2]) CPU; $($info[3]) bytes de RAM total. El disco se medirá dentro de la imagen."
     $env:COMPOSE_PROJECT_NAME = $project
     $composeArgs = @('compose', '--project-directory', $root, '-f', (Join-Path $root 'compose.yaml'), '-p', $project)
-    $active = @(Invoke-Docker @('ps', '--filter', "label=com.docker.compose.project=$project", '--format', '{{.ID}}'))
-    $active = @($active | Where-Object { $_ })
-    foreach ($container in $active) {
+    $existing = @(Invoke-Docker @('ps', '-a', '--filter', "label=com.docker.compose.project=$project", '--format', '{{.ID}}'))
+    $existing = @($existing | Where-Object { $_ })
+    # Los contenedores detenidos también conservan la identidad de su instalación.
+    foreach ($container in $existing) {
         $containerLabels = (Invoke-Docker @('inspect', '--format', '{{json .Config.Labels}}', $container)) | ConvertFrom-Json
         $directory = $containerLabels.'com.docker.compose.project.working_dir'
-        if ($directory -ne $root) { throw 'Este proyecto ya está activo en otra carpeta. Usa su instalación original; no se modificó.' }
+        if ($directory -ne $root) { throw 'Este proyecto ya existe en otra carpeta. Usa su instalación original; no se modificó.' }
     }
+    $active = @(Invoke-Docker @('ps', '--filter', "label=com.docker.compose.project=$project", '--format', '{{.ID}}'))
+    $active = @($active | Where-Object { $_ })
     if ($active.Count -eq 0) {
         if (-not (Test-PortFree $http)) {
             if ($env:CERBERUS_HTTP_PORT -or $fileValues.ContainsKey('CERBERUS_HTTP_PORT')) { throw 'CERBERUS_HTTP_PORT está ocupado. Elige otro puerto; el servicio ajeno se conserva.' }

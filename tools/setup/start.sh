@@ -99,11 +99,13 @@ case "$endpoint" in unix://*|npipe://*) ;; *) fail 'Usa un contexto Docker local
 printf 'Docker: %s CPU; %s bytes de RAM total. Disco disponible: se comprobará dentro de la imagen.\n' "$cpus" "$memory"
 export COMPOSE_PROJECT_NAME=$project
 compose=(docker compose --project-directory "$root" -f "$root/compose.yaml" -p "$project")
-active=$(docker ps --filter "label=com.docker.compose.project=$project" --format '{{.ID}}') || fail 'No se pudo comprobar la instalación existente.'
-for container in $active; do
-    directory=$(docker inspect --format '{{ index .Config.Labels "com.docker.compose.project.working_dir" }}' "$container") || fail 'No se pudo identificar la carpeta del proyecto activo.'
-    [ "$directory" = "$root" ] || fail 'Ya existe una instancia activa de este proyecto en otra carpeta. Usa su instalación original; no se modificó.'
+existing=$(docker ps -a --filter "label=com.docker.compose.project=$project" --format '{{.ID}}') || fail 'No se pudo comprobar la instalación existente.'
+# Un proyecto detenido conserva sus volúmenes e identidad; tampoco se adopta desde otra carpeta.
+for container in $existing; do
+    directory=$(docker inspect --format '{{ index .Config.Labels "com.docker.compose.project.working_dir" }}' "$container") || fail 'No se pudo identificar la carpeta del proyecto existente.'
+    [ "$directory" = "$root" ] || fail 'Ya existe una instancia de este proyecto en otra carpeta. Usa su instalación original; no se modificó.'
 done
+active=$(docker ps --filter "label=com.docker.compose.project=$project" --format '{{.ID}}') || fail 'No se pudo comprobar la instancia activa.'
 if [ -z "$active" ]; then
     occupied() { (exec 3<>"/dev/tcp/127.0.0.1/$1") >/dev/null 2>&1; }
     choose_port() {

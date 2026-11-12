@@ -32,7 +32,9 @@ elif a[0]=="info":
     if os.environ.get("FAKE_DAEMON_DOWN"): sys.exit(1)
     print(os.environ.get("FAKE_INFO","linux|amd64|4|8589934592"))
 elif a[0]=="context": print(os.environ.get("FAKE_ENDPOINT","unix:///fake/docker.sock"))
-elif a[0]=="ps": print("active" if os.environ.get("FAKE_ACTIVE") else "")
+elif a[0]=="ps":
+    print("active" if os.environ.get("FAKE_ACTIVE") else
+          "stopped" if "-a" in a and os.environ.get("FAKE_STOPPED") else "")
 elif a[0]=="inspect":
     if "compose.service" in a[2]: print(os.environ.get("FAKE_ACTIVE_SERVICE","api"))
     elif a[2]=="{{json .Config.Labels}}":
@@ -221,6 +223,31 @@ def test_active_instance_with_matching_configuration_restarts(
     env["FAKE_ACTIVE"] = "1"
     result = run_launcher(root, env)
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_stopped_foreign_installation_is_rejected_before_configuration_or_pull(
+    installation: tuple[Path, dict[str, str]], launcher: str
+) -> None:
+    root, env = installation
+    env.update({"FAKE_STOPPED": "1", "FAKE_ACTIVE_DIRECTORY": "/original/installation"})
+    result = run_launcher(root, env, launcher=launcher)
+    assert result.returncode != 0 and "otra carpeta" in result.stderr
+    assert not (root / ".env").exists()
+    assert not (root / ".cerberus-setup.lock").exists()
+    assert not any("pull" in command or "up" in command for command in docker_commands(env))
+
+
+def test_stopped_owned_installation_does_not_validate_running_ports_or_origin(
+    installation: tuple[Path, dict[str, str]], launcher: str
+) -> None:
+    root, env = installation
+    env.update({"FAKE_STOPPED": "1", "FAKE_RUNNING_ORIGIN": "http://other:8080", "FAKE_UP_FAILURE": "1"})
+    result = run_launcher(root, env, launcher=launcher)
+    assert result.returncode != 0
+    commands = docker_commands(env)
+    assert any("up" in command for command in commands)
+    assert not any(command[0] in {"exec", "port"} for command in commands)
+    assert not (root / ".cerberus-setup.lock").exists()
 
 
 def test_restart_uses_all_cached_digests_without_pull(installation: tuple[Path, dict[str, str]]) -> None:
