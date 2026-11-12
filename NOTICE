@@ -1,0 +1,9 @@
+Cerberus
+
+El frontend incluye componentes de terceros. Sus avisos y textos de licencia se
+conservan en frontend/public/THIRD_PARTY_NOTICES.txt del código fuente y en
+/THIRD_PARTY_NOTICES.txt del frontend desplegado. El paquete de instalación
+conserva este NOTICE; las imágenes conservan los avisos de sus componentes.
+
+Este archivo no concede una licencia nueva sobre componentes, datos o modelos
+de terceros. Consulta las condiciones de cada distribución correspondiente.
