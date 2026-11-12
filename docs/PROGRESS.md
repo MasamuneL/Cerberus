@@ -980,3 +980,10 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
 - Compose 2.30.0 y 5.7.0 comprobados; el generador/CI fija 5.7.0 para no resolver secretos.
   Bash y PowerShell reales con Docker simulado; Windows 5.1/NTFS y matriz nativa pendientes.
 - No hay release, merge ni checkpoint nuevo. Gates externos y evidencia completa en [QA D3](qa/D3_EXECUTION.md).
+
+
+- Actualización de la rama D3 con origin/main CP-052 (`9474665`) en `c189cee`: F12 y documentos
+  conservados, sin modificar main. Checks repetidos: 1016 rápidas, build, Ruff/formato/Pyright,
+  geometría y Node/auth, 20 escenarios auth UI, visual 33/33 y 3D 7/7. Se ajustó únicamente el
+  presupuesto de captura del runner para el render 3D por software. PR #17 continúa en borrador;
+  no se integrará D3 en main sin visto bueno explícito del usuario.

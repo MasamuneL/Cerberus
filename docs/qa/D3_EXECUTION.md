@@ -159,3 +159,22 @@ Cierre local: avisos idénticos en public, dist y una imagen frontend reconstrui
 31 pruebas focalizadas del paquete posteriores a su incorporación correctas. Al terminar se detuvieron
 exclusivamente los servicios y registro QA, conservando sus backups/resultados. Los seis contenedores
 diarios mantienen exactamente sus IDs iniciales. `.omo/` preexistente permanece fuera de los commits.
+
+## Sincronización de la rama con CP-052
+
+Mientras se ejecutaba D3, origin/main avanzó a CP-052 (`9474665`). Se incorporó ese estado únicamente
+en `feat/D3-simple-setup` mediante `c189cee`, preservando F12 y ambos registros documentales.
+No se envió D3 a main: el remoto main conserva `9474665`. El PR #17 permanece en borrador hasta
+el visto bueno del usuario; no se ejecutan merge ni publicaciones por terminar los checks.
+
+Después de sincronizar: 1016 pruebas rápidas, Ruff/formato/Pyright y build correctos; geometría,
+22 comprobaciones Node de autenticación y 20 escenarios de auth UI correctos. Vista 3D: 7/7 y
+capturas de ambas resoluciones revisadas. La primera pasada visual general en paralelo con 3D
+agotó el tiempo de captura y se interrumpió; no cuenta como aprobación. El runner usa ahora el
+presupuesto CERBERUS_TIMEOUT también para capturas, verificado en la API instalada de Playwright.
+La repetición general secuencial pasó 33/33, con 14 auditorías axe sin violaciones automáticas;
+capturas revisadas. También se verificaron 60 enlaces locales de la documentación.
+
+Los ensayos Docker de recuperación anteriores pertenecen a los paquetes QA3/QA4 registrados arriba;
+no se presentan como ejecución de un artefacto nuevo que incluya F12. El candidato público final
+requiere nuevamente sus gates cuando se autorice publicar.
