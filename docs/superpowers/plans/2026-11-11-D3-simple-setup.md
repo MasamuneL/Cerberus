@@ -233,8 +233,8 @@ Este documento autoriza delegación; no exige lanzar un agente por cada apartado
    los gates y la autorización vigente. No publicar artefactos incompletos por el mero hecho de acabar un ticket.
 
 Bloqueos externos se registran con evidencia: visibilidad GHCR, licencia del dataset, cuota/runner disponible.
-Continuar tareas independientes; no reemplazar evidencia faltante por suposiciones. Esta entrega es solo
-el plan: no configura cuentas externas, no publica imágenes y no inicia implementación de D3.
+Continuar tareas independientes; no reemplazar evidencia faltante por suposiciones. La entrega inicial de este documento fue solo
+el plan. La ejecución actual se registra en QA D3; no configura cuentas externas ni publica imágenes.
 
 ## 6. Orden de entrega y definición de terminado
 
