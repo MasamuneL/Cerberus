@@ -287,3 +287,13 @@ button.vw-chip:hover:not(:disabled) { background: var(--vw-surface-2); border-co
     animation: none !important;
   }
 }
+
+/* --- Controles de la vista 3D (Render3DPanel) ---------------------------------------------------- */
+.vw-r3d { display: flex; flex-direction: column; gap: 0.4rem; font-size: 0.8rem; color: var(--vw-text); }
+.vw-r3d-presets { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.35rem; }
+.vw-r3d-reset { margin-left: auto; color: var(--vw-muted); }
+.vw-r3d-check { font-size: 0.78rem; cursor: pointer; }
+.vw-r3d-check input { accent-color: var(--vw-accent); margin: 0; }
+.vw-r3d-check:has(input:disabled) { cursor: not-allowed; color: var(--vw-muted); }
+.vw-r3d-label { min-width: 4.6rem; }
+.vw-r3d-info { margin: 0; font-family: var(--vw-mono); font-size: 0.7rem; color: var(--vw-muted); }

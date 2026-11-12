@@ -394,6 +394,18 @@ Referencias: [registro y transformaciones ANTsPy](https://antspy.readthedocs.io/
 [atlas Talairach de Nilearn](https://nilearn.github.io/stable/modules/generated/nilearn.datasets.fetch_atlas_talairach.html)
 y [definición del espacio en el código de Nilearn](https://github.com/nilearn/nilearn/blob/main/nilearn/datasets/atlas.py).
 
+### Vista 3D y superficie del GTV
+
+Selecciona **3D** (tecla `5`) para ver la superficie roja del GTV sobre el volumen. El panel permite
+ocultar el cráneo cuando existe una máscara cerebral compatible con la secuencia, ajustar iluminación, bordes y silueta, cambiar
+la opacidad y visibilidad de la malla a través del cerebro, activar un plano de corte y elegir
+orientaciones de cámara. **Restablecer** recupera los ajustes iniciales de la vista 3D.
+
+La superficie se calcula en el navegador a resolución nativa para conservar focos pequeños y se
+suaviza para su visualización. El volumen indicado como «malla» es orientativo: la medida de referencia
+sigue siendo **Volumetría**, calculada sobre los vóxeles del GTV. Al volver a cortes 2D se recuperan
+el overlay del GTV y la imagen sin modulación de la máscara cerebral.
+
 ### Atajos del visor
 
 | Tecla | Acción |

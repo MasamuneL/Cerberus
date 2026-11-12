@@ -4,7 +4,7 @@
 > checkpoint. El historial completo está en [`PROGRESS.md`](PROGRESS.md) y el alcance y los contratos en
 > [`PLAN_MVP.md`](PLAN_MVP.md). Las reglas de trabajo están en [`../AGENTS.md`](../AGENTS.md).
 
-**Última actualización:** 2026-11-12 · último checkpoint: CP-051 · rama base: `main`
+**Última actualización:** 2026-11-12 · último checkpoint: CP-052 · rama base: `main`
 
 ## 1. Arranque rápido
 
@@ -38,9 +38,24 @@ integrado mediante worktrees y subagentes; D3h con QA local aprobado y D3i docum
 1016 pruebas rápidas, Ruff/formato/Pyright y build correctos; visual 33/33, 20 escenarios de auth UI,
 smoke real 15/15, inferencia y conservación de cuentas/secretos/resultados comprobados. Actualización,
 fallo posterior, retorno y restauración reales en proyectos QA separados; Compose 2.30 y 5.7 probados.
-Docker diario conserva sus contenedores. Sin publicación externa, release ni merge; CP-051 sigue siendo
-el último checkpoint integrado. Gates pendientes: muestra/GHCR públicos autorizados, matriz nativa,
+Docker diario conserva sus contenedores. Sin publicación externa ni integración D3 en main;
+CP-052 es el último checkpoint integrado. F12 de main se conserva en esta rama. Gates pendientes: muestra/GHCR públicos autorizados, matriz nativa,
 mediciones frías/picos y repetición sobre el candidato remoto final. No anunciar un paquete descargable.
+
+**CP-052 · F12 · vista 3D integrada · 2026-11-11:** el
+[PR #15 de BiomedicLJZ](https://github.com/MasamuneL/Cerberus/pull/15) quedó incorporado mediante el
+[PR #16](https://github.com/MasamuneL/Cerberus/pull/16), merge `0e93254`, conservando su historial.
+GitHub marca ambos como merged; árbol del merge idéntico al head validado `1915451`.
+Incluye superficie GTV, máscara cerebral, iluminación/bordes/silueta, corte, cámara y orientación.
+Corregidos pérdida de focos por remuestreo, suavizado de componentes mínimos, compatibilidad de grid,
+liberación de mallas, restauración 2D y cargador de pruebas de auth. Revisión independiente cerrada.
+Checks: Ruff/formato/Pyright, 799 tests rápidos (5 slow excluidos), build, geometría y 22 comprobaciones
+Node correctos. QA final: 33/33 generales, 14 auditorías axe sin violaciones automáticas y 27 capturas;
+3D 7/7, axe del panel y seis capturas; auth UI 20/20; smoke del build 15/15 sin pendientes, 11 capturas.
+Capturas de ambos tamaños revisadas. Smoke sobre Vite preview/API local; auth UI con HTTP controlado.
+No se reconstruyó Docker ni se repitió Keycloak real. Sin modelos, subidas ni cambios de contratos.
+La pasada 31/33 por fuentes HTTP 403 del enlace de dependencias queda sustituida por la repetición
+completa con dependencias locales. Siguiente paso: continuar D3 por separado; A5/ola P pendientes.
 
 **CP-051 · A1c · Compose con un comando · 2026-11-11:** integrado el
 [PR #14](https://github.com/MasamuneL/Cerberus/pull/14), merge `0c03465`.
@@ -291,7 +306,7 @@ Adaptación de MONAI a CFB-GBM: discusión conservada en
 [`NOTA_FINETUNING_MONAI.md`](NOTA_FINETUNING_MONAI.md) para generar después el plan con Astra.
 No se ha aprobado ni iniciado entrenamiento; falta decidir GTV binario frente a etiquetas TC/WT/ET.
 
-Reporte exportable por estudio (PDF o imprimible), 3D más limpio (iluminación y orientación), subir archivos
+Reporte exportable por estudio (PDF o imprimible), subir archivos
 arrastrándolos, atajos extra. Fase 2 pendiente: skull-strip (HD-BET o SynthStrip) para DICOM sin
 `brain_mask`, registro entre series y RTSTRUCT. Docker y el autoajuste ya están implementados.
 El login para la demo tiene planificación incorporada en `PLAN_MVP.md` §17; A0–A3 integrados, con A4/A5

@@ -1024,3 +1024,23 @@ Los archivos compartidos tienen un único responsable; publicación y merge requ
 Se conserva el acceso mediante Compose directo, la configuración previa y el modo de desarrollo.
 La distribución de la muestra exige verificar sus condiciones; soporte por plataforma requiere
 evidencia real. No incluye despliegue público ni sustituye la aceptación A5 o las correcciones de ola P.
+
+## 20. F12 · Vista 3D volumétrica y superficie del GTV
+
+Solicitud del 2026-11-11: incorporar el [PR #15 de BiomedicLJZ](https://github.com/MasamuneL/Cerberus/pull/15).
+Depende de F3/F9 y A4, ya integrados. Solo cambia el frontend y su QA; se conservan los contratos §6/§7.
+
+- Superficie GTV en coordenadas físicas mediante surface nets y suavizado de Taubin, generada en el
+  navegador y cacheada por estudio. Se extrae a resolución nativa para conservar componentes pequeños;
+  el volumen de la malla es orientativo y no sustituye la volumetría del backend.
+- Panel exclusivo de la vista 3D: iluminación, bordes, silueta, máscara cerebral cuando está disponible,
+  opacidad y visibilidad de la superficie a través del cerebro, plano de corte, cámara y orientación.
+- Volver a 2D restaura la opacidad GTV y retira la modulación cerebral. Ocultar GTV o cambiar de estudio
+  elimina la malla anterior. Las descargas siguen usando el cliente autenticado y se cancelan al
+  desmontar o iniciar una nueva carga de capas/secuencia; una máscara pendiente no bloquea esa carga.
+- Aceptación: regresiones geométricas con focos aislados y mixtos, affine reflejado y máscara vacía;
+  pruebas de ciclo de vida/cancelación y autenticación; checks §5, QA completo y capturas 3D en ambos
+  tamaños. Ver `tools/e2e/verify-mask-surface.mjs`, `verify-auth-media.mjs` y `verify-viewer-3d.mjs`.
+
+Integrado mediante PR #16 (merge `0e93254`), conservando el historial del PR #15. Evidencia y cierre
+en `PROGRESS.md`, checkpoint CP-052.
