@@ -33,7 +33,7 @@ def test_plan_subcommands_are_declared() -> None:
     parser = build_parser()
     choices = next(a for a in parser._actions if a.dest == "command").choices  # pyright: ignore[reportAttributeAccessIssue]
     assert choices is not None and sorted(choices) == sorted(SUBCOMMANDS)
-    assert set(PENDING) == set(SUBCOMMANDS) - {"validate", "device"}
+    assert set(PENDING) == set(SUBCOMMANDS) - {"validate", "device", "inventory", "split"}
 
 
 @pytest.mark.parametrize("argv", [["--help"], *[[name, "--help"] for name in SUBCOMMANDS]])
@@ -81,8 +81,6 @@ def test_invalid_config_reports_error(tmp_path: Path, capsys: pytest.CaptureFixt
 @pytest.mark.parametrize(
     ("argv", "ticket"),
     [
-        (["inventory", "--data-root", "/x", "--output", "/y"], "FT1"),
-        (["split", "--config", EXAMPLE], "FT1"),
         (["prepare", "--config", EXAMPLE], "FT2"),
         (["preflight", "--config", EXAMPLE], "FT2"),
         (["train", "--config", EXAMPLE, "--dry-run"], "FT3"),
