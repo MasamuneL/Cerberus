@@ -19,6 +19,7 @@ from cerberus_api.areas import AREAS_JSON
 from cerberus_api.atlas import MOVING_PRIORITY
 from cerberus_api.config import Settings
 from cerberus_api.deps import REDIS_UNAVAILABLE, PrincipalDep, RedisDep, SettingsDep
+from cerberus_api.display import SMOOTHABLE, display_path, ensure_smoothed
 from cerberus_api.schemas import (
     AreasResult,
     JobCreated,
@@ -29,7 +30,13 @@ from cerberus_api.schemas import (
     Volumetry,
 )
 from cerberus_api.segmentation import CHANNEL_MAP
-from cerberus_api.sequences import SERVABLE_DERIVED, validate_file_name, validate_patient, validate_timepoint
+from cerberus_api.sequences import (
+    MRI_SEQS,
+    SERVABLE_DERIVED,
+    validate_file_name,
+    validate_patient,
+    validate_timepoint,
+)
 from cerberus_api.volumetry import gtv_volumetry, longitudinal
 
 router = APIRouter(tags=["studies"])
@@ -62,6 +69,30 @@ def _resolve_file(settings: Settings, patient: str, timepoint: str, name: str) -
         path = settings.results_dir / patient / timepoint / f"{name}.nii.gz"
         return path if path.is_file() else None
     return catalog.sequence_path(settings.data_dir, patient, timepoint, name)
+
+
+# Rejilla de referencia para las máscaras suavizadas: la del GTV o, si no hay, la de la primera secuencia MRI.
+_REFERENCE_ORDER: tuple[str, ...] = ("gtv", *MRI_SEQS)
+
+
+def _resolve_smoothed(settings: Settings, patient: str, timepoint: str, name: str) -> Path | None:
+    """Copia suavizada (solo visor) de `gtv`/`monai_seg`/`brodmann`; `None` si no hay máscara de origen.
+
+    `_resolve_file` valida los tres identificadores antes de construir cualquier `Path`.
+    """
+    source = _resolve_file(settings, patient, timepoint, name)
+    if source is None:
+        return None
+    reference = None
+    if name != "gtv":
+        reference = next(
+            (p for s in _REFERENCE_ORDER if (p := catalog.sequence_path(settings.data_dir, patient, timepoint, s))),
+            None,
+        )
+    try:
+        return ensure_smoothed(source, reference, display_path(settings.results_dir, patient, timepoint, name))
+    except (OSError, ValueError) as exc:
+        raise HTTPException(status_code=500, detail="No se pudo generar la máscara suavizada") from exc
 
 
 # Los NIfTI pesan ~75 MB: el navegador los guarda y revalida en cada uso (`no-cache` ≠ `no-store`) para no servir
@@ -102,13 +133,22 @@ def _not_modified(request: Request, response: FileResponse, stat_result: os.stat
     response_class=FileResponse,
     responses={200: {"content": {"application/gzip": {}}}, 304: {"description": "No modificado (ETag)"}},
 )
-def get_study_file(patient: str, timepoint: str, name: str, request: Request, settings: SettingsDep) -> Response:
-    """Descarga un volumen NIfTI (`name` = secuencia o `monai_seg`) como `application/gzip`.
+def get_study_file(
+    patient: str, timepoint: str, name: str, request: Request, settings: SettingsDep, smooth: bool = False
+) -> Response:
+    """Descarga un volumen NIfTI (`name` = secuencia, `monai_seg` o `brodmann`) como `application/gzip`.
 
+    Con `smooth=true` y `name` ∈ {`gtv`, `monai_seg`, `brodmann`} sirve la copia de bordes suavizados para el
+    visor (ver `cerberus_api.display`), generada la primera vez y cacheada; con otra secuencia responde 400.
     Lleva `ETag` / `Last-Modified` (los de Starlette) y `Cache-Control: no-cache`; responde 304 si
     `If-None-Match` (o, sin él, `If-Modified-Since`) coincide. `Range` sigue funcionando (206).
     """
-    path = _resolve_file(settings, patient, timepoint, name)
+    if smooth and name not in SMOOTHABLE:
+        raise HTTPException(status_code=400, detail="smooth solo aplica a gtv, monai_seg o brodmann")
+    if smooth:
+        path = _resolve_smoothed(settings, patient, timepoint, name)
+    else:
+        path = _resolve_file(settings, patient, timepoint, name)
     if path is None:
         raise HTTPException(status_code=404, detail="Archivo no encontrado")
     try:

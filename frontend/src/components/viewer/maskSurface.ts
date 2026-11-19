@@ -6,6 +6,9 @@
  *   2. Remuestreo por bloques a ~1 mm (`stride` por eje): cada celda guarda la fracción de vóxeles
  *      dentro (0..1). Para conservar también focos pequeños se utiliza resolución nativa si el paso
  *      solicitado agrupa varios vóxeles; el suavizado posterior atenúa la escalera de 0.5 mm.
+ *   2b. Opcional (`sigmaMM > 0`): filtro gaussiano separable del campo, con σ en mm por eje. La isosuperficie
+ *      0.5 de un campo continuo ya sale redondeada en lugar de seguir la escalera de los vóxeles (sobre todo
+ *      la de 1 mm entre cortes). Los componentes pequeños conservan su ocupación original para no borrarse.
  *   3. Un vértice por cubo que cruza la isosuperficie 0.5, en el promedio de los cruces de sus aristas.
  *   4. Un quad (dos triángulos) por cada arista de la rejilla con cambio de signo.
  *   5. Suavizado de Taubin (λ/μ), que no encoge la malla como el laplaciano simple.
@@ -26,7 +29,69 @@ export interface MaskSurface {
 }
 
 const ISO = 0.5;
+// Componentes con hasta este número de vóxeles no se difuminan (un foco aislado desaparecería).
+const SMALL_COMPONENT_VOXELS = 64;
 
+/** Filtro gaussiano 1D sobre un eje de la rejilla `g` (in place, con ceros fuera). */
+function blurAxis(field: Float32Array, g: [number, number, number], axis: number, sigma: number): void {
+  if (sigma <= 0) return;
+  const radius = Math.ceil(3 * sigma);
+  const kernel = new Float32Array(2 * radius + 1);
+  let sum = 0;
+  for (let i = -radius; i <= radius; i++) sum += kernel[i + radius] = Math.exp(-(i * i) / (2 * sigma * sigma));
+  for (let i = 0; i < kernel.length; i++) kernel[i] /= sum;
+  const [gx, gy] = g;
+  const stride = [1, gx, gx * gy][axis];
+  const n = g[axis];
+  const line = new Float32Array(n);
+  const total = field.length;
+  for (let start = 0; start < total; start++) {
+    // Solo los inicios de línea: la coordenada del eje es 0.
+    if (Math.floor(start / stride) % n !== 0) continue;
+    for (let i = 0; i < n; i++) line[i] = field[start + i * stride];
+    for (let i = 0; i < n; i++) {
+      let acc = 0;
+      for (let k = -radius; k <= radius; k++) {
+        const j = i + k;
+        if (j >= 0 && j < n) acc += kernel[k + radius] * line[j];
+      }
+      field[start + i * stride] = acc;
+    }
+  }
+}
+
+/** Marca (1) los vóxeles ocupados de componentes 6-conexos con ≤ `maxSize` vóxeles. */
+function smallComponents(field: Float32Array, g: [number, number, number], maxSize: number): Uint8Array {
+  const [gx, gy, gz] = g;
+  const gxy = gx * gy;
+  const seen = new Uint8Array(field.length);
+  const small = new Uint8Array(field.length);
+  const stack: number[] = [];
+  const members: number[] = [];
+  for (let seed = 0; seed < field.length; seed++) {
+    if (seen[seed] || field[seed] <= ISO) continue;
+    seen[seed] = 1;
+    stack.push(seed);
+    members.length = 0;
+    while (stack.length) {
+      const p = stack.pop()!;
+      members.push(p);
+      const x = p % gx, y = Math.floor(p / gx) % gy, z = Math.floor(p / gxy);
+      const next = [
+        x > 0 ? p - 1 : -1, x < gx - 1 ? p + 1 : -1,
+        y > 0 ? p - gx : -1, y < gy - 1 ? p + gx : -1,
+        z > 0 ? p - gxy : -1, z < gz - 1 ? p + gxy : -1,
+      ];
+      for (const q of next) {
+        if (q < 0 || seen[q] || field[q] <= ISO) continue;
+        seen[q] = 1;
+        stack.push(q);
+      }
+    }
+    if (members.length <= maxSize) for (const p of members) small[p] = 1;
+  }
+  return small;
+}
 // Las 12 aristas de un cubo como pares de esquinas; esquina k = (k&1, (k>>1)&1, (k>>2)&1).
 const CUBE_EDGES: [number, number][] = [
   [0, 1], [2, 3], [4, 5], [6, 7], // eje x
@@ -49,6 +114,7 @@ export function strideForSpacing(pixDims: ArrayLike<number>, targetMM = 1): [num
  * @param affine affine NIfTI 4×4 por filas (vóxel → mm)
  * @param stride paso de remuestreo por eje (ver `strideForSpacing`)
  * @param smoothIterations pares de pasos de Taubin
+ * @param sigmaMM σ (mm) del filtro gaussiano previo del campo (paso 2b); 0 = sin filtro
  * @returns null si la máscara está vacía
  */
 export function maskSurface(
@@ -57,10 +123,11 @@ export function maskSurface(
   affine: number[][],
   stride: [number, number, number] = [1, 1, 1],
   smoothIterations = 6,
+  sigmaMM = 0,
 ): MaskSurface | null {
   // El promedio por bloques puede borrar componentes o partes del GTV. No se reduce la resolución
   // antes de sustituir el overlay: incluso un foco aislado de un vóxel debe conservar su superficie.
-  if (stride.some((step) => step > 1)) return maskSurface(data, dims, affine, [1, 1, 1], smoothIterations);
+  if (stride.some((step) => step > 1)) return maskSurface(data, dims, affine, [1, 1, 1], smoothIterations, sigmaMM);
   const [nx, ny, nz] = dims;
   const nxy = nx * ny;
 
@@ -83,21 +150,25 @@ export function maskSurface(
   }
   if (x1 < 0) return null;
 
-  // 2. Campo de ocupación por bloques, con una celda de margen vacía a cada lado (malla cerrada).
+  // 2. Campo de ocupación por bloques, con margen vacío a cada lado (malla cerrada). Con filtro, el margen
+  //    crece a 3σ para que el campo difuminado no toque el borde de la rejilla.
   const [sx, sy, sz] = stride;
-  const gx = Math.ceil((x1 - x0 + 1) / sx) + 2;
-  const gy = Math.ceil((y1 - y0 + 1) / sy) + 2;
-  const gz = Math.ceil((z1 - z0 + 1) / sz) + 2;
+  const voxMM = [0, 1, 2].map((c) => Math.hypot(affine[0][c], affine[1][c], affine[2][c]) || 1);
+  const sigmaVox = voxMM.map((mm) => (sigmaMM > 0 ? sigmaMM / mm : 0));
+  const m = 1 + Math.ceil(3 * Math.max(...sigmaVox));
+  const gx = Math.ceil((x1 - x0 + 1) / sx) + 2 * m;
+  const gy = Math.ceil((y1 - y0 + 1) / sy) + 2 * m;
+  const gz = Math.ceil((z1 - z0 + 1) / sz) + 2 * m;
   const gxy = gx * gy;
   const field = new Float32Array(gx * gy * gz);
-  for (let cz = 1; cz < gz - 1; cz++) {
-    for (let cy = 1; cy < gy - 1; cy++) {
-      for (let cx = 1; cx < gx - 1; cx++) {
+  for (let cz = m; cz < gz - m; cz++) {
+    for (let cy = m; cy < gy - m; cy++) {
+      for (let cx = m; cx < gx - m; cx++) {
         let inside = 0;
         let total = 0;
-        const bx = x0 + (cx - 1) * sx;
-        const by = y0 + (cy - 1) * sy;
-        const bz = z0 + (cz - 1) * sz;
+        const bx = x0 + (cx - m) * sx;
+        const by = y0 + (cy - m) * sy;
+        const bz = z0 + (cz - m) * sz;
         for (let z = bz; z < Math.min(bz + sz, nz); z++) {
           for (let y = by; y < Math.min(by + sy, ny); y++) {
             const row = z * nxy + y * nx;
@@ -110,6 +181,15 @@ export function maskSurface(
         field[cz * gxy + cy * gx + cx] = total > 0 ? inside / total : 0;
       }
     }
+  }
+
+  // 2b. Filtro gaussiano separable; los componentes pequeños recuperan su ocupación original.
+  if (sigmaMM > 0) {
+    const g: [number, number, number] = [gx, gy, gz];
+    const small = smallComponents(field, g, SMALL_COMPONENT_VOXELS);
+    const original = field.slice();
+    for (let axis = 0; axis < 3; axis++) blurAxis(field, g, axis, sigmaVox[axis] / stride[axis]);
+    for (let i = 0; i < field.length; i++) if (small[i] && original[i] > field[i]) field[i] = original[i];
   }
 
   // 3. Un vértice por cubo con cambio de signo (coordenadas de rejilla).
@@ -230,9 +310,9 @@ export function maskSurface(
   // 6. Rejilla → vóxel (centro del bloque) → mm.
   const pts = new Float32Array(nv * 3);
   for (let v = 0; v < nv; v++) {
-    const vx = x0 + (pos[v * 3] - 1) * sx + (sx - 1) / 2;
-    const vy = y0 + (pos[v * 3 + 1] - 1) * sy + (sy - 1) / 2;
-    const vz = z0 + (pos[v * 3 + 2] - 1) * sz + (sz - 1) / 2;
+    const vx = x0 + (pos[v * 3] - m) * sx + (sx - 1) / 2;
+    const vy = y0 + (pos[v * 3 + 1] - m) * sy + (sy - 1) / 2;
+    const vz = z0 + (pos[v * 3 + 2] - m) * sz + (sz - 1) / 2;
     for (let r = 0; r < 3; r++) {
       pts[v * 3 + r] = affine[r][0] * vx + affine[r][1] * vy + affine[r][2] * vz + affine[r][3];
     }
