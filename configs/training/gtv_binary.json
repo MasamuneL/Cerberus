@@ -23,7 +23,8 @@
     "train": 0.70,
     "val": 0.15,
     "test": 0.15,
-    "group_by": "patient"
+    "group_by": "patient",
+    "pretraining_overlap": "unknown"
   },
   "preprocess": {
     "spacing_mm": 1.0,

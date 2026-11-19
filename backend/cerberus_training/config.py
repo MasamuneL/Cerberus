@@ -131,6 +131,9 @@ class SplitConfig(_Strict):
     val: float = 0.15
     test: float = 0.15
     group_by: Literal["patient"] = "patient"
+    # Revisión de solapamiento con el preentrenamiento del bundle (BraTS): "unknown" mientras nadie la haya
+    # verificado. Nunca se asume ausencia de solapamiento; "verified" debe declararse explícitamente.
+    pretraining_overlap: Literal["unknown", "verified"] = "unknown"
 
     @model_validator(mode="after")
     def _check_ratios(self) -> Self:
