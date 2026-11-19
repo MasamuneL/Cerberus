@@ -7,6 +7,7 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 
 | Ticket | Estado | Rama | Commit | Fecha | Responsable / herramienta | Notas |
 |---|---|---|---|---|---|---|
+| FT1 · inventario y particiones | ✅ | feat/FT1-inventory-splits | 6f97eb2 | 2026-11-19 | Claude Code (orquestador + subagentes) | PR #19; 1056 tests; inventario seguro, split por paciente; CP-054 |
 | FT0 · configuración y entorno de fine-tuning | ✅ | feat/FT0-training-config | 93abca3 | 2026-11-19 | Claude Code (orquestador + subagentes) | PR #18; 934 tests; CLI, esquema estricto, training-env CUDA; CP-053 |
 | F12 · vista 3D y superficie GTV (§20) | ✅ | feat/viewer-3d-integration | 0e93254 | 2026-11-11 | BiomedicLJZ / Codex | PR #15 mediante #16; QA 33/33, 3D 7/7, smoke 15/15; CP-052 |
 | A1c · Compose con un comando (§17) | ✅ | feat/A1c-compose-one-command | 0c03465 | 2026-11-11 | Codex | PR #14; 799 tests, smoke autenticado 15/15 y migración local; CP-051 |
@@ -956,3 +957,18 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
 - **Checks:** Ruff/formato/Pyright y 934 tests rápidos (5 slow excluidos). Revisión independiente aplicada.
   Frontend sin cambios. Sin datos reales, entrenamiento ni evaluación. Contratos §6/§7 intactos.
 - Siguiente: FT1 (inventario y particiones) en `feat/FT1-inventory-splits`.
+
+### CP-054 · 2026-11-19 · FT1: inventario de CFB-GBM y particiones por paciente
+
+- **Integración:** [PR #19](https://github.com/MasamuneL/Cerberus/pull/19), merge `6f97eb2`.
+- `inventory`: `data_root` de solo lectura, ids validados con `sequences` antes de construir rutas,
+  traversal/symlinks externos rechazados, cabecera cruda para spacing y coherencia con el affine,
+  perfil estricto (T2* nunca sustituye T2), GTV ausente excluye y GTV vacía se marca para revisión.
+  Carpetas rechazadas sin nombre en bruto (`name_sha8`). `read_inventory` revalida el manifest.
+- `split`: 70/15/15, seed 42, `largest_remainder_v1`, duplicados unidos (union-find), `splits.json`
+  inmutable con hash y publicación exclusiva; avisos si las cuotas se desvían.
+- **Checks:** Ruff/formato/Pyright y 1056 tests rápidos (5 slow excluidos). Revisión independiente
+  aplicada (13 puntos). Sin datos reales ni entrenamiento.
+- **Riesgo:** en `Data/` local solo 1 de 8 estudios cumple el perfil estricto (falta `t2tse`). La
+  convención TCIA real no está verificada; solo `cerberus_v1` (como `Data/001`).
+- Siguiente: FT2 (preprocesamiento).

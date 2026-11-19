@@ -4,7 +4,7 @@
 > checkpoint. El historial completo está en [`PROGRESS.md`](PROGRESS.md) y el alcance y los contratos en
 > [`PLAN_MVP.md`](PLAN_MVP.md). Las reglas de trabajo están en [`../AGENTS.md`](../AGENTS.md).
 
-**Última actualización:** 2026-11-19 · último checkpoint: CP-053 · rama base: `main`
+**Última actualización:** 2026-11-19 · último checkpoint: CP-054 · rama base: `main`
 
 ## 1. Arranque rápido
 
@@ -31,6 +31,11 @@ Abre las PNG y revísalas: **no te fíes solo de los ✅**. Leer píxeles del ca
 (`preserveDrawingBuffer=false`), así que esos chequeos de píxeles no son confiables.
 
 ## 2. Estado actual
+
+**CP-054 · FT1 · inventario y particiones · 2026-11-19:** integrado el
+[PR #19](https://github.com/MasamuneL/Cerberus/pull/19), merge `6f97eb2`. `inventory` y `split` ya
+funcionan (ver [`TRAINING.md`](TRAINING.md)); el resto de subcomandos sigue pendiente. En curso: FT2
+(preprocesamiento) en `feat/FT2-preprocessing`; luego FT3–FT5.
 
 **CP-053 · FT0 · pipeline de fine-tuning iniciado · 2026-11-19:** integrado el
 [PR #18](https://github.com/MasamuneL/Cerberus/pull/18), merge `93abca3`. Plan en
