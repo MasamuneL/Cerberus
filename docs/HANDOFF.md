@@ -4,7 +4,7 @@
 > checkpoint. El historial completo está en [`PROGRESS.md`](PROGRESS.md) y el alcance y los contratos en
 > [`PLAN_MVP.md`](PLAN_MVP.md). Las reglas de trabajo están en [`../AGENTS.md`](../AGENTS.md).
 
-**Última actualización:** 2026-11-19 · último checkpoint: CP-056 · rama base: `main`
+**Última actualización:** 2026-11-19 · último checkpoint: CP-057 · rama base: `main`
 
 ## 1. Arranque rápido
 
@@ -32,14 +32,13 @@ Abre las PNG y revísalas: **no te fíes solo de los ✅**. Leer píxeles del ca
 
 ## 2. Estado actual
 
-**CP-056 · FT3 · transferencia y trainer · 2026-11-19:** integrado el
-[PR #21](https://github.com/MasamuneL/Cerberus/pull/21), merge `548cd16`; `wip/FT2-*` y `wip/FT3-*` obsoletas.
-Funcionan `inventory`, `split`, `prepare`, `preflight` y `train` (`--dry-run`, `--resume`); ver
-[`TRAINING.md`](TRAINING.md). **Siguiente:** FT4 → FT5 según
-[`PLAN_PIPELINE_FINETUNING.md`](PLAN_PIPELINE_FINETUNING.md) §9 (rama `feat/FTn-…`, PR, revisión
-independiente, checkpoint). FT4: `evaluate --run --split test` explícito (fuera del bucle), métricas con
-`mask_metrics`/`dice` en el grid de referencia original (restauración de FT2), agregación tiempos→paciente,
-bootstrap por paciente, baseline TC del modelo original como referencia imperfecta, `export` con ficha.
+**CP-057 · FT4 · evaluación y exportación · 2026-11-19:** integrado el
+[PR #23](https://github.com/MasamuneL/Cerberus/pull/23), merge `1f85245`; ramas `wip/FT*` obsoletas.
+Todos los subcomandos funcionan salvo `smoke` (ver [`TRAINING.md`](TRAINING.md)). **Siguiente y último:**
+FT5 según [`PLAN_PIPELINE_FINETUNING.md`](PLAN_PIPELINE_FINETUNING.md) §8–§10: `smoke --synthetic`
+(datos y pesos artificiales, dos pasos de optimización en CPU, guardar/reanudar, evaluar y exportar),
+manual con comandos futuros, fallos y recursos, checks obligatorios y verificación visual de regresión
+de la app (`tools/e2e/verify.mjs`). No marcar entrenamiento ni evaluación real como realizados.
 
 **CP-054 · FT1 · inventario y particiones · 2026-11-19:** integrado el
 [PR #19](https://github.com/MasamuneL/Cerberus/pull/19), merge `6f97eb2`. `inventory` y `split` ya

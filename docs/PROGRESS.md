@@ -7,6 +7,7 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 
 | Ticket | Estado | Rama | Commit | Fecha | Responsable / herramienta | Notas |
 |---|---|---|---|---|---|---|
+| FT4 · evaluación y exportación | ✅ | feat/FT4-evaluate-export | 1f85245 | 2026-11-19 | Claude Code (orquestador + subagentes) | PR #23; 1173 tests; métricas por paciente, baseline TC, export recargable; CP-057 |
 | FT3 · transferencia y trainer | ✅ | feat/FT3-transfer-trainer | 548cd16 | 2026-11-19 | Claude Code (orquestador + subagentes) | PR #21; 1147 tests; carga estricta, head 1 logit, reanudación determinista; CP-056 |
 | FT2 · preprocesamiento | ✅ | feat/FT2-preprocessing | 56f3d18 | 2026-11-19 | Claude Code (orquestador + subagentes) | PR #20; 1113 tests; remuestreo, caché verificable, preflight; CP-055 |
 | FT1 · inventario y particiones | ✅ | feat/FT1-inventory-splits | 6f97eb2 | 2026-11-19 | Claude Code (orquestador + subagentes) | PR #19; 1056 tests; inventario seguro, split por paciente; CP-054 |
@@ -1000,3 +1001,17 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
 - **Checks:** Ruff/formato/Pyright, 1147 tests rápidos y slow de SegResNet 96³. Revisión aplicada.
   Solo datos sintéticos y pesos artificiales; sin fine-tuning real. `wip/FT3-transfer-trainer` obsoleta.
 - Siguiente: FT4 (evaluación y exportación).
+
+### CP-057 · 2026-11-19 · FT4: evaluación por paciente, baseline TC y exportación
+
+- **Integración:** [PR #23](https://github.com/MasamuneL/Cerberus/pull/23), merge `1f85245`.
+- `evaluate --run --split {val,test}`: predicción restaurada al grid original de T1c frente a la GTV
+  original verificada; Dice/recall/precisión/HD95/volumen; tiempos→paciente; bootstrap por paciente.
+  Umbral solo optimizable en val; test exige `--checkpoint` y registra evaluaciones previas.
+- `--baseline`: TC del modelo original como referencia imperfecta (TC ≠ GTV).
+- `export`: `model.pt`, `export.json` (CC BY 4.0, DOI, bloque de pesos preentrenados) y `model_card.md`;
+  estado `not_evaluated`/`evaluated_val`/`evaluated_test`. `load_export` verifica hashes y kwargs.
+- `cerberus_api/segmentation.py`: refactor sin cambio de comportamiento (verificado). Contratos intactos.
+- **Checks:** Ruff/formato/Pyright, 1173 tests rápidos, slow segmentation/baseline. Revisión aplicada.
+  Solo datos sintéticos. `wip/FT4-evaluate-export` obsoleta.
+- Siguiente: FT5 (smoke offline y manual).
