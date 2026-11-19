@@ -7,6 +7,7 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 
 | Ticket | Estado | Rama | Commit | Fecha | Responsable / herramienta | Notas |
 |---|---|---|---|---|---|---|
+| FT0 · configuración y entorno de fine-tuning | ✅ | feat/FT0-training-config | 93abca3 | 2026-11-19 | Claude Code (orquestador + subagentes) | PR #18; 934 tests; CLI, esquema estricto, training-env CUDA; CP-053 |
 | F12 · vista 3D y superficie GTV (§20) | ✅ | feat/viewer-3d-integration | 0e93254 | 2026-11-11 | BiomedicLJZ / Codex | PR #15 mediante #16; QA 33/33, 3D 7/7, smoke 15/15; CP-052 |
 | A1c · Compose con un comando (§17) | ✅ | feat/A1c-compose-one-command | 0c03465 | 2026-11-11 | Codex | PR #14; 799 tests, smoke autenticado 15/15 y migración local; CP-051 |
 | A1b · cuenta de demo automática (§17) | ✅ | feat/A1-demo-account | 47c02c2 | 2026-11-11 | Codex | PR #13; 776 tests y QA real de importación/login/preservación; CP-049 |
@@ -942,3 +943,16 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
   auth UI con HTTP controlado, sin nueva prueba de Keycloak real. Sin inferencias ni subidas.
 - README, plan §20, runners y handoff actualizados. Contratos §6/§7 intactos. D3 sigue separado;
   A5 y las correcciones de la ola P siguen pendientes.
+
+### CP-053 · 2026-11-19 · FT0: configuración, CLI y entorno CUDA del pipeline de fine-tuning
+
+- **Integración:** [PR #18](https://github.com/MasamuneL/Cerberus/pull/18), merge `93abca3`. Incluye
+  `docs/PLAN_PIPELINE_FINETUNING.md` (plan FT0–FT5).
+- Paquete `backend/cerberus_training/` (Hatch): esquema JSON estricto (`strict`, `extra="forbid"`,
+  `schema_version` 1), ejemplo `configs/training/gtv_binary.json`, CLI con los subcomandos del plan;
+  los pendientes salen con código 3. Extras: `validate` y `device` (capability y arquitecturas CUDA).
+- Entorno CUDA aparte en `training-env/` (torch 2.14.1+cu126, lock propio); `uv.lock` raíz y ruedas
+  CPU de la app intactos. No probado en GPU real; cu126 puede no cubrir `sm_120` (documentado).
+- **Checks:** Ruff/formato/Pyright y 934 tests rápidos (5 slow excluidos). Revisión independiente aplicada.
+  Frontend sin cambios. Sin datos reales, entrenamiento ni evaluación. Contratos §6/§7 intactos.
+- Siguiente: FT1 (inventario y particiones) en `feat/FT1-inventory-splits`.

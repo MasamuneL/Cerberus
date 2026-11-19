@@ -4,7 +4,7 @@
 > checkpoint. El historial completo está en [`PROGRESS.md`](PROGRESS.md) y el alcance y los contratos en
 > [`PLAN_MVP.md`](PLAN_MVP.md). Las reglas de trabajo están en [`../AGENTS.md`](../AGENTS.md).
 
-**Última actualización:** 2026-11-11 · último checkpoint: CP-052 · rama base: `main`
+**Última actualización:** 2026-11-19 · último checkpoint: CP-053 · rama base: `main`
 
 ## 1. Arranque rápido
 
@@ -31,6 +31,13 @@ Abre las PNG y revísalas: **no te fíes solo de los ✅**. Leer píxeles del ca
 (`preserveDrawingBuffer=false`), así que esos chequeos de píxeles no son confiables.
 
 ## 2. Estado actual
+
+**CP-053 · FT0 · pipeline de fine-tuning iniciado · 2026-11-19:** integrado el
+[PR #18](https://github.com/MasamuneL/Cerberus/pull/18), merge `93abca3`. Plan en
+[`PLAN_PIPELINE_FINETUNING.md`](PLAN_PIPELINE_FINETUNING.md); uso en [`TRAINING.md`](TRAINING.md).
+`uv run python -m cerberus_training --help` funciona en CPU sin red; entorno CUDA en `training-env/`
+(no probado en GPU). En curso: FT1 en `feat/FT1-inventory-splits`; luego FT2–FT5 en orden.
+Aviso de FT1: en `Data/` local solo 1 de 8 estudios cumple el perfil estricto (falta `t2tse`, hay T2*).
 
 **CP-052 · F12 · vista 3D integrada · 2026-11-11:** el
 [PR #15 de BiomedicLJZ](https://github.com/MasamuneL/Cerberus/pull/15) quedó incorporado mediante el
