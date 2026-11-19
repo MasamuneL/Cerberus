@@ -460,6 +460,25 @@ Cada ticket = una rama `feat/<ID>-<slug>` y un PR. "Hecho" = los criterios se cu
 
 **D1 · README** (al final): sección "App web" con los comandos de §5 y un diagrama de §3.
 
+### Fine-tuning (FT0–FT5)
+
+Pipeline local de fine-tuning de SegResNet (GTV binario) sobre CFB-GBM, en el paquete hermano `cerberus_training`. No
+forma parte de la app web: no añade jobs a arq, no cambia el modelo activo ni los contratos §6/§7. Desarrollo completo,
+dependencias y criterios de aceptación en [`PLAN_PIPELINE_FINETUNING.md`](PLAN_PIPELINE_FINETUNING.md) §9; guía
+operativa en [`TRAINING.md`](TRAINING.md). Una rama y un PR por ticket (`feat/FT<n>-<slug>`).
+
+| ID | Entrega (resumen) | Depende de |
+|---|---|---|
+| FT0 | Configuración JSON estricta, CLI base, entorno CUDA independiente (`training-env/`), `device` | B5, B13 |
+| FT1 | `inventory` (convención `cerberus_v1`, exclusiones explicadas) y `split` determinista por paciente | FT0 |
+| FT2 | `prepare` y `preflight`: canales, geometría, GTV binario, caché invalidable, parches | FT1 |
+| FT3 | `train` (`--dry-run`, `--resume`): transferencia estricta de pesos, cabeza de 1 logit, `best`/`last` atómicos | FT2 |
+| FT4 | `evaluate` (métricas por paciente, baseline TC, test aislado) y `export` recargable | FT3 |
+| FT5 | `smoke --synthetic` (recorrido offline en CPU) y manual de uso en `TRAINING.md` | FT4 |
+
+Estado: FT0–FT5 implementados con datos y pesos sintéticos. **No se ha hecho fine-tuning real**: auditoría del dataset
+completo, piloto GPU, entrenamiento, validación científica e integración en API/UI siguen pendientes (plan de FT §10).
+
 ## 9. Orden y paralelización
 
 | Ola | Tickets (en paralelo dentro de la ola) |
@@ -474,6 +493,9 @@ Cada ticket = una rama `feat/<ID>-<slug>` y un PR. "Hecho" = los criterios se cu
 
 \* Los tickets de frontend pueden empezar contra §7 con datos simulados y conectarse cuando esté su ticket
 backend correspondiente.
+
+Fuera de las olas, el pipeline de fine-tuning (FT0 → FT1 → FT2 → FT3 → FT4 → FT5, cadena lineal; §8 «Fine-tuning») depende
+solo de B5/B13 ya integrados y no bloquea ni es bloqueado por los tickets de la app.
 
 ## 10. Verificación end-to-end (criterio de MVP terminado)
 

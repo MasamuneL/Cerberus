@@ -1,8 +1,9 @@
 """CLI del pipeline de fine-tuning: `uv run python -m cerberus_training <subcomando>`.
 
 Los subcomandos del plan (docs/PLAN_PIPELINE_FINETUNING.md §8) se declaran aquí. Existen `validate` y `device`
-(FT0), `inventory` y `split` (FT1), `prepare` y `preflight` (FT2), `train` (FT3) y `evaluate` y `export` (FT4); el
-resto valida la configuración (si se pasa `--config`) y termina con código 3 indicando qué ticket los implementa.
+(FT0), `inventory` y `split` (FT1), `prepare` y `preflight` (FT2), `train` (FT3), `evaluate` y `export` (FT4) y
+`smoke` (FT5). Si se declara un subcomando sin implementar (hoy ninguno), valida la configuración (si se pasa
+`--config`) y termina con código 3.
 Este módulo no importa torch, MONAI, nibabel ni numpy: cada subcomando importa sus dependencias de forma perezosa.
 """
 
@@ -23,11 +24,10 @@ EXIT_RESOURCES = 6  # recursos insuficientes: límite de caché o espacio libre 
 EXIT_NO_CUDA = 1  # `device --require-cuda` o `train` con training.device = "cuda" sin GPU
 EXIT_CHECKPOINT = 7  # pesos ausentes/SHA-256 distinto, checkpoint incompatible o reanudación rechazada
 EXIT_TRAINING = 8  # fallo numérico (NaN/Inf) durante el entrenamiento
+EXIT_SMOKE = 9  # `smoke --synthetic`: algún paso del recorrido sintético falló
 
-# Ticket del plan (§9) que implementa cada subcomando todavía pendiente.
-PENDING: dict[str, str] = {
-    "smoke": "FT5",
-}
+# Ticket del plan (§9) que implementa cada subcomando todavía pendiente (vacío: FT0–FT5 están implementados).
+PENDING: dict[str, str] = {}
 
 
 def _add_config(parser: argparse.ArgumentParser, required: bool = True) -> None:
@@ -45,8 +45,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="python -m cerberus_training",
         description="Pipeline local de fine-tuning de SegResNet (GTV binario) sobre CFB-GBM. "
-        "Implementados: `validate`, `device`, `inventory`, `split`, `prepare`, `preflight`, `train`, `evaluate` y "
-        "`export`.",
+        "Implementados: `validate`, `device`, `inventory`, `split`, `prepare`, `preflight`, `train`, `evaluate`, "
+        "`export` y `smoke`.",
     )
     parser.add_argument("--version", action="version", version=f"cerberus_training {__version__}")
     sub = parser.add_subparsers(dest="command", metavar="<subcomando>")
@@ -117,8 +117,18 @@ def build_parser() -> argparse.ArgumentParser:
         "--checkpoint", choices=("best", "last"), default="best", help="checkpoint del run (por defecto best)"
     )
 
-    p = sub.add_parser("smoke", help="[FT5] recorrido completo en CPU con datos y pesos sintéticos")
+    p = sub.add_parser(
+        "smoke", help="recorrido completo en CPU con datos y pesos sintéticos (NO es fine-tuning real; sin red)"
+    )
     p.add_argument("--synthetic", action="store_true", required=True, help="usa datos y pesos artificiales")
+    p.add_argument(
+        "--work-dir",
+        type=Path,
+        metavar="DIR",
+        help="directorio de trabajo nuevo o vacío, fuera del repo (se conserva); por defecto uno temporal que se borra",
+    )
+    p.add_argument("--keep", action="store_true", help="conserva el directorio temporal y sus artefactos")
+    p.add_argument("--verbose", action="store_true", help="muestra también la salida de cada subcomando")
 
     return parser
 
@@ -392,6 +402,12 @@ def _cmd_export(args: argparse.Namespace) -> int:
     return _evaluation_errors(action)
 
 
+def _cmd_smoke(args: argparse.Namespace) -> int:
+    from cerberus_training.smoke import run_smoke  # perezoso: torch/MONAI/nibabel solo aquí
+
+    return run_smoke(main, work_dir=args.work_dir, keep=args.keep, verbose=args.verbose)
+
+
 def _cmd_pending(args: argparse.Namespace) -> int:
     config_path: Path | None = getattr(args, "config", None)
     if config_path is not None:
@@ -412,6 +428,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.print_help(sys.stderr)
         return EXIT_CONFIG_ERROR
     try:
+        if args.command in PENDING:
+            return _cmd_pending(args)
         if args.command == "validate":
             return _cmd_validate(args)
         if args.command == "device":
@@ -430,7 +448,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _cmd_evaluate(args)
         if args.command == "export":
             return _cmd_export(args)
-        return _cmd_pending(args)
+        return _cmd_smoke(args)
     except ConfigError as exc:
         print(exc, file=sys.stderr)
         return EXIT_CONFIG_ERROR
