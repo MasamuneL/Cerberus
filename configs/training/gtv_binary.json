@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "task": "gtv_binary",
+  "paths": {
+    "data_root": "/ruta/externa/CFB-GBM",
+    "work_dir": "storage/training"
+  },
+  "channels": {
+    "profile": "strict",
+    "order": ["T1c", "T1", "T2", "FLAIR"],
+    "reference": "T1c",
+    "preferences": {
+      "T1c": ["t1gd"],
+      "T1": ["t1eg", "t1tse"],
+      "T2": ["t2tse"],
+      "FLAIR": ["flair"]
+    },
+    "t2star_policy": "disabled",
+    "label": "gtv"
+  },
+  "split": {
+    "seed": 42,
+    "train": 0.70,
+    "val": 0.15,
+    "test": 0.15,
+    "group_by": "patient"
+  },
+  "preprocess": {
+    "spacing_mm": 1.0,
+    "orientation": "RAS",
+    "brain_mask_policy": "use_if_present",
+    "patch_size": [96, 96, 96],
+    "batch_size": 1,
+    "grad_accum_steps": 4,
+    "pos_neg_ratio": [1, 1],
+    "num_workers": 0,
+    "cache_enabled": true,
+    "cache_limit_gb": 20.0,
+    "min_free_disk_gb": 5.0
+  },
+  "weights": {
+    "path": "models/brats_mri_segmentation/models/model.pt",
+    "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "bundle_name": "brats_mri_segmentation",
+    "bundle_version": "0.5.4"
+  },
+  "training": {
+    "loss": "dice_bce",
+    "dice_weight": 1.0,
+    "bce_weight": 1.0,
+    "optimizer": "adamw",
+    "learning_rate": 0.0001,
+    "weight_decay": 0.00001,
+    "max_epochs": 100,
+    "validate_every": 1,
+    "early_stopping_patience": 15,
+    "threshold": 0.5,
+    "freeze_modules": [],
+    "device": "cuda",
+    "amp": true
+  },
+  "seeds": {
+    "training": 42,
+    "augmentation": 42,
+    "head_init": 42,
+    "deterministic": true
+  }
+}
