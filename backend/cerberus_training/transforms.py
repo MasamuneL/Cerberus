@@ -449,6 +449,72 @@ def _prepare(
     )
 
 
+# ---------------------------------------------------------------------------------------------------------------
+# Evaluación (FT4): fuentes verificadas y GTV original en el grid de referencia
+# ---------------------------------------------------------------------------------------------------------------
+
+# Tolerancia (mm en el affine) para considerar que la GTV ya está en el grid de la referencia T1c.
+SAME_GRID_ATOL_MM = 1e-4
+# Tolerancia relativa para aceptar los ejes del grid de referencia como ortogonales (HD95 usa spacing por eje).
+ORTHOGONAL_RTOL = 1e-4
+
+
+def verified_source_path(data_root: Path, record: dict[str, Any], entry: Any, channel: str) -> Path:
+    """Ruta de una fuente del inventario con identificadores revalidados, confinada a la raíz y SHA-256 verificado.
+
+    Lanza `StudyError` (`invalid_source`, `unreadable` o `source_changed`). La usa el baseline de FT4 para pasar
+    archivos al pipeline original de `cerberus_api.segmentation`.
+    """
+    path = _source_path(data_root.resolve(), record, entry, channel)
+    try:
+        digest = sha256_file(path)
+    except OSError as exc:
+        raise StudyError("unreadable", f"No se pudo leer {channel}: {exc.strerror or exc}", channel) from exc
+    if digest != entry.get("sha256"):
+        raise StudyError("source_changed", f"{channel}: el archivo cambió desde el inventario (SHA-256)", channel)
+    return path
+
+
+def reference_spacing(geometry: Geometry) -> tuple[float, float, float]:
+    """Spacing (mm) por eje de vóxel del grid de referencia; exige ejes ortogonales (sin cizalla).
+
+    `mask_metrics` calcula HD95 con una transformada de distancia de spacing por eje, válida en grids ortogonales,
+    también si están rotados (oblicuos). Con cizalla lanza `ValueError` en lugar de dar distancias erróneas.
+    """
+    m = geometry.reference_affine[:3, :3]
+    gram = m.T @ m
+    norms = np.sqrt(np.diag(gram))
+    off = gram - np.diag(np.diag(gram))
+    if float(np.abs(off).max()) > ORTHOGONAL_RTOL * float(norms.max()) ** 2:
+        raise ValueError("El grid de referencia tiene ejes no ortogonales (cizalla): HD95 no sería válido")
+    return (float(norms[0]), float(norms[1]), float(norms[2]))
+
+
+def reference_label(record: dict[str, Any], data_root: Path, geometry: Geometry) -> tuple[np.ndarray, bool]:
+    """GTV **original** (fuente del dataset) en el grid de referencia de la T1c, para evaluar (FT4).
+
+    La fuente se reconstruye con identificadores revalidados, se confina a `data_root`, se verifica su SHA-256
+    contra el inventario y debe ocupar el mismo espacio físico que la referencia y ser binaria (nunca se binariza).
+    Si la GTV ya está en el grid de la T1c (mismo shape y affine), se usa tal cual (`False`); si no (otro spacing,
+    orden de ejes o flips sobre la misma caja), se lleva al grid de la T1c con vecino más próximo (`True`). La GTV
+    nunca pasa por el recorte ni el grid preparado: lo que la predicción pierda fuera del soporte cuenta como FN.
+    """
+    try:
+        lab = _load_source(data_root.resolve(), record, record["label"], "label")
+    except (KeyError, TypeError, AttributeError) as exc:
+        raise StudyError("invalid_source", f"Registro sin GTV válida ({type(exc).__name__}: {exc})") from exc
+    ref_geo = _Source(np.empty(0), geometry.reference_affine, geometry.reference_shape, "")
+    _check_space(lab, ref_geo, "label")
+    data = _binary(lab, "label", "non_binary_label")
+    same = lab.shape == geometry.reference_shape and bool(
+        np.allclose(lab.affine, geometry.reference_affine, rtol=0.0, atol=SAME_GRID_ATOL_MM)
+    )
+    if same:
+        return data, False
+    out = resample(data, lab.affine, geometry.reference_shape, geometry.reference_affine, order=0)
+    return out.astype(np.uint8), True
+
+
 def study_sources(record: dict[str, Any], channels: ChannelsConfig | None = None) -> dict[str, str]:
     """SHA-256 esperados (del inventario) de las fuentes que usa `prepare_study` para este registro."""
     channels = channels or ChannelsConfig()

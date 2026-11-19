@@ -5,8 +5,10 @@ todo se remuestrea a un grid de 1 mm isotrópico tomado del primer canal disponi
 """
 
 from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import nibabel as nib
 import numpy as np
@@ -22,6 +24,9 @@ from cerberus_api.schemas import (
     SegmentationResult,
     SegmentationVolumes,
 )
+
+if TYPE_CHECKING:
+    import torch
 
 # Canal del modelo → secuencias candidatas en orden de preferencia (cerberus_eda.py:755)
 CHANNEL_MAP: dict[str, tuple[str, ...]] = {
@@ -100,11 +105,31 @@ def normalize_nonzero(x: np.ndarray) -> np.ndarray:
     return out
 
 
+def segresnet_predictor(net: "torch.nn.Module", device: str) -> Predictor:
+    """Predictor de inferencia del modelo original: ventana deslizante `ROI_SIZE`, solapamiento 0.5 y sigmoide.
+
+    Separado de `_monai_predictor` para que la evaluación del baseline (FT4) use exactamente la misma inferencia
+    con pesos ya verificados, sin descargar nada.
+    """
+    import torch
+    from monai.inferers.utils import sliding_window_inference
+
+    net.eval().to(device)
+
+    def predict(x: np.ndarray) -> np.ndarray:
+        with torch.no_grad():
+            t = torch.from_numpy(np.ascontiguousarray(x, dtype=np.float32))[None].to(device)
+            y = sliding_window_inference(t, ROI_SIZE, 1, net, overlap=0.5)
+            assert isinstance(y, torch.Tensor)
+            return torch.sigmoid(y)[0].cpu().numpy()
+
+    return predict
+
+
 def _monai_predictor(models_dir: Path) -> tuple[Predictor, str]:
     """Crea el predictor SegResNet real (descarga el bundle si falta). Devuelve (predictor, device)."""
     import torch
     from monai.bundle.scripts import download
-    from monai.inferers.utils import sliding_window_inference
     from monai.networks.nets.segresnet import SegResNet
 
     weights = models_dir / BUNDLE_NAME / "models" / "model.pt"
@@ -117,16 +142,7 @@ def _monai_predictor(models_dir: Path) -> tuple[Predictor, str]:
         blocks_down=(1, 2, 2, 4), blocks_up=(1, 1, 1), init_filters=16, in_channels=4, out_channels=3, dropout_prob=0.2
     )
     net.load_state_dict(torch.load(weights, map_location="cpu"))
-    net.eval().to(device)
-
-    def predict(x: np.ndarray) -> np.ndarray:
-        with torch.no_grad():
-            t = torch.from_numpy(np.ascontiguousarray(x, dtype=np.float32))[None].to(device)
-            y = sliding_window_inference(t, ROI_SIZE, 1, net, overlap=0.5)
-            assert isinstance(y, torch.Tensor)
-            return torch.sigmoid(y)[0].cpu().numpy()
-
-    return predict, device
+    return segresnet_predictor(net, device), device
 
 
 def _to_grid(img: nib.Nifti1Image, ref: nib.Nifti1Image, order: int) -> np.ndarray:
@@ -134,15 +150,29 @@ def _to_grid(img: nib.Nifti1Image, ref: nib.Nifti1Image, order: int) -> np.ndarr
     return np.asarray(res.dataobj, dtype=np.float32)
 
 
-def run_segmentation(
+@dataclass
+class RegionMasks:
+    """Salida binaria del modelo original en su grid de 1 mm (`ref_img`), ya recortada a la máscara cerebral."""
+
+    tc: np.ndarray
+    wt: np.ndarray
+    et: np.ndarray
+    ref_img: nib.Nifti1Image
+    channels: list[ChannelUsed]
+    warnings: list[str]
+    device: str
+
+
+def segment_regions(
     study_files: dict[str, Path],
-    out_dir: Path,
     models_dir: Path,
     predictor: Predictor | None = None,
-) -> SegmentationResult:
-    """Segmenta un estudio y escribe `out_dir/monai_seg.nii.gz` + `out_dir/monai_seg.json`.
+) -> RegionMasks:
+    """Pipeline original de inferencia (canales, grid, normalización, umbral 0.5 y recorte a `brain_mask`).
 
     `study_files`: secuencia → ruta NIfTI. Lanza `ValueError` si no hay ninguna secuencia de `CHANNEL_MAP`.
+    Lo usan `run_segmentation` (API) y la evaluación del baseline de `cerberus_training` (FT4), que así comparte
+    exactamente el mismo preprocesamiento.
     """
     sources: dict[str, str | None] = {
         ch: next((s for s in cands if s in study_files), None) for ch, cands in CHANNEL_MAP.items()
@@ -187,6 +217,22 @@ def run_segmentation(
     tc, wt, et = (prob[i] > 0.5 for i in range(3))
     if brain is not None:
         tc, wt, et = tc & brain, wt & brain, et & brain
+    return RegionMasks(tc=tc, wt=wt, et=et, ref_img=ref_img, channels=used, warnings=warnings, device=device)
+
+
+def run_segmentation(
+    study_files: dict[str, Path],
+    out_dir: Path,
+    models_dir: Path,
+    predictor: Predictor | None = None,
+) -> SegmentationResult:
+    """Segmenta un estudio y escribe `out_dir/monai_seg.nii.gz` + `out_dir/monai_seg.json`.
+
+    `study_files`: secuencia → ruta NIfTI. Lanza `ValueError` si no hay ninguna secuencia de `CHANNEL_MAP`.
+    """
+    regions = segment_regions(study_files, models_dir, predictor)
+    tc, wt, et, ref_img = regions.tc, regions.wt, regions.et, regions.ref_img
+    shape = ref_img.shape[:3]
 
     labels = np.zeros(shape, np.uint8)
     labels[wt] = 1
@@ -214,13 +260,13 @@ def run_segmentation(
         )
 
     result = SegmentationResult(
-        device=device,
+        device=regions.device,
         created_at=datetime.now(UTC),
-        channels=used,
+        channels=regions.channels,
         volumes_cm3=SegmentationVolumes(wt=cm3(wt), tc=cm3(tc), et=cm3(et)),
         dice_vs_gtv=dice_vs_gtv,
         metrics_vs_gtv=metrics_vs_gtv,
-        warnings=warnings,
+        warnings=regions.warnings,
     )
     (out_dir / "monai_seg.json").write_text(result.model_dump_json(indent=2), encoding="utf-8")
     return result

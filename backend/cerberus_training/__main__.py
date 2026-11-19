@@ -1,14 +1,14 @@
 """CLI del pipeline de fine-tuning: `uv run python -m cerberus_training <subcomando>`.
 
 Los subcomandos del plan (docs/PLAN_PIPELINE_FINETUNING.md §8) se declaran aquí. Existen `validate` y `device`
-(FT0), `inventory` y `split` (FT1), `prepare` y `preflight` (FT2) y `train` (FT3); el resto valida la configuración
-(si se pasa `--config`) y termina con código 3 indicando qué ticket los implementa. Este módulo no importa torch, MONAI,
-nibabel ni numpy: cada subcomando importa sus dependencias de forma perezosa.
+(FT0), `inventory` y `split` (FT1), `prepare` y `preflight` (FT2), `train` (FT3) y `evaluate` y `export` (FT4); el
+resto valida la configuración (si se pasa `--config`) y termina con código 3 indicando qué ticket los implementa.
+Este módulo no importa torch, MONAI, nibabel ni numpy: cada subcomando importa sus dependencias de forma perezosa.
 """
 
 import argparse
 import sys
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from pathlib import Path
 
 from cerberus_training import __version__
@@ -26,8 +26,6 @@ EXIT_TRAINING = 8  # fallo numérico (NaN/Inf) durante el entrenamiento
 
 # Ticket del plan (§9) que implementa cada subcomando todavía pendiente.
 PENDING: dict[str, str] = {
-    "evaluate": "FT4",
-    "export": "FT4",
     "smoke": "FT5",
 }
 
@@ -47,7 +45,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="python -m cerberus_training",
         description="Pipeline local de fine-tuning de SegResNet (GTV binario) sobre CFB-GBM. "
-        "Implementados: `validate`, `device`, `inventory`, `split`, `prepare`, `preflight` y `train`.",
+        "Implementados: `validate`, `device`, `inventory`, `split`, `prepare`, `preflight`, `train`, `evaluate` y "
+        "`export`.",
     )
     parser.add_argument("--version", action="version", version=f"cerberus_training {__version__}")
     sub = parser.add_subparsers(dest="command", metavar="<subcomando>")
@@ -88,12 +87,35 @@ def build_parser() -> argparse.ArgumentParser:
     mode.add_argument("--resume", type=Path, metavar="LAST.PT", help="reanuda desde runs/<id>/checkpoints/last.pt")
     p.add_argument("--run-id", metavar="ID", help="nombre del run nuevo (por defecto fecha UTC + hash de config)")
 
-    p = sub.add_parser("evaluate", help="[FT4] evalúa un run en una partición")
-    p.add_argument("--run", type=Path, required=True, metavar="DIR", help="directorio del run")
+    p = sub.add_parser("evaluate", help="evalúa un run (o el baseline original) en val o test; nunca sobrescribe")
+    p.add_argument("--run", type=Path, required=True, metavar="DIR", help="directorio del run (runs/<run_id>)")
     p.add_argument("--split", choices=("val", "test"), required=True, help="partición a evaluar")
+    p.add_argument(
+        "--checkpoint",
+        choices=("best", "last"),
+        help="checkpoint del run: obligatorio con --split test; en val, best por defecto",
+    )
+    p.add_argument(
+        "--baseline",
+        action="store_true",
+        help="evalúa la salida TC del modelo original frente a la GTV (referencia imperfecta)",
+    )
+    p.add_argument(
+        "--optimize-threshold",
+        action="store_true",
+        help="solo con --split val: optimiza y guarda el umbral en threshold.json antes de evaluar",
+    )
+    p.add_argument(
+        "--bootstrap", type=int, default=1000, metavar="N", help="réplicas bootstrap por paciente (1000; mínimo 100)"
+    )
+    p.add_argument("--bootstrap-seed", type=int, default=42, metavar="S", help="semilla del bootstrap (42)")
+    p.add_argument("--device", choices=("cpu", "cuda"), help="sustituye training.device del run")
 
-    p = sub.add_parser("export", help="[FT4] exporta el modelo de un run con su ficha")
-    p.add_argument("--run", type=Path, required=True, metavar="DIR", help="directorio del run")
+    p = sub.add_parser("export", help="exporta el modelo de un run con su ficha (export/); nunca sobrescribe")
+    p.add_argument("--run", type=Path, required=True, metavar="DIR", help="directorio del run (runs/<run_id>)")
+    p.add_argument(
+        "--checkpoint", choices=("best", "last"), default="best", help="checkpoint del run (por defecto best)"
+    )
 
     p = sub.add_parser("smoke", help="[FT5] recorrido completo en CPU con datos y pesos sintéticos")
     p.add_argument("--synthetic", action="store_true", required=True, help="usa datos y pesos artificiales")
@@ -287,6 +309,89 @@ def _cmd_train(args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
+def _evaluation_errors(action: Callable[[], int]) -> int:
+    """Traduce los errores de `evaluate`/`export` a los códigos de salida documentados."""
+    import torch  # perezoso: solo evaluate/export, que ya necesitan torch
+
+    from cerberus_training.artifacts import RunLockedError
+    from cerberus_training.evaluate import EvaluationDataError, EvaluationError, EvaluationExistsError
+    from cerberus_training.model import CheckpointError, WeightsError
+    from cerberus_training.train import DeviceUnavailableError, TrainingDataError, TrainingError
+
+    try:
+        return action()
+    except DeviceUnavailableError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return EXIT_NO_CUDA
+    except (TrainingDataError, EvaluationDataError) as exc:
+        return _data_error(exc)
+    except (WeightsError, CheckpointError) as exc:
+        print(f"Error de pesos/checkpoint: {exc}", file=sys.stderr)
+        return EXIT_CHECKPOINT
+    except TrainingError as exc:
+        print(f"Error numérico: {exc}", file=sys.stderr)
+        return EXIT_TRAINING
+    except (EvaluationExistsError, RunLockedError, EvaluationError) as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return EXIT_CONFIG_ERROR
+    except (torch.OutOfMemoryError, MemoryError) as exc:
+        print(f"Error de recursos: memoria insuficiente ({type(exc).__name__})", file=sys.stderr)
+        return EXIT_RESOURCES
+    except OSError as exc:
+        return _data_error(exc)
+
+
+def _cmd_evaluate(args: argparse.Namespace) -> int:
+    from cerberus_training.evaluate import evaluate_baseline, evaluate_run, format_evaluation  # perezoso
+
+    if args.baseline and (args.optimize_threshold or args.checkpoint is not None):
+        print("--baseline no admite --optimize-threshold ni --checkpoint (evalúa el modelo original).", file=sys.stderr)
+        return EXIT_CONFIG_ERROR
+    if args.optimize_threshold and args.split != "val":
+        print("--optimize-threshold solo se permite con --split val: nunca se optimiza sobre test.", file=sys.stderr)
+        return EXIT_CONFIG_ERROR
+    if args.split == "test" and not args.baseline and args.checkpoint is None:
+        print("Evaluar test exige --checkpoint best|last explícito.", file=sys.stderr)
+        return EXIT_CONFIG_ERROR
+
+    def action() -> int:
+        if args.baseline:
+            result = evaluate_baseline(
+                args.run,
+                args.split,
+                device=args.device,
+                bootstrap_samples=args.bootstrap,
+                bootstrap_seed=args.bootstrap_seed,
+                log=print,
+            )
+        else:
+            result = evaluate_run(
+                args.run,
+                args.split,
+                checkpoint=args.checkpoint,
+                optimize=args.optimize_threshold,
+                device=args.device,
+                bootstrap_samples=args.bootstrap,
+                bootstrap_seed=args.bootstrap_seed,
+                log=print,
+            )
+        print(format_evaluation(result))
+        return EXIT_OK
+
+    return _evaluation_errors(action)
+
+
+def _cmd_export(args: argparse.Namespace) -> int:
+    from cerberus_training.export import export_run  # perezoso: torch/MONAI solo aquí
+
+    def action() -> int:
+        result = export_run(args.run, checkpoint=args.checkpoint, log=print)
+        print(f"Estado de evaluación: {result.manifest['evaluation']['status']}")
+        return EXIT_OK
+
+    return _evaluation_errors(action)
+
+
 def _cmd_pending(args: argparse.Namespace) -> int:
     config_path: Path | None = getattr(args, "config", None)
     if config_path is not None:
@@ -321,6 +426,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _cmd_preflight(args)
         if args.command == "train":
             return _cmd_train(args)
+        if args.command == "evaluate":
+            return _cmd_evaluate(args)
+        if args.command == "export":
+            return _cmd_export(args)
         return _cmd_pending(args)
     except ConfigError as exc:
         print(exc, file=sys.stderr)

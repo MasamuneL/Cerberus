@@ -11,12 +11,12 @@ Este documento crece con cada ticket FT; aquí se documenta lo que existe hoy.
 | FT1 | `inventory`, `split` | implementado |
 | FT2 | `prepare`, `preflight`, transformaciones y caché | implementado |
 | FT3 | `train` (incluye `--dry-run` y `--resume`), transferencia de SegResNet, artefactos del run | implementado |
-| FT4 | `evaluate`, `export` | pendiente |
+| FT4 | `evaluate` (incluye `--baseline` y `--optimize-threshold`), `export` y `load_export` | implementado |
 | FT5 | `smoke --synthetic` y manual completo | pendiente |
 
-Funcionan `validate` y `device` (FT0), `inventory` y `split` (FT1), `prepare` y `preflight` (FT2) y `train` (FT3). El
-resto de los subcomandos existe para que `--help` muestre la interfaz prevista, valida la configuración si se pasa
-`--config` y termina con código 3 y un mensaje `pendiente de FTn`. El trainer solo se ha ejecutado con datos y pesos
+Funcionan `validate` y `device` (FT0), `inventory` y `split` (FT1), `prepare` y `preflight` (FT2), `train` (FT3) y
+`evaluate` y `export` (FT4). `smoke` existe para que `--help` muestre la interfaz prevista y termina con código 3 y un
+mensaje `pendiente de FT5`. El trainer, la evaluación y la exportación solo se han ejecutado con datos y pesos
 sintéticos en CPU (tests): **no se ha hecho ningún fine-tuning real ni existe un modelo adaptado evaluado**, y no se ha
 medido ninguna duración ni consumo de recursos (las cifras de `preflight` son estimaciones, no mediciones).
 
@@ -31,12 +31,20 @@ medido ninguna duración ni consumo de recursos (las cifras de `preflight` son e
 | 4 | dataset/inventario inutilizable (raíz inexistente o ilegible, salida dentro del dataset, dos rutas de E/S que son el mismo archivo, inventario ilegible o manipulado), pocos pacientes, `splits.json` existente incompatible, o ningún estudio elegible en `prepare`/`preflight` |
 | 5 | `prepare` terminó, pero al menos un estudio falló (los demás sí se prepararon; ver el informe) |
 | 6 | recursos insuficientes: `prepare` se detiene por el límite de caché o el espacio libre; `preflight` estima que no cabe; `train` sin memoria (nunca reduce batch/parche) o `train --dry-run` sin disco para los checkpoints |
-| 7 | `train`: pesos ausentes o con SHA-256 distinto, checkpoint incompatible (llaves faltantes/sobrantes, shapes), `freeze_modules` inválido o `--resume` rechazado |
-| 8 | `train`: fallo numérico (NaN/Inf en pérdida, gradientes o predicción de validación) |
+| 7 | `train`: pesos ausentes o con SHA-256 distinto, checkpoint incompatible (llaves faltantes/sobrantes, shapes), `freeze_modules` inválido o `--resume` rechazado; `evaluate`/`export`: hashes del run distintos de los datos actuales, checkpoint ausente o incompatible, pesos del baseline con SHA-256 distinto |
+| 8 | `train`: fallo numérico (NaN/Inf en pérdida, gradientes o predicción de validación); `evaluate`: predicción con NaN/Inf o de forma incorrecta |
 
 En `train`, el código 2 también cubre un `--run-id` inválido o ya existente (un run nunca se sobrescribe), un run en
 uso por otro proceso (candado `.lock`) y límites de
 FT3 (`preprocess.num_workers` distinto de 0 o caché desactivada); el 4, inventario/`splits.json`/caché inutilizables.
+
+En `evaluate` y `export`: 2 = la carpeta de salida ya existe (nunca se sobrescribe), run en uso (`.lock`),
+`--optimize-threshold` fuera de `--split val` (o con test ya evaluado, o `threshold.json` existente) u opciones
+incompatibles; 4 = run incompleto o fuera de `<work_dir>/runs`, inventario/split/caché inutilizables, o un estudio no
+evaluable (fuente con SHA-256 distinto del inventario, GTV no binaria, geometría incompatible o con cizalla, fallo
+del pipeline original en el baseline: `EvaluationDataError` con su código); 2 también si falta `--checkpoint` con
+`--split test` o `--bootstrap` < 100; 1 =
+CUDA pedida sin GPU; 6 = sin memoria.
 
 ## Uso con el entorno normal (CPU)
 
@@ -455,6 +463,149 @@ por ventana deslizante del primer volumen de val (que puede ser mayor que el par
 sin actualizar pesos (lo comprueba con un hash del `state_dict`), sin crear el run y sin descargar nada. Estima el disco
 de los checkpoints (red ×4 en float32 + 10 %) frente al espacio libre y `min_free_disk_gb` (código 6 si no cabe).
 
+## Evaluación (`evaluate`)
+
+```bash
+uv run python -m cerberus_training evaluate --run storage/training/runs/<run_id> --split val
+uv run python -m cerberus_training evaluate --run storage/training/runs/<run_id> --split val --optimize-threshold
+uv run python -m cerberus_training evaluate --run storage/training/runs/<run_id> --split test --checkpoint best
+uv run python -m cerberus_training evaluate --run storage/training/runs/<run_id> --split test --baseline
+# Opciones: --checkpoint {best,last} (obligatorio con --split test; best por defecto en val),
+#           --bootstrap N (1000; mínimo 100), --bootstrap-seed S (42), --device {cpu,cuda} (sustituye training.device)
+```
+
+Es un comando **explícito**: `train` nunca evalúa test ni importa este módulo (lo comprueba un test). Código en
+`backend/cerberus_training/evaluate.py`.
+
+1. **Run y datos.** Lee `config.resolved.json` del run (que debe estar en `<work_dir>/runs/`), recalcula inventario,
+   `splits.json` y clave de caché como `train`, y exige que los hashes de `provenance.json` (`eligible_records_sha256`,
+   `split_sha256`, `weights_sha256`, `cache_key`, `config_sha256`) y la huella `compat` del checkpoint coincidan con
+   los actuales (código 7 si no). Los estudios salen de `splits.json` → `partitions.<split>`. Mientras evalúa, toma
+   el candado `.lock` del run.
+2. **Checkpoint.** En val, `best.pt` por defecto; **con `--split test` hay que elegirlo explícitamente**
+   (`--checkpoint best|last`, código 2 si falta), para que la elección no dependa de un valor por defecto. Carga
+   estricta. Cada evaluación de test (también la del baseline) registra en `summary.json` →
+   `prior_test_evaluations` las evaluaciones `evaluation/test*` que ya existían (carpeta y fecha) y, si hay alguna,
+   añade un aviso en `warnings` que la CLI imprime como `AVISO`: repetir test y elegir entre resultados invalida la
+   estimación.
+3. **Umbral.** El guardado en `best.pt` (`training.threshold`, 0.5 por defecto; con `last`, el de la configuración).
+   `--optimize-threshold` (**solo con `--split val`**) prueba los candidatos fijos 0.05, 0.10, …, 0.95 y elige el de
+   mayor Dice macro por paciente en val, en el grid de referencia (empates: el más cercano al umbral del checkpoint y
+   después el menor), evalúa val con él (aviso: métricas de val optimistas) y **solo si esa evaluación termina bien**
+   lo guarda en `runs/<id>/threshold.json` (publicación exclusiva, una sola vez, ligado al `state_sha256` del
+   checkpoint), justo antes de publicar la carpeta de val. Se rechaza si ya
+   existe `threshold.json` o alguna evaluación `evaluation/test*`. Las evaluaciones posteriores (incluida test) usan
+   `threshold.json` si corresponde al mismo checkpoint; si no, el umbral del checkpoint con un aviso. **Sobre test
+   nunca se optimiza nada.**
+4. **Predicción.** Ventana deslizante sobre el volumen preparado completo (`eval_sample`, ventana `patch_size`,
+   solapamiento 0.5, sin augmentations, sigmoide) y `probabilidad > umbral`.
+5. **Grid de comparación.** La máscara binaria se restaura con vecino más próximo al **grid original de la T1c**
+   (`restore_to_reference`) y se compara con la **GTV original** del dataset (`transforms.reference_label`): se
+   relee de `data_root` con identificadores revalidados, SHA-256 verificado contra el inventario, misma caja física
+   que la T1c y valores {0, 1}; si ya está en el grid de la T1c se usa tal cual, si no (otro spacing, permutación o
+   flips sobre la misma caja) se lleva a ese grid con vecino más próximo (`label_resampled = true`). La GTV nunca pasa
+   por el recorte al soporte, así que los vóxeles perdidos en `prepare` (`label_lost_voxels`) cuentan como **falsos
+   negativos**. El spacing de las métricas son las normas de columna del affine de la T1c; se exige que sus ejes sean
+   ortogonales (un grid oblicuo rotado vale; con cizalla, código 4), porque HD95 usa una transformada de distancia
+   con spacing por eje.
+6. **Métricas por estudio** con `cerberus_api.segmentation.mask_metrics` (Dice portado de `cerberus_eda.py:178-181`):
+   `dice` (= F1), `recall`, `precision`, `hd95_mm`, `volume_error_cm3` (predicción − GTV) y `abs_volume_error_cm3`.
+   Ambos vacíos → Dice 1; HD95 null si alguna máscara está vacía; recall null sin GTV y precisión null sin predicción.
+   `empty_case`: `both_empty`, `pred_empty` (solo la predicción vacía), `gtv_empty` (solo la GTV vacía) o `none`.
+7. **Agregación.** Por paciente, media de sus tiempos sobre los valores no nulos (con su denominador `<métrica>_n`);
+   entre pacientes: media, desviación estándar muestral (ddof = 1; null con un paciente), mediana, Q1/Q3 e IQR
+   (percentiles con interpolación lineal), pacientes y estudios válidos, e **IC 95 % bootstrap percentil remuestreando
+   pacientes** con reemplazo (`numpy.random.default_rng(--bootstrap-seed)`, `--bootstrap` réplicas, mínimo 100, las
+   mismas para todas las métricas; en cada réplica se promedian los pacientes con valor no nulo y se descartan las
+   réplicas sin ninguno; null con menos de 2 pacientes con valor o si no queda ninguna réplica válida).
+
+### Salidas
+
+```text
+runs/<run_id>/evaluation/<split>/            # best
+runs/<run_id>/evaluation/<split>-last/       # --checkpoint last
+runs/<run_id>/evaluation/<split>-baseline/   # --baseline
+  per_study.csv  per_patient.csv  summary.json
+runs/<run_id>/threshold.json                 # solo con --optimize-threshold
+```
+
+**Nunca se sobrescribe**: si la carpeta existe, código 2 (no hay `--force`; para repetir, mueva o borre la carpeta a
+conciencia). Los tres archivos se escriben en una carpeta temporal hermana que se renombra al final: un fallo no deja
+una evaluación a medias.
+
+- `per_study.csv`: `study_id, patient, timepoint, threshold, gtv_voxels, pred_voxels, gtv_cm3, pred_cm3, empty_case,
+  dice, recall, precision, hd95_mm, volume_error_cm3, abs_volume_error_cm3, spacing_mm` (`x;y;z`), `label_resampled`,
+  `label_lost_voxels` (+ `baseline_channels`, `baseline_warnings` en el baseline). Null = celda vacía.
+- `per_patient.csv`: `patient, n_studies` y, por métrica, la media y `<métrica>_n`.
+- `summary.json`: `schema_version`, `model` (`adapted`/`baseline`), `run_id`, `split`, `created_utc`, `hashes`,
+  `checkpoint` (`kind`, `epoch`, `state_sha256`, métrica de selección), `threshold` (`value`, `source`:
+  `checkpoint`/`optimized_on_val`/`baseline_fixed`), `inference` (predictor, ventana, solapamiento, `amp` realmente
+  usado, `TRANSFORMS_VERSION`, canales), `prior_test_evaluations` (solo en test), `comparison_grid`, `aggregation`, `empty_rules`,
+  `bootstrap`, `n_studies`, `n_patients`, `metrics.<métrica>` (`n_valid_patients`, `n_patients`, `n_valid_studies`,
+  `n_studies`, `mean`, `std`, `median`, `q1`, `q3`, `iqr`, `ci95`), `empty_cases` y `warnings`, más versiones.
+
+### Baseline (`--baseline`)
+
+Evalúa la salida **TC** del modelo original de 3 salidas con **su propio pipeline**: `cerberus_api.segmentation.
+segment_regions` (la misma función que usa `run_segmentation` en la API, extraída sin cambiar su comportamiento):
+canales de `CHANNEL_MAP`, `resample_to_output` a 1 mm sobre la T1c, imágenes × brain_mask, `normalize_nonzero`,
+ventana deslizante 240×240×160 con solapamiento 0.5 (`segresnet_predictor`), TC = canal 0 > 0.5 recortado a la
+brain_mask. Recibe los archivos seleccionados en el inventario (SHA-256 verificado) y la TC se lleva al grid
+original de la T1c con vecino más próximo, donde se compara con la GTV original igual que el modelo adaptado. La
+geometría de referencia se lee solo del `meta` de la entrada de caché (`StudyCache.load_geometry`, con clave y fuentes
+verificadas; no carga el volumen). Un fallo del pipeline original (nibabel, forma de la salida…) es un error de datos
+del estudio con código `baseline_failed` (código de salida 4). Sin
+predictor inyectado usa los pesos de `weights.path` verificados con `weights.sha256` (**nunca descarga**).
+
+Es una **referencia imperfecta**: TC (tumor core de BraTS) no es GTV y las cifras no son una equivalencia de etiquetas.
+`summary.json` lo dice en `label_caveat` y `warnings`, y registra en `baseline` el bundle, el SHA-256 de los pesos, la
+salida usada, `CHANNEL_MAP` y el preprocesamiento, y en `differences_vs_adapted` las diferencias con el modelo
+adaptado (etiqueta, umbral, grid y recorte, máscara cerebral sobre la predicción, ROI de la ventana, política de
+canales y pesos). No admite `--optimize-threshold` ni `--checkpoint`.
+
+## Exportación (`export`)
+
+```bash
+uv run python -m cerberus_training export --run storage/training/runs/<run_id> [--checkpoint last]
+```
+
+Verifica el run y el checkpoint igual que `evaluate` (solo runs de SegResNet) y escribe, sin sobrescribir nunca
+(código 2 si existe):
+
+```text
+runs/<run_id>/export/          # best (export-last/ con --checkpoint last)
+  model.pt        # state_dict de SegResNet de 1 salida (solo tensores; se carga con weights_only=True)
+  export.json     # manifiesto
+  model_card.md   # ficha del modelo en español
+```
+
+`export.json`: `architecture` (`monai.SegResNet`, sus `kwargs`, `out_channels = 1`, cabeza `conv_final.2`),
+`channel_order` y `channels`, `transforms` (`TRANSFORMS_VERSION`, spacing, orientación, política de máscara, pasos,
+ventana deslizante y restauración), `threshold` (valor y origen, como en `evaluate`), `checkpoint`, `hashes`
+(`weights_file_sha256` de `model.pt`, `state_sha256` del state_dict, `pretrained_weights_sha256`, `split_sha256`,
+`eligible_records_sha256`, `cache_key`, `config_sha256`), `dataset` (CFB-GBM, TCIA, DOI `10.7937/v9pn-2f72`),
+`license` (CC BY 4.0), `citation`, `pretrained`, `pretraining_overlap` y `evaluation`. `transforms.inference`
+registra la ventana, el solapamiento y `amp_training` (AMP solo actúa en CUDA). **Sin puntuaciones ficticias:**
+`evaluation.status` es `not_evaluated` si no hay ninguna evaluación de ese mismo checkpoint (mismo `state_sha256`);
+si la hay, `evaluated_val` (solo val: cifras optimistas, falta test) o `evaluated_test` (hay test), con
+`splits_evaluated`, y cada resumen se cita con su partición, fecha (`created_utc`), ruta y métricas; la frase de la
+ficha depende del estado.
+
+`pretrained` registra los pesos iniciales: nombre/versión del bundle de la configuración y su SHA-256 y, si los pesos
+siguen la estructura `<bundle>/models/model.pt`, los campos `name`, `version`, `authors`, `copyright`, `data_source`,
+`intended_use` y `references` de `<bundle>/configs/metadata.json` (verificado en el bundle local 0.5.4; ese archivo
+**no** tiene campo de licencia), la licencia reconocida en `<bundle>/LICENSE` (Apache 2.0) y la citación tomada de
+`references`. Lo que no se puede leer se marca `"no verificado"`; `version_matches_config` indica si la versión del
+metadata coincide con `weights.bundle_version`. Las
+evaluaciones del baseline se citan aparte como referencia imperfecta. La ficha menciona la métrica de selección de
+`best` (Dice macro por paciente de val del entrenamiento) dejando claro que no es una evaluación.
+
+`cerberus_training.export.load_export(directorio, expected=None)` reconstruye SegResNet desde `export.json` (exige que
+sus `kwargs` sean exactamente `SEGRESNET_KWARGS`), comprueba el SHA-256 de `model.pt`, carga con correspondencia estricta y comprueba el SHA-256 del state_dict; `expected`
+(p. ej. `{"split_sha256": …, "cache_key": …}`) se contrasta con los hashes del manifiesto. Cualquier discrepancia es
+`ExportError`. Devuelve el modelo en modo `eval`, el manifiesto, el umbral y el orden de canales. La integración del
+modelo exportado en la API/UI queda fuera de alcance (otro ticket).
+
 ## Entorno CUDA independiente (`training-env/`)
 
 Las ruedas de torch de la app apuntan al índice CPU en Linux (`pyproject.toml` raíz) y no deben cambiar.
@@ -510,7 +661,8 @@ en macOS sin CUDA); solo se resolvió y fijó el lock. La primera comprobación 
 ```bash
 uv run pytest -q backend/tests/test_training_config.py backend/tests/test_training_cli.py \
   backend/tests/test_training_inventory.py backend/tests/test_training_splits.py \
-  backend/tests/test_training_prepare.py backend/tests/test_training_train.py
+  backend/tests/test_training_prepare.py backend/tests/test_training_train.py \
+  backend/tests/test_training_evaluate.py
 ```
 
 Cubren el esquema, la CLI, la ausencia de imports de torch/MONAI/nibabel al arrancar (y de nibabel/numpy en `split`), el inventario sobre NIfTI
@@ -539,3 +691,19 @@ reanudación rechazada (split, canales, configuración, bajar `max_epochs`, `val
 predicción de validación NaN, pasos AMP saltados (scaler simulado), ventana final de acumulación corta frente a una
 referencia manual, validación con GTV vacía, restauración del estado global (RNG y entorno), candado del run, limpieza
 de un run a medias, dry-run sin cambios de pesos (con ventana deslizante) y la CLI de extremo a extremo. El forward de SegResNet con parche 96³ está marcado `slow`.
+
+FT4 (`test_training_evaluate.py`) cubre métricas calculadas a mano con spacing anisotrópico (cubo desplazado: Dice
+0.75 y HD95 2 mm; sobre-segmentación: Dice 128/144, precisión 0.8 y ±0.016 cm³), los tres casos vacíos, la agregación
+tiempos → paciente con números a mano (media, desviación, cuartiles y denominadores), el bootstrap (determinista por
+semilla, igual a una referencia manual por índices de paciente e invariante a repetir estudios de un paciente), la
+restauración al grid de la T1c con flips, permutación anisotrópica y oblicuo frente a la GTV original, la GTV en otro
+grid, la GTV perdida fuera del soporte contada como FN, el rechazo de cizalla, el aislamiento de test (el trainer no
+importa la evaluación; optimizar el umbral en test o tras ver test es imposible; test usa el umbral persistido de
+val; optimización no trivial con ruido de falsos positivos hasta 0.7 → umbral 0.70; `threshold.json` solo tras una
+evaluación de val correcta; umbral de otro checkpoint ignorado con aviso; `--checkpoint` obligatorio en test y
+`prior_test_evaluations`), el bootstrap con 2 de 50 pacientes válidos, la no sobrescritura, el candado y los hashes del run, una fuente modificada, el baseline con predictor falso
+(canales y diferencias registradas) y, con SegResNet real de pesos artificiales sobre un workspace sintético
+completo (NIfTI → inventario → split → prepare → train), la exportación de ida y vuelta (mismas salidas que
+`best.pt`), `pretrained` con metadata sintética, `not_evaluated`/`evaluated_val`/`evaluated_test`, hashes y `kwargs`
+alterados y la CLI de extremo a extremo. Un test `slow` recorre la ruta real de `evaluate_baseline` (pesos
+artificiales de 3 salidas, `segresnet_predictor` con ROI 240×240×160 en CPU).
