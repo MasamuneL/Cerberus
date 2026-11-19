@@ -10,7 +10,7 @@ from typing import Any
 
 import pytest
 
-from cerberus_training.__main__ import EXIT_CONFIG_ERROR, EXIT_NOT_IMPLEMENTED, PENDING, build_parser, main
+from cerberus_training.__main__ import EXIT_CONFIG_ERROR, PENDING, build_parser, main
 from cerberus_training.config import REPO_ROOT, load_config
 from cerberus_training.device import format_report, probe_device
 
@@ -33,17 +33,7 @@ def test_plan_subcommands_are_declared() -> None:
     parser = build_parser()
     choices = next(a for a in parser._actions if a.dest == "command").choices  # pyright: ignore[reportAttributeAccessIssue]
     assert choices is not None and sorted(choices) == sorted(SUBCOMMANDS)
-    assert set(PENDING) == set(SUBCOMMANDS) - {
-        "validate",
-        "device",
-        "inventory",
-        "split",
-        "prepare",
-        "preflight",
-        "train",
-        "evaluate",
-        "export",
-    }
+    assert PENDING == {}  # FT0–FT5 implementados: ningún subcomando declarado queda pendiente
 
 
 @pytest.mark.parametrize("argv", [["--help"], *[[name, "--help"] for name in SUBCOMMANDS]])
@@ -86,20 +76,6 @@ def test_invalid_config_reports_error(tmp_path: Path, capsys: pytest.CaptureFixt
     bad.write_text(json.dumps(data), encoding="utf-8")
     assert main(["train", "--config", str(bad), "--dry-run"]) == EXIT_CONFIG_ERROR
     assert "Configuración inválida" in capsys.readouterr().err
-
-
-@pytest.mark.parametrize(
-    ("argv", "ticket"),
-    [
-        (["smoke", "--synthetic"], "FT5"),
-    ],
-)
-def test_unimplemented_subcommands_fail_clearly(
-    argv: list[str], ticket: str, capsys: pytest.CaptureFixture[str]
-) -> None:
-    assert main(argv) == EXIT_NOT_IMPLEMENTED
-    err = capsys.readouterr().err
-    assert "aún no está implementado" in err and f"pendiente de {ticket}" in err
 
 
 def test_required_arguments_enforced() -> None:

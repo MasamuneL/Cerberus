@@ -1,6 +1,6 @@
 # Plan de implementación: pipeline de fine-tuning CFB-GBM
 
-Fecha: 2026-11-17. Estado: plan listo para implementación; pipeline todavía no implementado.
+Fecha: 2026-11-17. Estado: FT0–FT5 implementados y validados solo con datos sintéticos (ver `TRAINING.md`); sin entrenamiento real.
 
 ## 1. Entrega y alcance
 
@@ -157,7 +157,7 @@ y ficha del modelo. Sin puntuaciones ficticias: antes de entrenar, estado `not_e
 No exigir mejora de Dice para declarar construido el pipeline: eso será criterio del experimento
 posterior, cuyo mínimo de mejora debe fijarse antes de usar el conjunto de prueba.
 
-## 8. CLI propuesta (todavía no existe)
+## 8. CLI propuesta (implementada en FT0–FT5)
 
 ```bash
 uv run python -m cerberus_training inventory --data-root /ruta/CFB-GBM --output storage/training/inventory.jsonl
@@ -168,17 +168,17 @@ uv run python -m cerberus_training train --config configs/training/gtv_binary.js
 # Solo en una ejecución futura solicitada:
 uv run python -m cerberus_training train --config configs/training/gtv_binary.json
 uv run python -m cerberus_training train --config configs/training/gtv_binary.json --resume /ruta/last.pt
-uv run python -m cerberus_training evaluate --run /ruta/run --split test
+uv run python -m cerberus_training evaluate --run /ruta/run --split test --checkpoint best
 uv run python -m cerberus_training export --run /ruta/run
 ```
 
 `--dry-run` valida configuración, fuentes, pesos, splits y recursos sin backward, sin actualizar
-pesos y sin descargar nada. `smoke --synthetic` será otro comando, con datos y pesos artificiales:
+pesos y sin descargar nada. `smoke --synthetic` es otro comando, con datos y pesos artificiales:
 ejecuta dos pasos de optimización en CPU, guarda/reanuda y evalúa. No confundirlo con fine-tuning real.
 
 ## 9. Tickets y aceptación
 
-Tickets propuestos; incorporar a §8/§9 del plan principal cuando comience la implementación.
+Tickets incorporados a §8/§9 del [plan principal](PLAN_MVP.md#fine-tuning-ft0ft5).
 Una rama y PR por ticket; dependencias previas integradas antes de iniciar el siguiente.
 
 | Ticket | Depende de | Entrega y aceptación |
