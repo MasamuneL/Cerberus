@@ -10,26 +10,33 @@ Este documento crece con cada ticket FT; aquí se documenta lo que existe hoy.
 | FT0 | Paquete, configuración JSON estricta, CLI base, entorno CUDA fijado, comprobación de dispositivo | implementado |
 | FT1 | `inventory`, `split` | implementado |
 | FT2 | `prepare`, `preflight`, transformaciones y caché | implementado |
-| FT3 | `train` (incluye `--dry-run` y `--resume`) | pendiente |
+| FT3 | `train` (incluye `--dry-run` y `--resume`), transferencia de SegResNet, artefactos del run | implementado |
 | FT4 | `evaluate`, `export` | pendiente |
 | FT5 | `smoke --synthetic` y manual completo | pendiente |
 
-Funcionan `validate` y `device` (FT0), `inventory` y `split` (FT1) y `prepare` y `preflight` (FT2). El resto de los subcomandos existe para que
-`--help` muestre la interfaz prevista, valida la configuración si se pasa `--config` y termina con código 3 y un
-mensaje `pendiente de FTn`. **No hay entrenamiento, evaluación ni modelo adaptado todavía**, y no se ha medido ninguna
-duración ni consumo de recursos (las cifras de `preflight` son estimaciones, no mediciones).
+Funcionan `validate` y `device` (FT0), `inventory` y `split` (FT1), `prepare` y `preflight` (FT2) y `train` (FT3). El
+resto de los subcomandos existe para que `--help` muestre la interfaz prevista, valida la configuración si se pasa
+`--config` y termina con código 3 y un mensaje `pendiente de FTn`. El trainer solo se ha ejecutado con datos y pesos
+sintéticos en CPU (tests): **no se ha hecho ningún fine-tuning real ni existe un modelo adaptado evaluado**, y no se ha
+medido ninguna duración ni consumo de recursos (las cifras de `preflight` son estimaciones, no mediciones).
 
 ## Códigos de salida
 
 | Código | Significado |
 |---|---|
 | 0 | correcto |
-| 1 | `device --require-cuda` sin CUDA disponible |
+| 1 | `device --require-cuda` o `train` con `training.device = "cuda"` sin CUDA disponible |
 | 2 | uso incorrecto de argumentos o configuración inválida/ilegible |
 | 3 | subcomando todavía no implementado |
 | 4 | dataset/inventario inutilizable (raíz inexistente o ilegible, salida dentro del dataset, dos rutas de E/S que son el mismo archivo, inventario ilegible o manipulado), pocos pacientes, `splits.json` existente incompatible, o ningún estudio elegible en `prepare`/`preflight` |
 | 5 | `prepare` terminó, pero al menos un estudio falló (los demás sí se prepararon; ver el informe) |
-| 6 | recursos insuficientes: `prepare` se detiene por el límite de caché o el espacio libre; `preflight` estima que no cabe |
+| 6 | recursos insuficientes: `prepare` se detiene por el límite de caché o el espacio libre; `preflight` estima que no cabe; `train` sin memoria (nunca reduce batch/parche) o `train --dry-run` sin disco para los checkpoints |
+| 7 | `train`: pesos ausentes o con SHA-256 distinto, checkpoint incompatible (llaves faltantes/sobrantes, shapes), `freeze_modules` inválido o `--resume` rechazado |
+| 8 | `train`: fallo numérico (NaN/Inf en pérdida, gradientes o predicción de validación) |
+
+En `train`, el código 2 también cubre un `--run-id` inválido o ya existente (un run nunca se sobrescribe), un run en
+uso por otro proceso (candado `.lock`) y límites de
+FT3 (`preprocess.num_workers` distinto de 0 o caché desactivada); el 4, inventario/`splits.json`/caché inutilizables.
 
 ## Uso con el entorno normal (CPU)
 
@@ -327,6 +334,127 @@ Devuelve 6 si la caché estimada más las claves antiguas supera `cache_limit_gb
 cabe dejando `min_free_disk_gb` libres; 4 si no hay estudios elegibles; si no, 0. Son estimaciones sin medir sobre la
 colección real.
 
+## Entrenamiento (`train`)
+
+```bash
+uv run python -m cerberus_training train --config configs/training/gtv_binary.json --dry-run
+uv run python -m cerberus_training train --config configs/training/gtv_binary.json [--run-id NOMBRE]
+uv run python -m cerberus_training train --config configs/training/gtv_binary.json \
+  --resume storage/training/runs/<run_id>/checkpoints/last.pt
+# En GPU, con el entorno CUDA independiente:
+uv run --project training-env python -m cerberus_training train --config configs/training/gtv_binary.json --dry-run
+```
+
+Requisitos previos: `inventory`, `split` y `prepare` sobre el mismo `work_dir`. `train` lee
+`<work_dir>/inventory.jsonl`, `<work_dir>/splits.json` (debe ser exactamente el que `split` calcularía hoy con ese
+inventario y esa configuración; nunca se redistribuye) y la caché de `prepare` (`preprocess.cache_enabled = true`).
+Código en `backend/cerberus_training/model.py`, `train.py` y `artifacts.py`.
+
+### Transferencia de pesos (`model.py`)
+
+1. `weights.path` debe existir y su SHA-256 coincidir con `weights.sha256` (**nunca se descarga nada**). El archivo se
+   lee una sola vez: se calcula el SHA-256 de esos bytes y se cargan con `torch.load(io.BytesIO(...), weights_only=True)`
+   (lo verificado es lo cargado). Debe ser un `state_dict` (llave → tensor), como el `model.pt` del bundle.
+2. Se construye SegResNet de 3 salidas con la arquitectura de la API (4 entradas, `init_filters=16`,
+   `blocks_down=(1,2,2,4)`, `blocks_up=(1,1,1)`, `dropout_prob=0.2`) y se carga con `strict=True`. Antes se comparan
+   llaves y shapes: faltantes, sobrantes o shapes distintos dan un error que los enumera (código 7). Nunca `strict=False`.
+3. Se reemplaza **solo** la proyección final. En MONAI 1.6.1 `SegResNet.conv_final` es
+   `Sequential(GroupNorm, ReLU, Convolution(Conv3d(16 → 3, k=1)))`: la capa reemplazada es **`conv_final.2`**
+   (`conv_final.2.conv.weight` `[3,16,1,1,1]` → `[1,16,1,1,1]` y `conv_final.2.conv.bias` `[3]` → `[1]`); la GroupNorm
+   `conv_final.0` se transfiere. La capa nueva sale de una SegResNet de 1 salida construida con `seeds.head_init`
+   dentro de `torch.random.fork_rng`: es determinista y no altera el generador global.
+4. Se registran (en `provenance.json` → `transfer` y en cada checkpoint) los tensores transferidos, descartados y nuevos,
+   con nombres y conteos. `training.freeze_modules` son prefijos de módulo (p. ej. `["convInit", "down_layers.0"]`):
+   un prefijo que no corresponde a ningún parámetro, que incluye la cabeza nueva o que congela toda la red es un error.
+   Los parámetros congelados no entran en el optimizador.
+
+### Bucle
+
+- Por época, los estudios de `train` se recorren en una permutación sembrada con `(seeds.training, época)`; cada lote
+  toma `batch_size` parches de `train_sample` (FT2), cada uno de un estudio leído de la caché **de uno en uno**
+  (verificando sus SHA-256) con `make_rng(seeds.augmentation, época, índice)`. Sin DataLoader: `num_workers` debe ser 0.
+  Una época = un parche por estudio de train.
+- Pérdida `dice_weight · DiceLoss(sigmoid=True) + bce_weight · BCEWithLogitsLoss` (MONAI/PyTorch) sobre el logit GTV;
+  AdamW (`learning_rate`, `weight_decay`); sin scheduler. Acumulación de `grad_accum_steps` lotes por paso; la última
+  ventana de una época puede ser más corta y se escala por su tamaño real.
+- Validación cada `validate_every` épocas y en la última, sobre los volúmenes completos de `val` con
+  `monai.inferers.sliding_window_inference` (ventana = `patch_size`, solapamiento 0.5, sin augmentations), umbral
+  `sigmoid > training.threshold` (0.5) y `cerberus_api.segmentation.dice`. Métrica de selección: **Dice macro por
+  paciente** (media de los tiempos de cada paciente y luego media de pacientes). `best` se guarda cuando el Dice mejora
+  estrictamente; la parada temprana llega tras `early_stopping_patience` validaciones seguidas sin mejora.
+- NaN/Inf en la pérdida, en los gradientes o en la predicción de validación detienen el run con código 8. Con AMP
+  (solo `cuda`), un gradiente no finito es el mecanismo normal de `GradScaler`: el paso se salta y se cuenta en
+  `amp_skipped_steps`. Sin memoria (`torch.OutOfMemoryError`/`MemoryError`): código 6; nunca se reduce batch ni parche.
+- `training.device = "cuda"` sin GPU falla (código 1); nunca se degrada a CPU. AMP solo con `cuda` (ya lo exige el esquema).
+
+**Determinismo.** Se siembran Python, NumPy y PyTorch con `seeds.training` (no hay workers que sembrar). Con
+`seeds.deterministic` se activa `torch.use_deterministic_algorithms(True)` (en CUDA con `warn_only`, más
+`cudnn.deterministic`, sin `benchmark` y `CUBLAS_WORKSPACE_CONFIG=:4096:8`). Al terminar (también ante errores) se
+restaura todo el estado global tocado: generadores de Python, NumPy, PyTorch y CUDA, modos deterministas y
+`CUBLAS_WORKSPACE_CONFIG`. En CPU es reproducible bit a bit: N épocas seguidas y k épocas + reanudar N−k dan los mismos pesos, estado del
+optimizador y métricas (test). En CUDA no se garantiza: el backward del upsample trilineal de SegResNet no tiene versión
+determinista y AMP añade variación. Estos límites se escriben en `provenance.json` → `determinism_limits`.
+
+### Artefactos del run
+
+```text
+<paths.work_dir>/runs/<run_id>/
+  config.resolved.json     # configuración resuelta (rutas absolutas)
+  provenance.json          # commit git y estado (leídos sin modificar el repo), versiones, hashes, dispositivo, semillas
+  metrics.jsonl            # una línea por época
+  checkpoints/last.pt      # estado completo para reanudar
+  checkpoints/best.pt      # mejor Dice macro por paciente de validación
+```
+
+`run_id` por defecto: `<AAAAMMDDTHHMMSSZ>-<8 hex del hash de la config>`; con `--run-id` (letras, dígitos, `.`, `_`,
+`-`, máx. 64). **Un run existente nunca se sobrescribe** (código 2). Si falla la creación inicial (config, procedencia o
+`metrics.jsonl`), la carpeta a medias se borra. Mientras `train`/`--resume` trabaja sobre un run, existe `.lock` (creado
+con `O_EXCL`, contiene el PID): un segundo proceso falla con código 2; si un proceso murió sin liberarlo, hay que
+borrarlo a mano tras comprobar que no hay otro activo. `provenance.json` incluye `git.commit` y `git.dirty`
+(`git --no-optional-locks`; `dirty` solo mira archivos versionados y **ignora los no versionados**), Python, plataforma y versiones de torch/MONAI/numpy/scipy/nibabel/pydantic/cerberus, el
+informe de `device`, semillas, límites de determinismo, `hashes` (`eligible_records_sha256`, `split_sha256`,
+`weights_sha256`, `cache_key`, `config_sha256`), tamaños de train/val y el informe de transferencia.
+
+`metrics.jsonl`: `epoch`, `step`, `train_loss`, `train_batches`, `lr`, `amp_skipped_steps`, `seconds` y, si se validó,
+`val_dice`, `val_dice_per_patient`, `val_studies`, `val_patients`, `improved`, `best_val_dice`, `best_epoch`,
+`epochs_without_improvement`. Las líneas con clave `event` no son épocas: `resume_override` (campos ampliados al
+reanudar, con `from`/`to`), `best_orphaned` y `best_missing` (ver reanudación).
+
+`last.pt` (leído con `weights_only=True`): `model`, `optimizer`, `scheduler` (`null`), `scaler` (AMP o `null`), `epoch`
+(épocas completadas), `step`, `best_metric`, `best_epoch`, `early_stopping`, `finished`, `stop_reason`, `rng` (Python,
+NumPy, PyTorch y CUDA), `config`, `compat`, `hashes`, `metrics_history` y `transfer`. `best.pt`: `model`, `epoch`,
+`metric`, `threshold`, `config`, `compat`, `transfer`. Ambos se escriben de forma atómica (temporal en la misma carpeta,
+`fsync`, `os.replace`, `fsync` de la carpeta): un fallo a mitad deja intacta la versión anterior y ningún archivo
+parcial; permisos 0644. Orden al final de cada época: `best` (si mejoró) → `last` → línea de `metrics.jsonl`.
+
+### Reanudación (`--resume`)
+
+Se reanuda en límite de época dentro del mismo run; `--resume` debe ser `<work_dir>/runs/<id>/checkpoints/last.pt` de
+la configuración dada. Se rechaza (código 7, nombrando cada diferencia) si cambia algo de la huella `compat`: tarea,
+etiqueta, orden y número de canales, arquitectura y cabeza, `split_sha256`, `eligible_records_sha256`, clave de caché,
+`weights_sha256` o la configuración relevante (el mensaje lista las claves cambiadas, p. ej. `training.learning_rate`).
+Quedan fuera de la huella `paths`, `weights.path` (ya la fija `weights_sha256`) y los límites de recursos
+(`preprocess.cache_enabled`, `cache_limit_gb`, `min_free_disk_gb`, `num_workers`), que pueden cambiar libremente.
+`training.max_epochs` y `training.early_stopping_patience` pueden **subir** (nunca bajar): el cambio se registra como
+evento `resume_override` en `metrics.jsonl` (y en el historial de `last.pt`), y un run terminado por ese motivo se
+reabre. Cualquier otro cambio (`validate_every`, `learning_rate`, pérdida, parche, semillas…) se rechaza.
+
+Se restauran red, optimizador, scaler, contadores, parada temprana y RNG, y `metrics.jsonl` se reescribe desde el
+historial del checkpoint (descarta líneas de épocas posteriores a un corte). Coherencia de `best.pt`: como se escribe
+antes que `last.pt`, un corte entre ambos deja un `best.pt` de una época que `last.pt` no registra; al reanudar se
+aparta como `best.orphan-epoch<N>.pt` (no se borra), se registra `best_orphaned` y la repetición de la época lo
+regenera si vuelve a mejorar (en CPU, idéntico; en CUDA puede no repetirse y entonces el `best.pt` vigente sale de la
+siguiente mejora). Si el run ya había terminado y no se amplía nada, no hace nada y devuelve 0.
+
+### Dry-run (`--dry-run`)
+
+Valida configuración y límites de FT3, dispositivo, inventario y `splits.json`, **todas** las entradas de caché de
+train/val (lectura completa con SHA-256), pesos (existencia, SHA-256, carga estricta, cabeza nueva, congelación) y
+hace un forward sin gradiente de un parche (comprueba shape `[1, 1, *patch_size]` y valores finitos) y una predicción
+por ventana deslizante del primer volumen de val (que puede ser mayor que el parche). Sin backward,
+sin actualizar pesos (lo comprueba con un hash del `state_dict`), sin crear el run y sin descargar nada. Estima el disco
+de los checkpoints (red ×4 en float32 + 10 %) frente al espacio libre y `min_free_disk_gb` (código 6 si no cabe).
+
 ## Entorno CUDA independiente (`training-env/`)
 
 Las ruedas de torch de la app apuntan al índice CPU en Linux (`pyproject.toml` raíz) y no deben cambiar.
@@ -382,7 +510,7 @@ en macOS sin CUDA); solo se resolvió y fijó el lock. La primera comprobación 
 ```bash
 uv run pytest -q backend/tests/test_training_config.py backend/tests/test_training_cli.py \
   backend/tests/test_training_inventory.py backend/tests/test_training_splits.py \
-  backend/tests/test_training_prepare.py
+  backend/tests/test_training_prepare.py backend/tests/test_training_train.py
 ```
 
 Cubren el esquema, la CLI, la ausencia de imports de torch/MONAI/nibabel al arrancar (y de nibabel/numpy en `split`), el inventario sobre NIfTI
@@ -398,3 +526,16 @@ de la imagen respecto a la GTV, restauración ida y vuelta, parches pos/neg semb
 caché (acierto, invalidación por configuración/versión/bibliotecas/tolerancia/fuente, byte alterado, hash de array,
 escritura atómica con informe persistido, temporales huérfanos, límite, espacio libre simulado), preflight y la CLI
 de extremo a extremo (incluido el código 4 sin elegibles). No usan red, `Data/001` ni GPU.
+
+FT3 (`test_training_train.py`) usa una caché sintética de 16³ escrita con `StudyCache.store`, inventario y split reales,
+una red pequeña inyectable (`ModelSpec`) y SegResNet real con pesos artificiales generados en el test: nombre y shapes
+de `conv_final.2`, carga estricta, tensores transferidos idénticos, cabeza nueva determinista por semilla, SHA-256
+incorrecto y pesos ausentes, llaves faltantes/sobrantes y shapes, backward que actualiza SegResNet real respetando la
+congelación, `freeze_modules` inválido, NaN en la pérdida, CUDA pedida sin GPU, caché incompleta, artefactos y
+procedencia, escritura atómica con fallo simulado, run existente, equivalencia bit a bit de la reanudación,
+reanudación rechazada (split, canales, configuración, bajar `max_epochs`, `validate_every`), ampliación de
+`max_epochs`/paciencia y cambios de recursos aceptados, recorte de `metrics.jsonl` al reanudar, corte entre `best` y
+`last` seguido de reanudación, parada temprana con empates, `validate_every > 1`, gradiente NaN con pérdida finita,
+predicción de validación NaN, pasos AMP saltados (scaler simulado), ventana final de acumulación corta frente a una
+referencia manual, validación con GTV vacía, restauración del estado global (RNG y entorno), candado del run, limpieza
+de un run a medias, dry-run sin cambios de pesos (con ventana deslizante) y la CLI de extremo a extremo. El forward de SegResNet con parche 96³ está marcado `slow`.
