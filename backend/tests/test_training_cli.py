@@ -41,6 +41,8 @@ def test_plan_subcommands_are_declared() -> None:
         "prepare",
         "preflight",
         "train",
+        "evaluate",
+        "export",
     }
 
 
@@ -89,8 +91,6 @@ def test_invalid_config_reports_error(tmp_path: Path, capsys: pytest.CaptureFixt
 @pytest.mark.parametrize(
     ("argv", "ticket"),
     [
-        (["evaluate", "--run", "/x", "--split", "test"], "FT4"),
-        (["export", "--run", "/x"], "FT4"),
         (["smoke", "--synthetic"], "FT5"),
     ],
 )
