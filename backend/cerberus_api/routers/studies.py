@@ -19,7 +19,7 @@ from cerberus_api.areas import AREAS_JSON
 from cerberus_api.atlas import MOVING_PRIORITY
 from cerberus_api.config import Settings
 from cerberus_api.deps import REDIS_UNAVAILABLE, PrincipalDep, RedisDep, SettingsDep
-from cerberus_api.display import SMOOTHABLE, display_path, ensure_smoothed
+from cerberus_api.display import SIGMA_MM, SMOOTHABLE, display_path, ensure_smoothed
 from cerberus_api.schemas import (
     AreasResult,
     JobCreated,
@@ -90,7 +90,9 @@ def _resolve_smoothed(settings: Settings, patient: str, timepoint: str, name: st
             None,
         )
     try:
-        return ensure_smoothed(source, reference, display_path(settings.results_dir, patient, timepoint, name))
+        target = display_path(settings.results_dir, patient, timepoint, name)
+        # Solo en el GTV se conservan crudos los focos diminutos (lesiones); en MONAI/áreas se suavizan
+        return ensure_smoothed(source, reference, target, SIGMA_MM[name], keep_small_foci=name == "gtv")
     except (OSError, ValueError) as exc:
         raise HTTPException(status_code=500, detail="No se pudo generar la máscara suavizada") from exc
 

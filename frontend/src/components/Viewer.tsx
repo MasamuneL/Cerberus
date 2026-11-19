@@ -87,16 +87,26 @@ const VIEWS: { label: string; type: SLICE_TYPE; key: string }[] = [
   { label: "3D", type: SLICE_TYPE.RENDER, key: "5" },
 ];
 
-// Colores reales del render (colormap "red" de Niivue y SEG_LABELS), para que la leyenda no mienta.
-const GTV_SWATCH = "#ff0000";
+// Colores reales del render (colormap GTV_COLORMAP y SEG_LABELS), para que la leyenda no mienta.
+const GTV_SWATCH = "#dcdce1";
+// GTV en gris claro: no compite con el rojo/naranja/amarillo de la segmentación MONAI. El valor 1 de la máscara
+// es gris claro y opaco (A 255); la opacidad de la capa (40 % por defecto) lo deja como un velo sobre la MRI.
+const GTV_COLORMAP_NAME = "gtv-gris";
+const GTV_COLORMAP = {
+  R: [0, 110, 220],
+  G: [0, 110, 220],
+  B: [0, 112, 225],
+  A: [0, 128, 255],
+  I: [0, 128, 255],
+};
 const SEG_SWATCHES: { name: string; color: string }[] = [
   { name: "Edema", color: "#ffdc00" },
   { name: "Núcleo", color: "#ff8c00" },
   { name: "Realce", color: "#ff0000" },
 ];
 
-// Color de la superficie del GTV en 3D (un rojo algo más claro que el overlay, para que la luz se note).
-const GTV_SURFACE_RGBA = new Uint8Array([255, 40, 40, 255]);
+// Color de la superficie del GTV en 3D (el mismo gris claro del overlay; la iluminación da el relieve).
+const GTV_SURFACE_RGBA = new Uint8Array([220, 220, 225, 255]);
 // Profundidad > 1 desactiva el plano de corte (ClipPlaneManager.DEFAULT_DEPTH_AZI_ELEV de Niivue).
 const NO_CLIP: number[] = [2, 0, 0];
 
@@ -325,6 +335,7 @@ export default function Viewer({
     if (!canvas) return;
     const nv = new Niivue({ backColor: [0, 0, 0, 1] });
     nvRef.current = nv;
+    nv.addColormap(GTV_COLORMAP_NAME, GTV_COLORMAP);
     readyRef.current = nv.attachToCanvas(canvas);
     // Clic/arrastre de la mira y teclas H/J/K/L: Niivue llama a onLocationChange con un NiiVueLocation
     // (mm, vox, frac, values[i] por volumen en orden de carga, string). Ver createOnLocationChange.
@@ -401,7 +412,7 @@ export default function Viewer({
     let segIdx = -1;
     if (study.has_gtv && showGtv) {
       gtvIdx = list.length;
-      list.push({ url: `${fileUrl(p, t, "gtv")}${smoothEdges ? "?smooth=1" : ""}`, name: "gtv.nii.gz", colormap: "red", opacity: gtvOpacity });
+      list.push({ url: `${fileUrl(p, t, "gtv")}${smoothEdges ? "?smooth=1" : ""}`, name: "gtv.nii.gz", colormap: GTV_COLORMAP_NAME, opacity: gtvOpacity });
     }
     if (segAvailable && segOn) {
       segIdx = list.length;

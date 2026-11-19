@@ -7,8 +7,10 @@ plano, 1 mm entre cortes, y 1 mm en todos los ejes para MONAI). Para cada etique
   2. Indicadora binaria → filtro gaussiano (σ en mm, convertido a vóxeles por eje) = "probabilidad" suave.
   3. Remuestreo trilineal a la rejilla de referencia del estudio (la del fondo en el visor).
   4. Cada vóxel toma la etiqueta con mayor probabilidad, si es ≥ 0.5 (la isosuperficie 0.5 queda redondeada).
-  5. Los componentes conexos que el suavizado borraría por completo (focos de pocos vóxeles, áreas diminutas)
-     se conservan con sus vóxeles originales, para no ocultar lesiones pequeñas.
+  5. GTV (`keep_small_foci=True`): los componentes conexos que el suavizado borraría (focos de pocos vóxeles) se
+     conservan con sus vóxeles originales, para no ocultar lesiones pequeñas. MONAI y Brodmann
+     (`keep_small_foci=False`): las islas sueltas se suavizan como el resto (si no, quedan como bloques crudos);
+     solo se rescata una etiqueta que desaparecería por completo.
 
 La volumetría, RANO y Dice **siempre** usan la máscara original; esta copia solo se sirve al visor.
 """
@@ -28,7 +30,11 @@ from cerberus_api.nifti import load_nifti
 SMOOTHABLE: tuple[str, ...] = ("gtv", "monai_seg", "brodmann")
 DISPLAY_DIR = "display"
 DEFAULT_SIGMA_MM = 1.0
+# Brodmann hereda bloques de ~2 mm del atlas MNI: con σ = 1 mm seguía fragmentado y con 2 mm perdía ~38 % de vóxeles.
+SIGMA_MM: dict[str, float] = {"gtv": 1.0, "monai_seg": 1.0, "brodmann": 1.5}
 ISO = 0.5
+# Sube cuando cambia el algoritmo: el nombre del archivo invalida las copias cacheadas con la versión anterior.
+DISPLAY_VERSION = 3
 
 
 def _voxel_sizes(affine: np.ndarray) -> np.ndarray:
@@ -54,6 +60,7 @@ def smooth_labels(
     ref_shape: tuple[int, int, int],
     ref_affine: np.ndarray,
     sigma_mm: float = DEFAULT_SIGMA_MM,
+    keep_small_foci: bool = True,
 ) -> np.ndarray:
     """Mapa de etiquetas `data` (rejilla `src_affine`) suavizado y remuestreado a la rejilla de referencia.
 
@@ -64,12 +71,12 @@ def smooth_labels(
     labels_img = np.rint(data).astype(np.int32)
     labels_img[labels_img < 0] = 0
     max_label = int(labels_img.max())
-    out, best = _accumulate(labels_img, src_affine, ref_shape, ref_affine, sigma_mm)
+    out, best = _accumulate(labels_img, src_affine, ref_shape, ref_affine, sigma_mm, keep_small_foci)
     if max_label <= 1:
         foreground = best >= ISO
     else:
         union = (labels_img > 0).astype(np.int32)
-        foreground = _accumulate(union, src_affine, ref_shape, ref_affine, sigma_mm)[1] >= ISO
+        foreground = _accumulate(union, src_affine, ref_shape, ref_affine, sigma_mm, keep_small_foci)[1] >= ISO
         foreground |= best >= 1.0  # focos conservados (paso 5) aunque la unión suavizada no los cubra
     out[~foreground] = 0
     return out
@@ -81,6 +88,7 @@ def _accumulate(
     ref_shape: tuple[int, int, int],
     ref_affine: np.ndarray,
     sigma_mm: float,
+    keep_small_foci: bool,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Etiqueta más probable por vóxel de referencia y su probabilidad suavizada (sin umbral)."""
     max_label = int(labels_img.max())
@@ -121,7 +129,10 @@ def _accumulate(
 
         # Focos que desaparecerían: se mantienen con sus vóxeles originales (prob = 1, ganan a las vecinas).
         inside = prob >= ISO
-        if np.any(near & ~inside):
+        if not keep_small_foci:
+            if not inside.any():
+                prob = np.where(near, np.float32(1.0), prob)  # etiqueta entera borrada → se rescata
+        elif np.any(near & ~inside):
             # `ndimage.label` devuelve (etiquetas, n); pyright infiere también `int`, de ahí el isinstance
             labeled = ndimage.label(near)
             if not isinstance(labeled, tuple):
@@ -141,10 +152,16 @@ def _accumulate(
 
 def display_path(results_dir: Path, patient: str, timepoint: str, name: str) -> Path:
     """Ruta de la copia suavizada. `patient`, `timepoint` y `name` deben venir ya validados."""
-    return results_dir / patient / timepoint / DISPLAY_DIR / f"{name}.nii.gz"
+    return results_dir / patient / timepoint / DISPLAY_DIR / f"{name}.v{DISPLAY_VERSION}.nii.gz"
 
 
-def ensure_smoothed(source: Path, reference: Path | None, target: Path, sigma_mm: float = DEFAULT_SIGMA_MM) -> Path:
+def ensure_smoothed(
+    source: Path,
+    reference: Path | None,
+    target: Path,
+    sigma_mm: float = DEFAULT_SIGMA_MM,
+    keep_small_foci: bool = True,
+) -> Path:
     """Genera (o reutiliza) `target`, la versión suavizada de `source` en la rejilla de `reference`.
 
     Se regenera si falta o si `source`/`reference` son más nuevos. La escritura es atómica (temporal +
@@ -160,7 +177,8 @@ def ensure_smoothed(source: Path, reference: Path | None, target: Path, sigma_mm
     if data.ndim > 3:
         data = data[..., 0]
     ref_affine = affine_of(ref)
-    smoothed = smooth_labels(data, affine_of(src), (ref_shape[0], ref_shape[1], ref_shape[2]), ref_affine, sigma_mm)
+    shape3 = (ref_shape[0], ref_shape[1], ref_shape[2])
+    smoothed = smooth_labels(data, affine_of(src), shape3, ref_affine, sigma_mm, keep_small_foci)
     img = nib.Nifti1Image(smoothed, ref_affine)
     img.header.set_xyzt_units("mm")
     target.parent.mkdir(parents=True, exist_ok=True)

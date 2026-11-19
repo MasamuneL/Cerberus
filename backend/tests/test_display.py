@@ -68,6 +68,27 @@ def test_tiny_label_between_large_ones_survives() -> None:
     assert 9 in np.unique(out)
 
 
+def test_speckles_smoothed_without_keep_small_foci() -> None:
+    data = np.zeros((40, 40, 20), np.uint8)
+    data[5:35, 5:35, 3:17] = 1
+    data[10:30, 10:30, 6:14] = 2
+    data[20, 20, 10] = 3  # isla de un vóxel dentro de la etiqueta 2
+    data[23:30, 23:30, 8:13] = 3  # región grande de la misma etiqueta: no aplica el rescate de etiqueta entera
+    out = smooth_labels(data, AFF, (40, 40, 20), AFF, keep_small_foci=False)
+    assert out[20, 20, 10] == 2  # la isla suelta no queda como bloque crudo
+    assert out[26, 26, 10] == 3  # la región grande sí sobrevive
+    kept = smooth_labels(data, AFF, (40, 40, 20), AFF, keep_small_foci=True)
+    assert kept[20, 20, 10] == 3
+
+
+def test_whole_label_rescued_without_keep_small_foci() -> None:
+    data = np.zeros((40, 40, 20), np.uint8)
+    data[5:35, 5:35, 3:17] = 1
+    data[20, 20, 10] = 9
+    out = smooth_labels(data, AFF, (40, 40, 20), AFF, keep_small_foci=False)
+    assert out[20, 20, 10] == 9
+
+
 def test_empty_mask() -> None:
     out = smooth_labels(np.zeros((8, 8, 4)), AFF, (8, 8, 4), AFF)
     assert not out.any()

@@ -169,7 +169,7 @@ Configuración que agrega B0 en `pyproject.toml`:
 Data/<patient>/<timepoint>/<int(patient)>_<timepoint>_<sequence>.nii.gz   # misma convención actual
 storage/results/<patient>/<timepoint>/monai_seg.nii.gz                    # mapa de etiquetas uint8
 storage/results/<patient>/<timepoint>/monai_seg.json                      # SegmentationResult
-storage/results/<patient>/<timepoint>/display/<name>.nii.gz               # gtv|monai_seg|brodmann suavizados (solo visor, §21)
+storage/results/<patient>/<timepoint>/display/<name>.v<N>.nii.gz          # gtv|monai_seg|brodmann suavizados (solo visor, §21)
 storage/staging/<upload_id>/manifest.json                                 # UploadManifest
 storage/staging/<upload_id>/series/<index>.nii.gz                         # series ya convertidas
 storage/tmp/<uuid>/                                                       # DICOM extraído; se borra SIEMPRE (finally)
@@ -1026,13 +1026,16 @@ Solicitud del 2026-11-19: las máscaras se veían pixeleadas (escalera de vóxel
 cortes; MONAI a 1 mm; Brodmann con bloques heredados del atlas MNI). Solo cambia la visualización: volumetría,
 RANO, Dice y reportes siguen usando las máscaras originales.
 
-- Backend (`cerberus_api/display.py`): por etiqueta, filtro gaussiano (σ = 1 mm) de la indicadora binaria,
+- Backend (`cerberus_api/display.py`): por etiqueta, filtro gaussiano (σ = 1 mm; 1.5 mm en Brodmann) de la indicadora binaria,
   remuestreo trilineal a la rejilla del GTV (o de la primera MRI) y umbral 0.5. Con varias etiquetas el contorno
-  sale de suavizar su unión y dentro gana la etiqueta más probable (sin huecos entre áreas vecinas). Los
-  componentes que el suavizado borraría (focos o áreas diminutas) conservan sus vóxeles originales.
+  sale de suavizar su unión y dentro gana la etiqueta más probable (sin huecos entre áreas vecinas). En el GTV los
+  focos que el suavizado borraría conservan sus vóxeles originales; en MONAI y Brodmann las islas sueltas se
+  suavizan (si no quedaban como bloques crudos) y solo se rescata una etiqueta que desaparecería entera.
 - API: `GET /files/{gtv|monai_seg|brodmann}.nii.gz?smooth=true`, generado la primera vez y cacheado en
-  `results/<p>/<t>/display/` (se regenera si el origen o la referencia son más nuevos; escritura atómica).
-- Frontend: chip «Bordes suaves» en la barra de capas (activo por defecto). En 3D, `maskSurface(..., sigmaMM)`
+  `results/<p>/<t>/display/<name>.v<DISPLAY_VERSION>.nii.gz` (se regenera si el origen o la referencia son más
+  nuevos o si cambia la versión del algoritmo; escritura atómica).
+- Frontend: chip «Bordes suaves» en la barra de capas (activo por defecto). El GTV pasa de rojo a gris claro
+  (overlay, leyenda y superficie 3D) para no confundirse con el realce de MONAI. En 3D, `maskSurface(..., sigmaMM)`
   difumina el campo de ocupación antes de *surface nets* (σ = 1 mm, 10 pares de Taubin); los componentes de
   ≤ 64 vóxeles no se difuminan.
 - Aceptación: `backend/tests/test_display.py` (esquinas redondeadas, foco de un vóxel, remuestreo 1 mm → 0.5 mm,
