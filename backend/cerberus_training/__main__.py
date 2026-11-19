@@ -1,8 +1,8 @@
 """CLI del pipeline de fine-tuning: `uv run python -m cerberus_training <subcomando>`.
 
 Los subcomandos del plan (docs/PLAN_PIPELINE_FINETUNING.md §8) se declaran aquí. Existen `validate` y `device`
-(FT0), `inventory` y `split` (FT1) y `prepare` y `preflight` (FT2); el resto valida la configuración (si se pasa
-`--config`) y termina con código 3 indicando qué ticket los implementa. Este módulo no importa torch, MONAI,
+(FT0), `inventory` y `split` (FT1), `prepare` y `preflight` (FT2) y `train` (FT3); el resto valida la configuración
+(si se pasa `--config`) y termina con código 3 indicando qué ticket los implementa. Este módulo no importa torch, MONAI,
 nibabel ni numpy: cada subcomando importa sus dependencias de forma perezosa.
 """
 
@@ -20,10 +20,12 @@ EXIT_NOT_IMPLEMENTED = 3
 EXIT_DATA_ERROR = 4  # dataset/inventario inutilizable o split existente incompatible
 EXIT_STUDY_ERRORS = 5  # `prepare` terminó, pero algún estudio falló (los demás se prepararon)
 EXIT_RESOURCES = 6  # recursos insuficientes: límite de caché o espacio libre (`prepare` se detiene, `preflight` avisa)
+EXIT_NO_CUDA = 1  # `device --require-cuda` o `train` con training.device = "cuda" sin GPU
+EXIT_CHECKPOINT = 7  # pesos ausentes/SHA-256 distinto, checkpoint incompatible o reanudación rechazada
+EXIT_TRAINING = 8  # fallo numérico (NaN/Inf) durante el entrenamiento
 
 # Ticket del plan (§9) que implementa cada subcomando todavía pendiente.
 PENDING: dict[str, str] = {
-    "train": "FT3",
     "evaluate": "FT4",
     "export": "FT4",
     "smoke": "FT5",
@@ -45,7 +47,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="python -m cerberus_training",
         description="Pipeline local de fine-tuning de SegResNet (GTV binario) sobre CFB-GBM. "
-        "Implementados: `validate`, `device`, `inventory`, `split`, `prepare` y `preflight`.",
+        "Implementados: `validate`, `device`, `inventory`, `split`, `prepare`, `preflight` y `train`.",
     )
     parser.add_argument("--version", action="version", version=f"cerberus_training {__version__}")
     sub = parser.add_subparsers(dest="command", metavar="<subcomando>")
@@ -79,10 +81,12 @@ def build_parser() -> argparse.ArgumentParser:
     _add_config(p)
     p.add_argument("--inventory", type=Path, metavar="RUTA", help="por defecto <paths.work_dir>/inventory.jsonl")
 
-    p = sub.add_parser("train", help="[FT3] entrena o reanuda el fine-tuning")
+    p = sub.add_parser("train", help="entrena, valida (--dry-run) o reanuda (--resume) el fine-tuning")
     _add_config(p)
-    p.add_argument("--dry-run", action="store_true", help="valida todo sin backward ni actualizar pesos")
-    p.add_argument("--resume", type=Path, metavar="LAST.PT", help="reanuda desde un checkpoint last.pt")
+    mode = p.add_mutually_exclusive_group()
+    mode.add_argument("--dry-run", action="store_true", help="valida todo sin backward ni actualizar pesos")
+    mode.add_argument("--resume", type=Path, metavar="LAST.PT", help="reanuda desde runs/<id>/checkpoints/last.pt")
+    p.add_argument("--run-id", metavar="ID", help="nombre del run nuevo (por defecto fecha UTC + hash de config)")
 
     p = sub.add_parser("evaluate", help="[FT4] evalúa un run en una partición")
     p.add_argument("--run", type=Path, required=True, metavar="DIR", help="directorio del run")
@@ -113,7 +117,7 @@ def _cmd_device(args: argparse.Namespace) -> int:
     print(format_report(report, as_json=args.json))
     if args.require_cuda and not report.cuda_available:
         print("CUDA no está disponible y se pasó --require-cuda.", file=sys.stderr)
-        return 1
+        return EXIT_NO_CUDA
     return EXIT_OK
 
 
@@ -232,6 +236,57 @@ def _cmd_preflight(args: argparse.Namespace) -> int:
     return EXIT_OK if report.ok else EXIT_RESOURCES
 
 
+def _cmd_train(args: argparse.Namespace) -> int:
+    from cerberus_training.artifacts import RunExistsError  # perezoso: torch/MONAI solo aquí
+    from cerberus_training.config import resolve_config
+    from cerberus_training.model import CheckpointError, WeightsError
+    from cerberus_training.train import (
+        DeviceUnavailableError,
+        ResourceError,
+        TrainingDataError,
+        TrainingError,
+        dry_run,
+        format_dry_run,
+        run_training,
+    )
+
+    config = resolve_config(load_config(args.config))
+    if args.run_id is not None and (args.resume is not None or args.dry_run):
+        print("--run-id solo se usa al crear un run nuevo (no con --resume ni --dry-run).", file=sys.stderr)
+        return EXIT_CONFIG_ERROR
+    try:
+        if args.dry_run:
+            report = dry_run(config, log=print)
+            print(format_dry_run(report))
+            return EXIT_OK if report.ok else EXIT_RESOURCES
+        result = run_training(config, run_id=args.run_id, resume=args.resume, log=print)
+    except DeviceUnavailableError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return EXIT_NO_CUDA
+    except TrainingDataError as exc:
+        return _data_error(exc)
+    except (WeightsError, CheckpointError) as exc:
+        print(f"Error de pesos/checkpoint: {exc}", file=sys.stderr)
+        return EXIT_CHECKPOINT
+    except ResourceError as exc:
+        print(f"Error de recursos: {exc}", file=sys.stderr)
+        return EXIT_RESOURCES
+    except TrainingError as exc:
+        print(f"Error de entrenamiento: {exc}", file=sys.stderr)
+        return EXIT_TRAINING
+    except (RunExistsError, ValueError) as exc:  # run existente o --run-id inválido
+        print(f"Error: {exc}", file=sys.stderr)
+        return EXIT_CONFIG_ERROR
+    except OSError as exc:
+        return _data_error(exc)
+    best = f"{result.best_metric:.4f} (época {result.best_epoch})" if result.best_metric is not None else "sin validar"
+    status = f"terminado ({result.stop_reason})" if result.finished else "interrumpido en límite de época"
+    print(
+        f"Run {result.run_dir}: {result.epochs_completed} épocas, {result.step} pasos, {status}; mejor val Dice {best}"
+    )
+    return EXIT_OK
+
+
 def _cmd_pending(args: argparse.Namespace) -> int:
     config_path: Path | None = getattr(args, "config", None)
     if config_path is not None:
@@ -264,6 +319,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _cmd_prepare(args)
         if args.command == "preflight":
             return _cmd_preflight(args)
+        if args.command == "train":
+            return _cmd_train(args)
         return _cmd_pending(args)
     except ConfigError as exc:
         print(exc, file=sys.stderr)
