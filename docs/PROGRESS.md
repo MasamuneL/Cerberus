@@ -7,6 +7,7 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 
 | Ticket | Estado | Rama | Commit | Fecha | Responsable / herramienta | Notas |
 |---|---|---|---|---|---|---|
+| FT2 · preprocesamiento | ✅ | feat/FT2-preprocessing | 56f3d18 | 2026-11-19 | Claude Code (orquestador + subagentes) | PR #20; 1113 tests; remuestreo, caché verificable, preflight; CP-055 |
 | FT1 · inventario y particiones | ✅ | feat/FT1-inventory-splits | 6f97eb2 | 2026-11-19 | Claude Code (orquestador + subagentes) | PR #19; 1056 tests; inventario seguro, split por paciente; CP-054 |
 | FT0 · configuración y entorno de fine-tuning | ✅ | feat/FT0-training-config | 93abca3 | 2026-11-19 | Claude Code (orquestador + subagentes) | PR #18; 934 tests; CLI, esquema estricto, training-env CUDA; CP-053 |
 | F12 · vista 3D y superficie GTV (§20) | ✅ | feat/viewer-3d-integration | 0e93254 | 2026-11-11 | BiomedicLJZ / Codex | PR #15 mediante #16; QA 33/33, 3D 7/7, smoke 15/15; CP-052 |
@@ -972,3 +973,15 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
 - **Riesgo:** en `Data/` local solo 1 de 8 estudios cumple el perfil estricto (falta `t2tse`). La
   convención TCIA real no está verificada; solo `cerberus_v1` (como `Data/001`).
 - Siguiente: FT2 (preprocesamiento).
+
+### CP-055 · 2026-11-19 · FT2: preprocesamiento, caché verificable y preflight
+
+- **Integración:** [PR #20](https://github.com/MasamuneL/Cerberus/pull/20), merge `56f3d18`.
+- `prepare`: [T1c,T1,T2,FLAIR], RAS 1 mm, lineal/NN con `grid-constant`, tolerancia 0.5 mm por esquinas,
+  GTV binaria sin binarizar, `normalize_nonzero` sin GTV, recorte por soporte, restauración al grid original.
+  GTV fuera de soporte/cerebro = señal de revisión. Informe siempre en `work_dir/prepare_report.json`.
+- Caché `cache/<clave>/` con versiones de numpy/scipy/nibabel, sha256 por array y escritura atómica.
+- `preflight`: disco/RAM estimados desde shapes. Parches 1:1 y augmentations sembradas solo en train.
+- **Checks:** Ruff/formato/Pyright y 1113 tests rápidos. Revisión independiente aplicada. Probado en un
+  estudio local (~7 s CPU). Sin entrenamiento. Rama `wip/FT2-preprocessing` queda obsoleta.
+- Siguiente: FT3 (transferencia SegResNet y trainer).
