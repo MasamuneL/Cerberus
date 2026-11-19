@@ -251,6 +251,28 @@ class StudyCache:
             review_flags=list(meta["review_flags"]),
         )
 
+    def load_geometry(self, study_id: str, expected_sources: dict[str, str] | None = None) -> Geometry:
+        """Solo la geometría de una entrada (miembro `meta` del `.npz`), sin leer ni verificar los arrays.
+
+        Comprueba clave, `study_id` y fuentes. La usa el baseline de FT4, que no necesita el volumen preparado.
+        """
+        path = self.path(study_id)
+        if not path.is_file():
+            raise CacheEntryError(f"{study_id}: no hay entrada en la caché {self.directory}")
+        try:
+            with np.load(path, allow_pickle=False) as npz:
+                meta = json.loads(str(npz["meta"].item()))
+            if not isinstance(meta, dict):
+                raise ValueError("meta no es un objeto JSON")
+            geometry = Geometry.from_json(meta["geometry"])
+        except Exception as exc:  # zip truncado, clave ausente, JSON inválido…
+            raise CacheEntryError(f"{study_id}: entrada de caché ilegible ({type(exc).__name__}: {exc})") from exc
+        if meta.get("preprocess_key") != self.key or meta.get("study_id") != study_id:
+            raise CacheEntryError(f"{study_id}: la entrada no corresponde a la clave {self.key}")
+        if expected_sources is not None and meta.get("sources") != expected_sources:
+            raise CacheEntryError(f"{study_id}: las fuentes cambiaron desde que se preparó la entrada")
+        return geometry
+
     def is_hit(self, study_id: str, expected_sources: dict[str, str]) -> PreparedStudy | None:
         """Entrada válida (clave, fuentes y SHA-256 de cada array verificados) o `None` si hay que (re)prepararla."""
         try:

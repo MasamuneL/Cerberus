@@ -57,8 +57,9 @@ runs/<run_id>/
   provenance.json           # commit, versiones, hashes, dispositivo, semillas
   metrics.jsonl
   checkpoints/{last,best}.pt
-  evaluation/{per_study.csv,per_patient.csv,summary.json}
-  model_card.md
+  threshold.json            # opcional: umbral optimizado en val (FT4)
+  evaluation/<split>[-last|-baseline]/{per_study.csv,per_patient.csv,summary.json}
+  export[-last]/{model.pt,export.json,model_card.md}
 ```
 
 Entradas en directorio externo de solo lectura; no copiar 208 GB dentro del repositorio.
