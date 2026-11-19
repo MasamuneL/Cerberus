@@ -32,6 +32,20 @@ Abre las PNG y revísalas: **no te fíes solo de los ✅**. Leer píxeles del ca
 
 ## 2. Estado actual
 
+**WIP · FT2 · preprocesamiento a medias · 2026-11-19:** snapshot en la rama `wip/FT2-preprocessing`
+(`752f899`, sobre main `70908d9`). Implementados `transforms.py`, `cache.py`, `preflight.py` y CLI
+`prepare`/`preflight` (1100 tests verdes antes de la revisión). Revisión independiente pidió, y puede que
+no estén todos aplicados en el snapshot: (1) `affine_transform` con `mode="grid-constant"` (se perdía un
+plano en affines con eje invertido) + test; (2) `work_dir/prepare_report.json` siempre persistido;
+(3) sha256 por array en caché y `load()` con error explícito; (4) clave de caché con versiones
+numpy/scipy/nibabel y `GEOMETRY_TOL_MM`, sin `inventory_sha256`, limpieza de `.tmp`; (5) GTV fuera de
+soporte/cerebro como señal de revisión, no exclusión; (6) menores: preflight usa `channels.reference`,
+8 B/vóxel, sin elegibles → exit 4, tests de parche/augment/`label_vanished`, `_fsync_dir` público.
+**Para continuar:** `git checkout -b feat/FT2-preprocessing origin/wip/FT2-preprocessing`, revisa qué
+puntos faltan, corre los checks, PR, merge y CP-055. Después FT3 → FT4 → FT5 según
+[`PLAN_PIPELINE_FINETUNING.md`](PLAN_PIPELINE_FINETUNING.md) §9 (una rama/PR por ticket, revisión
+independiente antes de integrar, checkpoint en PROGRESS/HANDOFF tras cada merge).
+
 **CP-054 · FT1 · inventario y particiones · 2026-11-19:** integrado el
 [PR #19](https://github.com/MasamuneL/Cerberus/pull/19), merge `6f97eb2`. `inventory` y `split` ya
 funcionan (ver [`TRAINING.md`](TRAINING.md)); el resto de subcomandos sigue pendiente. En curso: FT2
