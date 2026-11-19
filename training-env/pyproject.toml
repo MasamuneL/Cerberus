@@ -1,0 +1,29 @@
+# Entorno de entrenamiento CUDA, independiente de la app (docs/TRAINING.md).
+# No forma parte del lock ni de las ruedas CPU del proyecto raíz: se resuelve y se instala por separado.
+#   uv sync --project training-env --frozen
+#   uv run --project training-env python -m cerberus_training device
+[project]
+name = "cerberus-training-env"
+version = "0.1.0"
+description = "Entorno CUDA fijado para el fine-tuning de Cerberus (no es un paquete publicable)"
+requires-python = ">=3.11"
+dependencies = [
+    "cerberus",
+    # Versión exacta de torch; el índice cu126 publica 2.14.1+cu126 (cu128 no la ofrece).
+    "torch==2.14.1",
+]
+
+[tool.uv]
+package = false
+# Sustituye los requisitos de torch del proyecto raíz (que lo dirigen al índice CPU en Linux).
+override-dependencies = ["torch==2.14.1"]
+
+[tool.uv.sources]
+cerberus = { path = "..", editable = true }
+# CUDA solo existe para Linux y Windows; en macOS se resuelve la rueda de PyPI (sin CUDA).
+torch = [{ index = "pytorch-cu126", marker = "sys_platform == 'linux' or sys_platform == 'win32'" }]
+
+[[tool.uv.index]]
+name = "pytorch-cu126"
+url = "https://download.pytorch.org/whl/cu126"
+explicit = true
