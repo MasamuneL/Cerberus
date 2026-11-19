@@ -39,7 +39,7 @@ class InventoryError(ValueError):
     """Error de uso o de formato del inventario; mensaje en español."""
 
 
-def _fsync_dir(directory: Path) -> None:
+def fsync_dir(directory: Path) -> None:
     """`fsync` de la carpeta para que el renombrado/enlace sobreviva a un corte (no disponible en Windows)."""
     try:
         fd = os.open(directory, os.O_RDONLY)
@@ -76,7 +76,7 @@ def atomic_write_text(path: Path, text: str, mode: int = 0o644) -> None:
     except BaseException:
         Path(tmp).unlink(missing_ok=True)
         raise
-    _fsync_dir(path.parent)
+    fsync_dir(path.parent)
 
 
 def publish_exclusive(path: Path, text: str, mode: int = 0o444) -> None:
@@ -103,7 +103,7 @@ def publish_exclusive(path: Path, text: str, mode: int = 0o444) -> None:
                 raise
     finally:
         Path(tmp).unlink(missing_ok=True)
-    _fsync_dir(path.parent)
+    fsync_dir(path.parent)
 
 
 def ensure_outside_root(output: Path, data_root: Path) -> None:

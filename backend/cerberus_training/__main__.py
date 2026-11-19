@@ -1,9 +1,9 @@
 """CLI del pipeline de fine-tuning: `uv run python -m cerberus_training <subcomando>`.
 
 Los subcomandos del plan (docs/PLAN_PIPELINE_FINETUNING.md §8) se declaran aquí. Existen `validate` y `device`
-(FT0) e `inventory` y `split` (FT1); el resto valida la configuración (si se pasa `--config`) y termina con
-código 3 indicando qué ticket los implementa. Este módulo no importa torch, MONAI, nibabel ni numpy: cada
-subcomando importa sus dependencias de forma perezosa.
+(FT0), `inventory` y `split` (FT1) y `prepare` y `preflight` (FT2); el resto valida la configuración (si se pasa
+`--config`) y termina con código 3 indicando qué ticket los implementa. Este módulo no importa torch, MONAI,
+nibabel ni numpy: cada subcomando importa sus dependencias de forma perezosa.
 """
 
 import argparse
@@ -18,11 +18,11 @@ EXIT_OK = 0
 EXIT_CONFIG_ERROR = 2  # misma convención que argparse para uso/entrada inválida
 EXIT_NOT_IMPLEMENTED = 3
 EXIT_DATA_ERROR = 4  # dataset/inventario inutilizable o split existente incompatible
+EXIT_STUDY_ERRORS = 5  # `prepare` terminó, pero algún estudio falló (los demás se prepararon)
+EXIT_RESOURCES = 6  # recursos insuficientes: límite de caché o espacio libre (`prepare` se detiene, `preflight` avisa)
 
 # Ticket del plan (§9) que implementa cada subcomando todavía pendiente.
 PENDING: dict[str, str] = {
-    "prepare": "FT2",
-    "preflight": "FT2",
     "train": "FT3",
     "evaluate": "FT4",
     "export": "FT4",
@@ -45,7 +45,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="python -m cerberus_training",
         description="Pipeline local de fine-tuning de SegResNet (GTV binario) sobre CFB-GBM. "
-        "Implementados: `validate`, `device`, `inventory` y `split`.",
+        "Implementados: `validate`, `device`, `inventory`, `split`, `prepare` y `preflight`.",
     )
     parser.add_argument("--version", action="version", version=f"cerberus_training {__version__}")
     sub = parser.add_subparsers(dest="command", metavar="<subcomando>")
@@ -66,16 +66,18 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument("--summary", type=Path, metavar="RUTA", help="guarda además el resumen en JSON")
 
-    p = sub.add_parser("prepare", help="[FT2] valida y prepara los volúmenes (caché)")
+    p = sub.add_parser("prepare", help="valida y prepara los estudios elegibles, uno por vez (caché)")
     _add_config(p)
+    p.add_argument("--inventory", type=Path, metavar="RUTA", help="por defecto <paths.work_dir>/inventory.jsonl")
 
     p = sub.add_parser("split", help="genera (o reutiliza) la partición determinista e inmutable por paciente")
     _add_config(p)
     p.add_argument("--inventory", type=Path, metavar="RUTA", help="por defecto <paths.work_dir>/inventory.jsonl")
     p.add_argument("--output", type=Path, metavar="RUTA", help="por defecto <paths.work_dir>/splits.json")
 
-    p = sub.add_parser("preflight", help="[FT2] comprueba fuentes, pesos, disco y dispositivo")
+    p = sub.add_parser("preflight", help="estima disco de caché y RAM, y comprueba espacio libre y pesos")
     _add_config(p)
+    p.add_argument("--inventory", type=Path, metavar="RUTA", help="por defecto <paths.work_dir>/inventory.jsonl")
 
     p = sub.add_parser("train", help="[FT3] entrena o reanuda el fine-tuning")
     _add_config(p)
@@ -183,6 +185,53 @@ def _cmd_split(args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
+def _cmd_prepare(args: argparse.Namespace) -> int:
+    from cerberus_training.cache import CacheError, format_prepare, prepare_all  # perezoso: numpy/nibabel aquí
+    from cerberus_training.config import resolve_config
+    from cerberus_training.manifest import InventoryError, ensure_outside_root, read_inventory
+
+    config = resolve_config(load_config(args.config))
+    inventory: Path = args.inventory or config.paths.work_dir / "inventory.jsonl"
+    try:
+        ensure_outside_root(config.paths.work_dir, config.paths.data_root)
+        records = read_inventory(inventory)
+    except (InventoryError, OSError) as exc:
+        return _data_error(exc)
+    if not any(r.get("eligible") is True for r in records):
+        return _data_error(InventoryError(f"El inventario {inventory} no tiene estudios elegibles"))
+    print(f"Preparando estudios elegibles de {inventory}:")
+    try:
+        report = prepare_all(config, records, log=print)
+    except CacheError as exc:
+        print(f"Error de recursos: {exc}", file=sys.stderr)
+        return EXIT_RESOURCES
+    except OSError as exc:
+        return _data_error(exc)
+    print(format_prepare(report))
+    if report.errors:
+        print(f"{len(report.errors)} estudio(s) con errores; revise el informe antes de entrenar.", file=sys.stderr)
+        return EXIT_STUDY_ERRORS
+    return EXIT_OK
+
+
+def _cmd_preflight(args: argparse.Namespace) -> int:
+    from cerberus_training.config import resolve_config
+    from cerberus_training.manifest import InventoryError, read_inventory
+    from cerberus_training.preflight import format_preflight, run_preflight  # perezoso: numpy/nibabel aquí
+
+    config = resolve_config(load_config(args.config))
+    inventory: Path = args.inventory or config.paths.work_dir / "inventory.jsonl"
+    try:
+        records = read_inventory(inventory)
+        report = run_preflight(config, records)
+    except (InventoryError, OSError) as exc:
+        return _data_error(exc)
+    if report.studies == 0:
+        return _data_error(InventoryError(f"El inventario {inventory} no tiene estudios elegibles"))
+    print(format_preflight(report, config.paths.work_dir))
+    return EXIT_OK if report.ok else EXIT_RESOURCES
+
+
 def _cmd_pending(args: argparse.Namespace) -> int:
     config_path: Path | None = getattr(args, "config", None)
     if config_path is not None:
@@ -196,7 +245,7 @@ def _cmd_pending(args: argparse.Namespace) -> int:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    """Punto de entrada; devuelve el código de salida (0 ok, 2 config inválida, 3 pendiente, 4 datos/split)."""
+    """Punto de entrada; devuelve el código de salida (ver docs/TRAINING.md, «Códigos de salida»)."""
     parser = build_parser()
     args = parser.parse_args(argv)
     if args.command is None:
@@ -211,6 +260,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _cmd_inventory(args)
         if args.command == "split":
             return _cmd_split(args)
+        if args.command == "prepare":
+            return _cmd_prepare(args)
+        if args.command == "preflight":
+            return _cmd_preflight(args)
         return _cmd_pending(args)
     except ConfigError as exc:
         print(exc, file=sys.stderr)
