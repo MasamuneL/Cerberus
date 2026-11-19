@@ -7,6 +7,7 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 
 | Ticket | Estado | Rama | Commit | Fecha | Responsable / herramienta | Notas |
 |---|---|---|---|---|---|---|
+| FT5 · smoke y manual | ✅ | feat/FT5-smoke-manual | c891208 | 2026-11-19 | Claude Code (orquestador + subagentes) | PR #24; 1180 tests; smoke 13/13 sintético; e2e 33/33; CP-058 |
 | FT4 · evaluación y exportación | ✅ | feat/FT4-evaluate-export | 1f85245 | 2026-11-19 | Claude Code (orquestador + subagentes) | PR #23; 1173 tests; métricas por paciente, baseline TC, export recargable; CP-057 |
 | FT3 · transferencia y trainer | ✅ | feat/FT3-transfer-trainer | 548cd16 | 2026-11-19 | Claude Code (orquestador + subagentes) | PR #21; 1147 tests; carga estricta, head 1 logit, reanudación determinista; CP-056 |
 | FT2 · preprocesamiento | ✅ | feat/FT2-preprocessing | 56f3d18 | 2026-11-19 | Claude Code (orquestador + subagentes) | PR #20; 1113 tests; remuestreo, caché verificable, preflight; CP-055 |
@@ -1015,3 +1016,18 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
 - **Checks:** Ruff/formato/Pyright, 1173 tests rápidos, slow segmentation/baseline. Revisión aplicada.
   Solo datos sintéticos. `wip/FT4-evaluate-export` obsoleta.
 - Siguiente: FT5 (smoke offline y manual).
+
+### CP-058 · 2026-11-19 · FT5: smoke sintético y manual — pipeline de fine-tuning construido
+
+- **Integración:** [PR #24](https://github.com/MasamuneL/Cerberus/pull/24), merge `c891208`.
+- `smoke --synthetic`: 13/13 por la CLI (validate→inventory→split→preflight→prepare→dry-run→train 2 pasos
+  →resume idéntico→evaluate val/test→export→load_export) con SegResNet real, pesos artificiales, CPU,
+  red bloqueada y temporal limpiado. Artefactos marcados `real_finetuning: false`.
+- Manual de uso en `docs/TRAINING.md`; FT0–FT5 incorporados a `PLAN_MVP.md` §8/§9 (§6/§7 intactos).
+- **Checks:** Ruff/formato/Pyright, 1180 tests rápidos, `npm run build`, `verify.mjs` 33/33 (primera
+  pasada 16/19 por timeout del visor a 1440, no reproducido). Revisión independiente aplicada.
+- **Definición de entrega (§10) cumplida:** comandos y artefactos existen, recorrido sintético completo,
+  entradas incompatibles rechazadas, reanudación/exportación reproducibles.
+- **Pendiente (no ejecutado):** auditoría del dataset completo, piloto GPU, entrenamiento real, validación
+  científica, integración en API/UI y mecanismo de exclusión manual de estudios que fallen en `prepare`.
+  Ramas `wip/FT*` obsoletas.
