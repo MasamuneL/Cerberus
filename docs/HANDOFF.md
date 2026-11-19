@@ -4,7 +4,7 @@
 > checkpoint. El historial completo está en [`PROGRESS.md`](PROGRESS.md) y el alcance y los contratos en
 > [`PLAN_MVP.md`](PLAN_MVP.md). Las reglas de trabajo están en [`../AGENTS.md`](../AGENTS.md).
 
-**Última actualización:** 2026-11-19 · último checkpoint: CP-055 · rama base: `main`
+**Última actualización:** 2026-11-19 · último checkpoint: CP-056 · rama base: `main`
 
 ## 1. Arranque rápido
 
@@ -32,14 +32,14 @@ Abre las PNG y revísalas: **no te fíes solo de los ✅**. Leer píxeles del ca
 
 ## 2. Estado actual
 
-**CP-055 · FT2 · preprocesamiento · 2026-11-19:** integrado el
-[PR #20](https://github.com/MasamuneL/Cerberus/pull/20), merge `56f3d18`; `wip/FT2-preprocessing` obsoleta.
-Funcionan `inventory`, `split`, `prepare`, `preflight` (ver [`TRAINING.md`](TRAINING.md)).
-**Siguiente:** FT3 → FT4 → FT5 según [`PLAN_PIPELINE_FINETUNING.md`](PLAN_PIPELINE_FINETUNING.md) §9:
-rama `feat/FTn-…` desde main, una PR por ticket, revisión independiente antes de integrar y checkpoint
-en PROGRESS/HANDOFF tras cada merge. FT3: SegResNet de 3 salidas con carga estricta del checkpoint local
-(sha256), reemplazar solo la proyección final por 1 logit (verificar nombre real de la capa en MONAI
-1.6.1), Dice+BCE, AdamW, `last`/`best` atómicos, reanudación determinista, `train --dry-run`.
+**CP-056 · FT3 · transferencia y trainer · 2026-11-19:** integrado el
+[PR #21](https://github.com/MasamuneL/Cerberus/pull/21), merge `548cd16`; `wip/FT2-*` y `wip/FT3-*` obsoletas.
+Funcionan `inventory`, `split`, `prepare`, `preflight` y `train` (`--dry-run`, `--resume`); ver
+[`TRAINING.md`](TRAINING.md). **Siguiente:** FT4 → FT5 según
+[`PLAN_PIPELINE_FINETUNING.md`](PLAN_PIPELINE_FINETUNING.md) §9 (rama `feat/FTn-…`, PR, revisión
+independiente, checkpoint). FT4: `evaluate --run --split test` explícito (fuera del bucle), métricas con
+`mask_metrics`/`dice` en el grid de referencia original (restauración de FT2), agregación tiempos→paciente,
+bootstrap por paciente, baseline TC del modelo original como referencia imperfecta, `export` con ficha.
 
 **CP-054 · FT1 · inventario y particiones · 2026-11-19:** integrado el
 [PR #19](https://github.com/MasamuneL/Cerberus/pull/19), merge `6f97eb2`. `inventory` y `split` ya

@@ -7,6 +7,7 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 
 | Ticket | Estado | Rama | Commit | Fecha | Responsable / herramienta | Notas |
 |---|---|---|---|---|---|---|
+| FT3 · transferencia y trainer | ✅ | feat/FT3-transfer-trainer | 548cd16 | 2026-11-19 | Claude Code (orquestador + subagentes) | PR #21; 1147 tests; carga estricta, head 1 logit, reanudación determinista; CP-056 |
 | FT2 · preprocesamiento | ✅ | feat/FT2-preprocessing | 56f3d18 | 2026-11-19 | Claude Code (orquestador + subagentes) | PR #20; 1113 tests; remuestreo, caché verificable, preflight; CP-055 |
 | FT1 · inventario y particiones | ✅ | feat/FT1-inventory-splits | 6f97eb2 | 2026-11-19 | Claude Code (orquestador + subagentes) | PR #19; 1056 tests; inventario seguro, split por paciente; CP-054 |
 | FT0 · configuración y entorno de fine-tuning | ✅ | feat/FT0-training-config | 93abca3 | 2026-11-19 | Claude Code (orquestador + subagentes) | PR #18; 934 tests; CLI, esquema estricto, training-env CUDA; CP-053 |
@@ -985,3 +986,17 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
 - **Checks:** Ruff/formato/Pyright y 1113 tests rápidos. Revisión independiente aplicada. Probado en un
   estudio local (~7 s CPU). Sin entrenamiento. Rama `wip/FT2-preprocessing` queda obsoleta.
 - Siguiente: FT3 (transferencia SegResNet y trainer).
+
+### CP-056 · 2026-11-19 · FT3: transferencia de SegResNet y trainer reanudable
+
+- **Integración:** [PR #21](https://github.com/MasamuneL/Cerberus/pull/21), merge `548cd16`.
+- `model`: sha256 del checkpoint local (bytes leídos una vez), `weights_only=True`, `strict=True`;
+  solo `conv_final.2` pasa de 3 a 1 salida con semilla fija; congelación explícita por prefijo.
+- `train`: Dice+BCE con logits, AdamW, acumulación, validación con `sliding_window_inference` y Dice
+  macro por paciente, parada temprana; NaN/Inf, CUDA ausente y OOM fallan claro (códigos 1/6/7/8).
+- `artifacts`: `runs/<id>/` sin sobrescritura, candado, provenance, `last`/`best` atómicos.
+  Reanudación k+(N-k)==N bit a bit en CPU; solo se permite subir `max_epochs`/paciencia.
+- `train --dry-run` sin backward ni run. Estado global de RNG restaurado.
+- **Checks:** Ruff/formato/Pyright, 1147 tests rápidos y slow de SegResNet 96³. Revisión aplicada.
+  Solo datos sintéticos y pesos artificiales; sin fine-tuning real. `wip/FT3-transfer-trainer` obsoleta.
+- Siguiente: FT4 (evaluación y exportación).
