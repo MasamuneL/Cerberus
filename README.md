@@ -471,6 +471,7 @@ El proyecto se desarrolla por tickets con trazabilidad entre dispositivos y agen
 
 - [`AGENTS.md`](AGENTS.md) — reglas para cualquier agente o colaborador.
 - [`docs/PLAN_MVP.md`](docs/PLAN_MVP.md) — alcance, arquitectura, contratos de API y tickets.
+- [`docs/TRAINING.md`](docs/TRAINING.md) — pipeline de fine-tuning (CLI `cerberus_training`): manual de uso y smoke sintético (`uv run python -m cerberus_training smoke --synthetic`). Aún no se ha hecho ningún entrenamiento real.
 - [`docs/PROGRESS.md`](docs/PROGRESS.md) — checkpoints; sigue el protocolo de §12 del plan (reclamar ticket, registrar CP al terminar).
 - [`docs/HANDOFF.md`](docs/HANDOFF.md) — estado actual, trabajo en curso y siguiente paso.
 - [`docs/QA_UX_UI.md`](docs/QA_UX_UI.md) — evidencia histórica del QA visual y sus límites.

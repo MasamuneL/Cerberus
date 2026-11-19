@@ -12,13 +12,14 @@ Este documento crece con cada ticket FT; aquí se documenta lo que existe hoy.
 | FT2 | `prepare`, `preflight`, transformaciones y caché | implementado |
 | FT3 | `train` (incluye `--dry-run` y `--resume`), transferencia de SegResNet, artefactos del run | implementado |
 | FT4 | `evaluate` (incluye `--baseline` y `--optimize-threshold`), `export` y `load_export` | implementado |
-| FT5 | `smoke --synthetic` y manual completo | pendiente |
+| FT5 | `smoke --synthetic` y manual de uso | implementado |
 
-Funcionan `validate` y `device` (FT0), `inventory` y `split` (FT1), `prepare` y `preflight` (FT2), `train` (FT3) y
-`evaluate` y `export` (FT4). `smoke` existe para que `--help` muestre la interfaz prevista y termina con código 3 y un
-mensaje `pendiente de FT5`. El trainer, la evaluación y la exportación solo se han ejecutado con datos y pesos
-sintéticos en CPU (tests): **no se ha hecho ningún fine-tuning real ni existe un modelo adaptado evaluado**, y no se ha
-medido ninguna duración ni consumo de recursos (las cifras de `preflight` son estimaciones, no mediciones).
+Funcionan `validate` y `device` (FT0), `inventory` y `split` (FT1), `prepare` y `preflight` (FT2), `train` (FT3),
+`evaluate` y `export` (FT4) y `smoke --synthetic` (FT5). El trainer, la evaluación y la exportación solo se han
+ejecutado con datos y pesos sintéticos en CPU (tests y `smoke`): **no se ha hecho ningún fine-tuning real ni existe un
+modelo adaptado evaluado**, y no se ha medido ninguna duración ni consumo de recursos sobre el dataset real (las cifras
+de `preflight` son estimaciones, no mediciones). Para el recorrido futuro con datos reales, vaya a
+[«Manual de uso»](#manual-de-uso).
 
 ## Códigos de salida
 
@@ -27,12 +28,13 @@ medido ninguna duración ni consumo de recursos (las cifras de `preflight` son e
 | 0 | correcto |
 | 1 | `device --require-cuda` o `train` con `training.device = "cuda"` sin CUDA disponible |
 | 2 | uso incorrecto de argumentos o configuración inválida/ilegible |
-| 3 | subcomando todavía no implementado |
+| 3 | subcomando declarado pero no implementado (hoy ninguno: FT0–FT5 están implementados) |
 | 4 | dataset/inventario inutilizable (raíz inexistente o ilegible, salida dentro del dataset, dos rutas de E/S que son el mismo archivo, inventario ilegible o manipulado), pocos pacientes, `splits.json` existente incompatible, o ningún estudio elegible en `prepare`/`preflight` |
 | 5 | `prepare` terminó, pero al menos un estudio falló (los demás sí se prepararon; ver el informe) |
 | 6 | recursos insuficientes: `prepare` se detiene por el límite de caché o el espacio libre; `preflight` estima que no cabe; `train` sin memoria (nunca reduce batch/parche) o `train --dry-run` sin disco para los checkpoints |
 | 7 | `train`: pesos ausentes o con SHA-256 distinto, checkpoint incompatible (llaves faltantes/sobrantes, shapes), `freeze_modules` inválido o `--resume` rechazado; `evaluate`/`export`: hashes del run distintos de los datos actuales, checkpoint ausente o incompatible, pesos del baseline con SHA-256 distinto |
 | 8 | `train`: fallo numérico (NaN/Inf en pérdida, gradientes o predicción de validación); `evaluate`: predicción con NaN/Inf o de forma incorrecta |
+| 9 | `smoke --synthetic`: algún paso del recorrido sintético falló (el informe indica cuál) |
 
 En `train`, el código 2 también cubre un `--run-id` inválido o ya existente (un run nunca se sobrescribe), un run en
 uso por otro proceso (candado `.lock`) y límites de
@@ -44,7 +46,7 @@ incompatibles; 4 = run incompleto o fuera de `<work_dir>/runs`, inventario/split
 evaluable (fuente con SHA-256 distinto del inventario, GTV no binaria, geometría incompatible o con cizalla, fallo
 del pipeline original en el baseline: `EvaluationDataError` con su código); 2 también si falta `--checkpoint` con
 `--split test` o `--bootstrap` < 100; 1 =
-CUDA pedida sin GPU; 6 = sin memoria.
+CUDA pedida sin GPU; 6 = sin memoria. En `smoke`, 2 = `--work-dir` dentro del repo o no vacío.
 
 ## Uso con el entorno normal (CPU)
 
@@ -57,6 +59,7 @@ uv run python -m cerberus_training --help
 uv run python -m cerberus_training train --help
 uv run python -m cerberus_training validate --config configs/training/gtv_binary.json
 uv run python -m cerberus_training device
+uv run python -m cerberus_training smoke --synthetic   # recorrido sintético completo (no es fine-tuning real)
 ```
 
 ## Configuración
@@ -606,6 +609,63 @@ sus `kwargs` sean exactamente `SEGRESNET_KWARGS`), comprueba el SHA-256 de `mode
 `ExportError`. Devuelve el modelo en modo `eval`, el manifiesto, el umbral y el orden de canales. La integración del
 modelo exportado en la API/UI queda fuera de alcance (otro ticket).
 
+## Smoke sintético (`smoke --synthetic`)
+
+```bash
+uv run python -m cerberus_training smoke --synthetic [--work-dir DIR_NUEVA_O_VACIA] [--keep] [--verbose]
+```
+
+**SINTÉTICO — NO ES FINE-TUNING REAL.** Comprueba el cableado de extremo a extremo con datos y pesos artificiales, en
+CPU, sin red y sin el dataset. Sus Dice, pérdidas y exportaciones no tienen ningún valor clínico ni científico y **no
+sustituyen** la auditoría del dataset real ni el piloto en GPU. Código en `backend/cerberus_training/smoke.py`.
+
+Qué genera (todo en un directorio temporal, fuera del repo y de cualquier `data_root`):
+
+- NIfTI diminutos (32³, 1 mm) con la convención `cerberus_v1`: 7 pacientes y 11 estudios con varios tiempos
+  (`001` t0/t1, `002` t0/t1/t2, `006` t0/t1…), un paciente con el eje x invertido (otra orientación de vóxeles), un estudio
+  **excluido por canal faltante** (`007/t0` sin FLAIR → `missing_channel`), otro **excluido por GTV ausente**
+  (`002/t2` → `missing_label`) y una GTV **vacía** (`006/t1`) que debe aparecer como señal de revisión `empty_label`.
+  El inventario debe dar exactamente 9 elegibles, esas dos exclusiones y esa señal; si no, el paso falla.
+- Un checkpoint artificial de **SegResNet real de 3 salidas** (pesos aleatorios con semilla) con su SHA-256, y una
+  configuración derivada: CPU, sin AMP, parche 16³ (múltiplo de 8), `grad_accum_steps` 8 (una sola ventana por época
+  = 1 paso de optimización) y `max_epochs` 2.
+
+Se usa la SegResNet real y no la red pequeña inyectable de los tests porque a este tamaño cada paso cuesta fracciones de
+segundo y así el smoke ejercita la transferencia real (`conv_final.2`), la ventana deslizante y `load_export`.
+
+Pasos (cada uno llama a `main([...])`, es decir, a las mismas funciones que la CLI) y qué comprueba cada uno:
+
+| # | Paso | Comprobación |
+|---|---|---|
+| 1 | datos y pesos sintéticos | se escriben datos, pesos, configuración y el marcador `SINTETICO_NO_ES_FINE_TUNING.txt` |
+| 2 | `validate` | la configuración derivada es válida |
+| 3 | `inventory` | 9 elegibles de 11; exclusiones `missing_channel` y `missing_label`; señal `empty_label` |
+| 4 | `split` | train/val/test no vacíos y sin pacientes compartidos |
+| 5 | `preflight` | código 0 (recursos y pesos) |
+| 6 | `prepare` | todos los elegibles en caché, sin errores |
+| 7 | `train --dry-run` | código 0 y **no se crea ningún run** |
+| 8 | `train` (2 pasos) | `step == 2`, `epoch == 2`, pérdida finita, los pesos cambian respecto al checkpoint inicial, existe `best.pt` |
+| 9 | reanudación | se corta tras la 1.ª época (`run_training(stop_after_epochs=1)`, opción que la CLI no expone) y se reanuda con `train --resume`: `last.pt`, `best.pt` y `metrics.jsonl` son idénticos a los de la ejecución continua |
+| 10 | `evaluate val` | resumen con estudios y pacientes (bootstrap 100) |
+| 11 | `evaluate test --checkpoint best` | idem, en test (nunca se optimiza nada sobre test) |
+| 12 | `export` | `model.pt`, `export.json`, `model_card.md` y estado `evaluated_test` |
+| 13 | `load_export` | el modelo recargado es idéntico a `best.pt`, con los hashes de split y caché verificados |
+
+Salida: banner sintético, una línea por paso con ✓/✗, duración, resultado y rutas (con `--verbose` también la salida de
+cada subcomando; si un paso falla, la salida de ese paso siempre se muestra y el resto se marca como omitido). Código de
+salida **0 solo si pasan los 13 pasos**; 9 si alguno falla; 2 si `--work-dir` está dentro del repo o no está vacío (el
+smoke nunca pisa archivos ajenos). Durante el recorrido la **red está bloqueada** (conexiones TCP/UDP y DNS): un intento
+falla y también hace fallar el smoke.
+
+El directorio temporal se borra al terminar salvo con `--keep`; con `--work-dir` se conserva siempre (no se borra un
+directorio elegido por la persona usuaria). Al conservarlo se escriben `smoke_report.json` (`synthetic: true`,
+`real_finetuning: false`, pasos, hechos y duración) y el marcador `SINTETICO_NO_ES_FINE_TUNING.txt` en el directorio y
+en cada run; los runs se llaman `smoke-sintetico-continuo` y `smoke-sintetico-interrumpido`.
+
+Tiempo medido en una máquina de desarrollo con macOS y CPU: unos 5 s el recorrido completo (cifra de esa ejecución, no
+una garantía). La prueba `backend/tests/test_training_smoke.py` lo ejecuta entero vía `main([...])`, comprueba el
+código 0, que no hay intentos de red, que el temporal se borra y que no cambia `git status`, `storage/` ni `models/`.
+
 ## Entorno CUDA independiente (`training-env/`)
 
 Las ruedas de torch de la app apuntan al índice CPU en Linux (`pyproject.toml` raíz) y no deben cambiar.
@@ -656,13 +716,182 @@ torch (devuelve 0 salvo con `--require-cuda`). En el entorno de la app informar�
 Nota: la instalación del entorno CUDA no se ha ejecutado en una máquina con GPU durante FT0 (el desarrollo se hizo
 en macOS sin CUDA); solo se resolvió y fijó el lock. La primera comprobación real con GPU queda para el piloto.
 
+## Manual de uso
+
+> **Nada de lo que describe este manual se ha ejecutado todavía sobre el dataset real.** Es el recorrido previsto para
+> cuando se disponga del dataset completo y de una GPU. Hasta hoy solo se ha ejecutado `smoke --synthetic` y los tests,
+> con datos y pesos artificiales en CPU. No hay duraciones ni consumos medidos con CFB-GBM: `preflight` los estima,
+> pero son estimaciones. Quedan pendientes la auditoría del dataset completo, el piloto en GPU, el entrenamiento,
+> la validación científica y la integración del modelo en la API/UI ([plan §10](PLAN_PIPELINE_FINETUNING.md)).
+
+Atajo usado abajo: `CT` = `uv run --project training-env python -m cerberus_training` (entorno CUDA independiente,
+véase [«Entorno CUDA independiente»](#entorno-cuda-independiente-training-env)). En una máquina sin GPU, `uv run python -m
+cerberus_training` sirve para todo salvo entrenar en CUDA.
+
+### 0. Antes de empezar
+
+1. Dataset CFB-GBM descargado de TCIA (CC BY 4.0, DOI `10.7937/v9pn-2f72`) en un directorio **externo al repo** con la
+   convención `cerberus_v1` (`<paciente>/<tiempo>/<int(paciente)>_<tiempo>_<secuencia>.nii.gz`). Si la descarga usa otra
+   estructura, hace falta un adaptador (véase «Inventario»).
+2. Pesos iniciales locales del bundle `brats_mri_segmentation` (versión del plan: 0.5.4) y su SHA-256
+   (`shasum -a 256 .../model.pt`). `train` nunca descarga nada.
+3. Entorno: `uv sync --project training-env --locked` y `CT device --require-cuda` (código 1 si no hay GPU). Revise los
+   `AVISO` de arquitectura de GPU.
+4. **Compruebe primero el cableado:** `uv run python -m cerberus_training smoke --synthetic` debe terminar con código 0.
+5. Copie `configs/training/gtv_binary.json` a un archivo local (p. ej. `storage/training/gtv_binary.local.json`; `storage/`
+   está ignorado por Git) y edite `paths.data_root`, `paths.work_dir`, `weights.path` y `weights.sha256`
+   (el marcador de 64 ceros del ejemplo se rechaza). No hay que tocar nada más para un primer intento: los
+   hiperparámetros son un punto de partida, no un óptimo validado. Valide: `CT validate --config <config>`.
+
+Usaremos `CFG=<config>` abajo. Cada paso imprime un informe en español; revise **todos** antes de pasar al siguiente.
+
+### 1. Inventario
+
+```bash
+CT inventory --config $CFG --summary storage/training/inventory_summary.json
+```
+
+Qué revisar (el resumen impreso y `inventory_summary.json`):
+
+- **Elegibles frente a excluidos** y el **recuento de exclusiones por motivo** (`missing_channel`, `missing_label`,
+  `not_3d`, `invalid_affine`, `invalid_spacing`, `unreadable`…). Compare con lo esperado de TCIA (264 sujetos; no todos
+  los estudios tendrán las 4 secuencias + GTV). Con muchos `missing_channel`, **no relaje el perfil en silencio**: un
+  perfil de compatibilidad sería otro experimento declarado (plan §4.3).
+- **Señales de revisión** (no excluyen): `empty_label` (GTV vacía: se conserva), `invalid_brain_mask` (se ignora),
+  `duplicate_within_study`. Anote cuántas hay y decida si alguna requiere mirar el caso.
+- **Duplicados exactos entre estudios** (los pacientes con canales idénticos caerán en la misma partición) y carpetas
+  **rechazadas** (`invalid_identifier`, que se muestran solo por `name_sha8`).
+- **Estratos** t0/seguimiento y **secuencia elegida por canal** (cuántos estudios usan `t1eg` frente a `t1tse` para T1).
+- La cohorte **no puede depender de resultados de prueba**: toda regla de exclusión se fija y se anota antes de entrenar.
+
+### 2. Partición
+
+```bash
+CT split --config $CFG
+```
+
+Revise: pacientes por partición (70/15/15 por paciente, semilla 42), los `AVISO` de desviación por duplicados fusionados,
+`pretraining_overlap` (queda `unknown`: **no** lo cambie a `verified` sin hacer de verdad la revisión de solapamiento con
+el preentrenamiento del bundle) y que ninguna partición esté vacía. `splits.json` es inmutable; si después cambia el
+inventario o la configuración, `split` y `train` fallan con código 4 en lugar de redistribuir.
+
+### 3. Preflight
+
+```bash
+CT preflight --config $CFG
+```
+
+Revise: disco de caché estimado (cota superior) frente a `cache_limit_gb` y al espacio libre más `min_free_disk_gb`, RAM
+aproximada de `prepare` y de un lote, estado de los pesos (existencia y SHA-256). Código 6 si no cabe. Son **estimaciones
+sin medir** sobre el dataset real; la RAM del lote **no incluye activaciones ni gradientes** de la red.
+
+### 4. Preparación
+
+```bash
+CT prepare --config $CFG
+```
+
+Revise `prepare_report.json` y el informe impreso (se escribe siempre, también si se aborta):
+
+- **Errores por estudio** y su código: `geometry_mismatch` (canal, GTV o máscara que no ocupa el mismo espacio físico que
+  la T1c; **el remuestreo no corrige desregistro**), `non_binary_label`, `non_finite`, `source_changed`,
+  `empty_brain_mask`… Código 5 si hay alguno.
+- **Señales de revisión** de `review_totals`: `label_outside_support`, `label_vanished`, `label_outside_brain_mask`
+  (cuenta de estudios y de vóxeles de GTV implicados), `no_brain_mask`, `empty_label`. La GTV nunca excluye un estudio por
+  su posición, pero esos vóxeles cuentan como falsos negativos en la evaluación.
+- **Un estudio elegible que falla en `prepare` deja la caché incompleta y `train` lo rechaza (código 4).** Hoy no hay un
+  mecanismo de exclusión manual: no edite `inventory.jsonl` (cambiaría `eligible_records_sha256` y el split se
+  rechazaría). Si ocurre, decisión pendiente: fijar y anotar una regla de calidad previa al entrenamiento y regenerar
+  inventario y split en un `work_dir` nuevo, o registrar el caso para registro de imagen aparte.
+
+### 5. Dry-run
+
+```bash
+CT train --config $CFG --dry-run
+```
+
+Valida todo sin backward ni actualizar pesos: entradas de caché de train/val (con SHA-256), pesos (SHA-256, carga
+estricta, cabeza nueva `conv_final.2`), forward de un parche, ventana deslizante sobre un volumen de val, y disco para los
+checkpoints. Revise los parámetros transferidos/nuevos, `output_shape`, los límites de determinismo (en CUDA no hay
+reproducibilidad bit a bit) y que diga «Dry-run correcto». Con `training.device = "cuda"` y sin GPU, código 1.
+
+### 6. Entrenamiento (solo en una ejecución futura solicitada)
+
+```bash
+CT train --config $CFG --run-id <nombre>
+```
+
+Revise `runs/<id>/metrics.jsonl` (pérdida finita y decreciente, `val_dice`, `epochs_without_improvement`,
+`amp_skipped_steps`), `provenance.json` (commit, hashes, versiones) y que `best.pt` y `last.pt` existan. No elija
+hiperparámetros ni umbrales mirando test. Si se interrumpe: `CT train --config $CFG --resume runs/<id>/checkpoints/last.pt`
+(solo con la misma configuración; solo se pueden **subir** `max_epochs` y `early_stopping_patience`).
+
+### 7. Evaluación
+
+```bash
+CT evaluate --run storage/training/runs/<id> --split val                    # opcional: --optimize-threshold (solo val)
+CT evaluate --run storage/training/runs/<id> --split test --checkpoint best # una sola vez, decidido de antemano
+CT evaluate --run storage/training/runs/<id> --split test --baseline        # referencia imperfecta (TC ≠ GTV)
+```
+
+Revise `summary.json`: denominadores válidos por métrica, intervalos bootstrap por paciente, casos vacíos por separado,
+`warnings` y `prior_test_evaluations` (repetir test y elegir entre resultados invalida la estimación). Fije antes de usar
+test el mínimo de mejora que justificaría declarar éxito del experimento.
+
+### 8. Exportación
+
+```bash
+CT export --run storage/training/runs/<id>
+```
+
+Revise `export.json` y `model_card.md`: `evaluation.status` (`not_evaluated`, `evaluated_val` o `evaluated_test`),
+`pretraining_overlap`, licencia y citación del dataset. `load_export(directorio)` reconstruye el modelo verificando
+hashes. El modelo exportado es un artefacto experimental independiente: no sustituye al modelo activo de Cerberus.
+
+### Fallos frecuentes
+
+| Síntoma | Código | Qué hacer |
+|---|---|---|
+| `device --require-cuda` o `train` con `training.device = "cuda"` sin GPU | 1 | Ejecute `CT device`; revise controlador e índice CUDA (RTX 50xx: pruebe otro índice y regenere el lock). No se degrada a CPU |
+| Configuración inválida (clave desconocida, split que no suma 1, parche no múltiplo de 8, SHA-256 mal formado), `--run-id` ya existente o run con `.lock` | 2 | Lea el mensaje y corrija el JSON; use otro `--run-id` o `--resume`; borre `.lock` solo tras comprobar que no hay otro proceso |
+| `evaluate`/`export` con la carpeta de salida ya existente; test sin `--checkpoint`; `--optimize-threshold` fuera de val | 2 | Nunca se sobrescribe: mueva o borre la carpeta a conciencia; pase `--checkpoint best\|last` explícito |
+| Raíz del dataset ilegible, salida dentro del dataset, menos de 3 pacientes elegibles, `splits.json` incompatible con el inventario actual, caché incompleta en `train` | 4 | Revise el inventario; no se redistribuye un split: restaure el inventario original o use un `work_dir` nuevo; ejecute `prepare` |
+| `prepare` con estudios fallidos (`geometry_mismatch`, `non_binary_label`, `source_changed`…) | 5 | Lea `prepare_report.json`; `source_changed` exige repetir `inventory`; el desregistro requiere registro aparte (véase paso 4: sin exclusión manual hoy) |
+| `preflight`/`prepare` sin disco o sobre `cache_limit_gb`; `train` sin memoria | 6 | Libere disco o suba `cache_limit_gb`/`min_free_disk_gb` a conciencia; ante OOM ajuste `patch_size`/`batch_size` manualmente (nunca se reducen solos) y empiece un run nuevo: cambiar el parche invalida `--resume` |
+| Pesos ausentes o con SHA-256 distinto, checkpoint incompatible, `--resume` rechazado (cambió split, canales o configuración), hashes del run distintos de los datos actuales | 7 | Compruebe `weights.path` y recalcule `shasum -a 256`; el mensaje lista las diferencias; no edite `provenance.json` ni los checkpoints |
+| NaN/Inf en pérdida, gradientes o predicción | 8 | Revise datos y `learning_rate`; reanude desde el último `last.pt` válido o empiece un run nuevo |
+| `smoke --synthetic` falla | 9 | Lea el paso ✗ y su salida; es un fallo del cableado, no de los datos reales: arréglelo antes de tocar el dataset |
+
+### Recursos
+
+- **Disco:** el dataset completo publicado en TCIA ocupa 208.01 GB (comprimido, solo lectura, fuera del repo); la caché
+  de `prepare` vive en `<work_dir>/cache/` y `preflight` estima su tamaño descomprimido; los checkpoints se estiman en
+  `--dry-run` (red ×4 en float32 + 10 %). `work_dir` y `data_root` deben ser disjuntos.
+- **RAM:** `prepare` carga un estudio por vez y el trainer lee la caché de uno en uno (`num_workers = 0`); `preflight`
+  da una cota aproximada. No se ha medido el consumo real con CFB-GBM, y el de la red (activaciones y gradientes) depende
+  de `patch_size`, `batch_size` y la GPU: se medirá en el piloto.
+- **Cómputo y tiempo:** sin cifras. Duración de `inventory` (lee todos los bytes de los archivos seleccionados para el
+  SHA-256), de `prepare` y de cada época del entrenamiento: **sin medir**, se conocerán en el piloto.
+
+### Qué queda pendiente
+
+Según el [plan §10](PLAN_PIPELINE_FINETUNING.md), la implementación del pipeline está completa, pero **no se ha hecho**:
+
+1. La auditoría del dataset completo (inventario real, exclusiones, estratos, duplicados, revisión de solapamiento con el
+   preentrenamiento).
+2. El piloto en GPU (instalación del entorno `training-env` en una máquina con CUDA, tamaño de parche y hardware
+   necesarios, mediciones de tiempo y memoria).
+3. El entrenamiento real.
+4. La validación científica (mínimo de mejora fijado antes de usar test, evaluación única de test, interpretación).
+5. La integración del modelo adaptado en la API/UI (otro ticket; exigiría actualizar los contratos de `PLAN_MVP.md`).
+
 ## Tests
 
 ```bash
 uv run pytest -q backend/tests/test_training_config.py backend/tests/test_training_cli.py \
   backend/tests/test_training_inventory.py backend/tests/test_training_splits.py \
   backend/tests/test_training_prepare.py backend/tests/test_training_train.py \
-  backend/tests/test_training_evaluate.py
+  backend/tests/test_training_evaluate.py backend/tests/test_training_smoke.py
 ```
 
 Cubren el esquema, la CLI, la ausencia de imports de torch/MONAI/nibabel al arrancar (y de nibabel/numpy en `split`), el inventario sobre NIfTI
@@ -707,3 +936,8 @@ completo (NIfTI → inventario → split → prepare → train), la exportación
 `best.pt`), `pretrained` con metadata sintética, `not_evaluated`/`evaluated_val`/`evaluated_test`, hashes y `kwargs`
 alterados y la CLI de extremo a extremo. Un test `slow` recorre la ruta real de `evaluate_baseline` (pesos
 artificiales de 3 salidas, `segresnet_predictor` con ROI 240×240×160 en CPU).
+
+FT5 (`test_training_smoke.py`) ejecuta el recorrido completo de `smoke --synthetic` vía `main([...])` (13 pasos, SegResNet
+real, pocos segundos en CPU, sin `slow`): código 0, temporal borrado, `--work-dir` con informe y marcadores, red
+bloqueada sin intentos, `git status`/`storage/`/`models/` intactos, rechazo de `--work-dir` dentro del repo o no vacío,
+fallo de un paso (código 9, resto omitido) y restauración del bloqueo de red.

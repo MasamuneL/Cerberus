@@ -23,6 +23,7 @@ redis-server                                               # terminal 1
 uv run python -m cerberus_api.worker              # terminal 2: worker
 uv run uvicorn cerberus_api.main:app --reload --port 8000  # terminal 3: API (docs en /docs)
 cd frontend && npm install && npm run dev                  # terminal 4: UI en :5173
+uv run python -m cerberus_training smoke --synthetic     # smoke del pipeline de fine-tuning (sintético, CPU, sin red; ver docs/TRAINING.md)
 
 # Checks obligatorios antes de un PR
 uv run ruff check backend && uv run ruff format --check backend && uv run pyright && uv run pytest -m "not slow"
