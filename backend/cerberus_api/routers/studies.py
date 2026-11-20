@@ -206,7 +206,7 @@ async def start_segmentation(
     patient: str, timepoint: str, settings: SettingsDep, redis: RedisDep, principal: PrincipalDep
 ) -> JobCreated:
     """Encola `segment_study` en el worker; 404 si no existe el estudio, 422 sin secuencias de canal."""
-    study = catalog.get_study(settings.data_dir, settings.results_dir, patient, timepoint)
+    study = catalog.find_study(settings.data_dir, settings.results_dir, patient, timepoint)
     if study is None:
         raise HTTPException(status_code=404, detail="Estudio no encontrado")
     if not _CHANNEL_SEQS.intersection(study.sequences):
@@ -249,7 +249,7 @@ async def start_area_mapping(
     patient: str, timepoint: str, settings: SettingsDep, redis: RedisDep, principal: PrincipalDep
 ) -> JobCreated:
     """Encola `map_areas` en el worker; 404 si no existe el estudio, 422 sin GTV o sin secuencia T1."""
-    study = catalog.get_study(settings.data_dir, settings.results_dir, patient, timepoint)
+    study = catalog.find_study(settings.data_dir, settings.results_dir, patient, timepoint)
     if study is None:
         raise HTTPException(status_code=404, detail="Estudio no encontrado")
     if not study.has_gtv:

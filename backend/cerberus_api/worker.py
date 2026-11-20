@@ -92,7 +92,7 @@ async def segment_study(ctx: dict[str, Any], patient: str, timepoint: str) -> di
     settings = get_settings()
     validate_patient(patient)
     validate_timepoint(timepoint)
-    study = catalog.get_study(settings.data_dir, settings.results_dir, patient, timepoint)
+    study = catalog.find_study(settings.data_dir, settings.results_dir, patient, timepoint)
     if study is None:
         raise ValueError(f"Estudio no encontrado: {patient}/{timepoint}")
 
@@ -117,7 +117,7 @@ async def map_areas(ctx: dict[str, Any], patient: str, timepoint: str) -> dict[s
     settings = get_settings()
     validate_patient(patient)
     validate_timepoint(timepoint)
-    study = catalog.get_study(settings.data_dir, settings.results_dir, patient, timepoint)
+    study = catalog.find_study(settings.data_dir, settings.results_dir, patient, timepoint)
     if study is None:
         raise ValueError(f"Estudio no encontrado: {patient}/{timepoint}")
 

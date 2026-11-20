@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from cerberus_api.catalog import get_study, list_studies, sequence_path
+from cerberus_api.catalog import find_study, get_study, list_studies, sequence_path
 from conftest import MakeStudy
 
 
@@ -87,6 +87,43 @@ def test_get_study_missing_or_invalid(dirs: tuple[Path, Path], make_study: MakeS
     assert get_study(data_dir, results_dir, "001", "t5") is None
     assert get_study(data_dir, results_dir, "../x", "t0") is None
     assert get_study(data_dir, results_dir, "001", "../t0") is None
+
+
+def test_find_study_matches_get_study_without_volumes(dirs: tuple[Path, Path], make_study: MakeStudy) -> None:
+    data_dir, results_dir = dirs
+    make_study(data_dir)
+    seg = results_dir / "001" / "t0" / "monai_seg.nii.gz"
+    seg.parent.mkdir(parents=True)
+    seg.write_bytes(b"seg")
+
+    study = find_study(data_dir, results_dir, "001", "t0")
+    detail = get_study(data_dir, results_dir, "001", "t0")
+
+    assert study is not None and detail is not None
+    assert study.model_dump() == detail.model_dump(exclude={"volumes"})
+
+
+def test_find_study_does_not_read_headers(dirs: tuple[Path, Path], make_study: MakeStudy) -> None:
+    data_dir, results_dir = dirs
+    study_dir = make_study(data_dir, seqs=("t1gd",))
+    # Header corrupto: `find_study` no lo abre; `get_study` sí falla al leerlo
+    (study_dir / "1_t0_t1gd.nii.gz").write_bytes(b"junk")
+
+    study = find_study(data_dir, results_dir, "001", "t0")
+
+    assert study is not None
+    assert study.sequences == ["t1gd"]
+    with pytest.raises(Exception):  # noqa: B017 - el tipo exacto lo decide nibabel
+        get_study(data_dir, results_dir, "001", "t0")
+
+
+def test_find_study_missing_or_invalid(dirs: tuple[Path, Path], make_study: MakeStudy) -> None:
+    data_dir, results_dir = dirs
+    make_study(data_dir)
+    assert find_study(data_dir, results_dir, "002", "t0") is None
+    assert find_study(data_dir, results_dir, "001", "t5") is None
+    assert find_study(data_dir, results_dir, "../x", "t0") is None
+    assert find_study(data_dir, results_dir, "001", "../t0") is None
 
 
 def test_has_segmentation(dirs: tuple[Path, Path], make_study: MakeStudy) -> None:
