@@ -1,11 +1,13 @@
 """Tests de segmentation.py con un predictor falso (sin red ni torch)."""
 
+import os
 from pathlib import Path
 
 import numpy as np
 import pytest
 from nibabel.processing import resample_from_to, resample_to_output
 
+from cerberus_api import segmentation
 from cerberus_api.config import REPO_ROOT
 from cerberus_api.nifti import load_nifti
 from cerberus_api.schemas import SegmentationResult
@@ -94,6 +96,34 @@ def test_normalize_nonzero() -> None:
     y = normalize_nonzero(x)
     assert np.allclose(y[0, :, 0, 0], [-1, 1, 0, 0])
     assert np.allclose(y[1, :, 0, 0], [0, 0, 0, 0])
+
+
+def test_monai_predictor_is_cached_until_weights_change(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    models = tmp_path / "models"
+    weights = models / segmentation.BUNDLE_NAME / "models" / "model.pt"
+    weights.parent.mkdir(parents=True)
+    weights.write_bytes(b"pesos")
+    built: list[Path] = []
+
+    def fake_build(path: Path) -> tuple[segmentation.Predictor, str]:
+        built.append(path)
+        return _cube_predictor, "fake"
+
+    monkeypatch.setattr(segmentation, "_build_predictor", fake_build)
+    monkeypatch.setattr(segmentation, "_PREDICTORS", {})
+
+    first = segmentation._monai_predictor(models)
+    second = segmentation._monai_predictor(models)
+    assert first == second == (_cube_predictor, "fake")
+    assert built == [weights]
+
+    # Pesos nuevos (otro mtime) → se reconstruye y la caché conserva una sola entrada.
+    st = weights.stat()
+    os.utime(weights, ns=(st.st_atime_ns, st.st_mtime_ns + 1_000_000_000))
+    segmentation._monai_predictor(models)
+    segmentation._monai_predictor(models)
+    assert built == [weights, weights]
+    assert len(segmentation._PREDICTORS) == 1
 
 
 @pytest.mark.slow
