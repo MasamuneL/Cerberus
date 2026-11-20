@@ -8,7 +8,7 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 | Ticket | Estado | Rama | Commit | Fecha | Responsable / herramienta | Notas |
 |---|---|---|---|---|---|---|
 | PERF1 · volumetría recortada (§21) | ✅ | feat/PERF1-volumetry-crop | 2e50217 | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #26; 1191 tests; ~1.7 s → 76 ms; CP-059 |
-| PERF2 · caché de volumetría (§21) | 🟡 | feat/PERF2-volumetry-cache | | 2026-11-20 | Claude Code (orquestador Opus + hc) | oleada 2 |
+| PERF2 · caché de volumetría (§21) | ✅ | feat/PERF2-volumetry-cache | 15e1e4d | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #28; 1195 tests; caliente < 5 ms; CP-061 |
 | PERF3 · caché del predictor MONAI (§21) | ✅ | feat/PERF3-predictor-cache | 0f882b7 | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #25; 1181 tests; ~0.06 s/job; CP-060 |
 | PERF4 · encolar sin leer headers (§21) | ⬜ | | | | | espera PR #22 |
 | PERF5 · visor diferido (§21) | 🟡 | feat/PERF5-lazy-viewer | | 2026-11-20 | Claude Code (orquestador Opus + hc) | oleada 1 |
@@ -1061,3 +1061,14 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
 - **Checks:** Ruff/formato/Pyright, 1181 tests rápidos (rama). Revisión independiente (Opus) aprobada.
 - **Desviación:** `_build_predictor` sin parámetro `device` (lo elige dentro; permite test sin torch).
 - Siguiente: PERF2 y PERF5.
+
+### CP-061 · 2026-11-20 · PERF2: caché en memoria de la volumetría
+
+- **Integración:** [PR #28](https://github.com/MasamuneL/Cerberus/pull/28), merge `15e1e4d`.
+- `gtv_volumetry` conserva firma; delega en `lru_cache(maxsize=256)` con clave (ruta resuelta, tamaño,
+  mtime_ns, inode) de GTV y máscara; devuelve `model_copy()`. Reescribir un archivo (subida, `nib.save`)
+  cambia la clave. El `ValueError` de GTV vacío no se cachea.
+- **Benchmark** `/longitudinal` datos reales: frío 69–216 ms (ya con PERF1) → caliente 0.07–0.33 ms en la
+  función y 1.4–2.9 ms por HTTP. Respuesta fría == caliente en los 5 pacientes.
+- **Checks:** Ruff/formato/Pyright, 1195 tests rápidos. Revisión independiente (Opus) aprobada.
+- Siguiente: PERF5 en revisión; PERF4/6/7 esperan el PR #22.
