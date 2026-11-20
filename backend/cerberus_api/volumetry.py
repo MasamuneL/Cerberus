@@ -4,6 +4,7 @@ Las fórmulas y el redondeo están portados sin cambios de `cerberus_eda.py` (vo
 `rano_vol` y cambio vs t0: 300-312).
 """
 
+import functools
 from pathlib import Path
 
 import numpy as np
@@ -13,8 +14,28 @@ from cerberus_api.nifti import load_nifti
 from cerberus_api.schemas import LongitudinalPoint, RanoCategory, Volumetry
 from cerberus_api.sequences import TIMEPOINT_RE, validate_patient
 
+# Identidad de un archivo: (ruta resuelta, tamaño, mtime_ns, inodo)
+_StatKey = tuple[str, int, int, int]
+
+
+def _stat_key(path: Path) -> _StatKey:
+    st = path.stat()
+    return (str(path.resolve()), st.st_size, st.st_mtime_ns, st.st_ino)
+
 
 def gtv_volumetry(gtv_path: Path, brain_path: Path) -> Volumetry:
+    """Volumetría del GTV a resolución nativa, con caché en memoria por identidad de archivo.
+
+    La clave incluye tamaño, mtime e inodo: si el archivo se reescribe (subida o confirmación) la clave cambia
+    y se recalcula. Se devuelve una copia para que nadie mute la entrada del caché.
+    El cálculo vive en `_cached_volumetry`.
+    """
+    result = _cached_volumetry(_stat_key(gtv_path), _stat_key(brain_path))
+    return result.model_copy()
+
+
+@functools.lru_cache(maxsize=256)
+def _cached_volumetry(gtv_key: _StatKey, brain_key: _StatKey) -> Volumetry:
     """Volumetría del GTV a resolución nativa.
 
     Portado del cuerpo del loop de `cerberus_eda.py:209-235`, con las mismas fórmulas y redondeos
@@ -23,13 +44,15 @@ def gtv_volumetry(gtv_path: Path, brain_path: Path) -> Volumetry:
     (error de ABC/2) y no habría índices para las extensiones.
     Las extensiones y el etiquetado se calculan sobre la caja envolvente del GTV (ampliada 1 vóxel por lado):
     todo el GTV cae dentro y la conectividad no cruza fuera, así que el resultado es idéntico al del volumen completo.
+    Las excepciones (GTV vacío) no se cachean: `lru_cache` solo guarda retornos.
     """
+    gtv_path, brain_path = Path(gtv_key[0]), Path(brain_key[0])
     img = load_nifti(gtv_path)
     sx, sy, sz = (float(z) for z in img.header.get_zooms()[:3])
     gtv = np.asanyarray(img.dataobj) > 0
     brain = np.asanyarray(load_nifti(brain_path).dataobj) > 0
     if not gtv.any():
-        raise ValueError(f"GTV vacío: {Path(gtv_path).name}")
+        raise ValueError(f"GTV vacío: {gtv_path.name}")
     vox = sx * sy * sz  # mm³ por vóxel
     n_gtv = gtv.sum()
     # Índices ocupados por eje (LR, AP, SI), sin materializar todas las coordenadas del GTV
