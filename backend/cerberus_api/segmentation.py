@@ -126,16 +126,16 @@ def segresnet_predictor(net: "torch.nn.Module", device: str) -> Predictor:
     return predict
 
 
-def _monai_predictor(models_dir: Path) -> tuple[Predictor, str]:
-    """Crea el predictor SegResNet real (descarga el bundle si falta). Devuelve (predictor, device)."""
-    import torch
-    from monai.bundle.scripts import download
-    from monai.networks.nets.segresnet import SegResNet
+# Caché del predictor: (ruta resuelta, st_mtime_ns, st_size) de los pesos → (predictor, device).
+# El worker procesa un job a la vez (`max_jobs = 1`) y el predictor no guarda estado entre llamadas
+# (`net.eval()` + `torch.no_grad`), así que reutilizarlo es seguro. Solo se conserva una entrada (un modelo).
+_PREDICTORS: dict[tuple[str, int, int], tuple[Predictor, str]] = {}
 
-    weights = models_dir / BUNDLE_NAME / "models" / "model.pt"
-    if not weights.exists():
-        models_dir.mkdir(parents=True, exist_ok=True)
-        download(name=BUNDLE_NAME, bundle_dir=str(models_dir))
+
+def _build_predictor(weights: Path) -> tuple[Predictor, str]:
+    """Construye el predictor SegResNet desde `weights` y elige el dispositivo. Devuelve (predictor, device)."""
+    import torch
+    from monai.networks.nets.segresnet import SegResNet
 
     device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
     net = SegResNet(
@@ -143,6 +143,27 @@ def _monai_predictor(models_dir: Path) -> tuple[Predictor, str]:
     )
     net.load_state_dict(torch.load(weights, map_location="cpu"))
     return segresnet_predictor(net, device), device
+
+
+def _monai_predictor(models_dir: Path) -> tuple[Predictor, str]:
+    """Devuelve el predictor SegResNet real (descarga el bundle si falta) y su device.
+
+    Se reutiliza entre llamadas mientras los pesos no cambien (ruta, mtime y tamaño); si cambian, se reconstruye.
+    """
+    weights = models_dir / BUNDLE_NAME / "models" / "model.pt"
+    if not weights.exists():
+        from monai.bundle.scripts import download
+
+        models_dir.mkdir(parents=True, exist_ok=True)
+        download(name=BUNDLE_NAME, bundle_dir=str(models_dir))
+
+    st = weights.stat()
+    key = (str(weights.resolve()), st.st_mtime_ns, st.st_size)
+    cached = _PREDICTORS.get(key)
+    if cached is None:
+        _PREDICTORS.clear()
+        cached = _PREDICTORS[key] = _build_predictor(weights)
+    return cached
 
 
 def _to_grid(img: nib.Nifti1Image, ref: nib.Nifti1Image, order: int) -> np.ndarray:
