@@ -7,13 +7,14 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 
 | Ticket | Estado | Rama | Commit | Fecha | Responsable / herramienta | Notas |
 |---|---|---|---|---|---|---|
+| VIZ1 · bordes suaves de máscaras (§22) | ✅ | feat/viz-smooth-masks | d1edd20 | 2026-11-20 | MasamuneL + Claude Code (revisión/merge) | PR #22; 1210 tests; e2e 33/33 + superficie + 3D; CP-063 |
 | PERF1 · volumetría recortada (§21) | ✅ | feat/PERF1-volumetry-crop | 2e50217 | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #26; 1191 tests; ~1.7 s → 76 ms; CP-059 |
 | PERF2 · caché de volumetría (§21) | ✅ | feat/PERF2-volumetry-cache | 15e1e4d | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #28; 1195 tests; caliente < 5 ms; CP-061 |
 | PERF3 · caché del predictor MONAI (§21) | ✅ | feat/PERF3-predictor-cache | 0f882b7 | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #25; 1181 tests; ~0.06 s/job; CP-060 |
-| PERF4 · encolar sin leer headers (§21) | ⬜ | | | | | espera PR #22 |
+| PERF4 · encolar sin leer headers (§21) | ⬜ | | | | | desbloqueado (PR #22 integrado) |
 | PERF5 · visor diferido (§21) | ✅ | feat/PERF5-lazy-viewer | d05c119 | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #27; e2e 33/33; entrada 1183→279 kB; CP-062 |
-| PERF6 · caché de buffers del visor (§21) | ⬜ | | | | | espera PR #22 |
-| PERF7 · centroide GTV (§21) | ⬜ | | | | | espera PR #22 y PERF6 |
+| PERF6 · caché de buffers del visor (§21) | ⬜ | | | | | desbloqueado (PR #22 integrado) |
+| PERF7 · centroide GTV (§21) | ⬜ | | | | | tras PERF6 |
 | FT5 · smoke y manual | ✅ | feat/FT5-smoke-manual | c891208 | 2026-11-19 | Claude Code (orquestador + subagentes) | PR #24; 1180 tests; smoke 13/13 sintético; e2e 33/33; CP-058 |
 | FT4 · evaluación y exportación | ✅ | feat/FT4-evaluate-export | 1f85245 | 2026-11-19 | Claude Code (orquestador + subagentes) | PR #23; 1173 tests; métricas por paciente, baseline TC, export recargable; CP-057 |
 | FT3 · transferencia y trainer | ✅ | feat/FT3-transfer-trainer | 548cd16 | 2026-11-19 | Claude Code (orquestador + subagentes) | PR #21; 1147 tests; carga estricta, head 1 logit, reanudación determinista; CP-056 |
@@ -1086,3 +1087,18 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
   hashes nuevos), React desmonta el Workspace. Candidato a ticket aparte.
 - **Estado PERF:** PERF1/2/3/5 ✅. PERF4, PERF6 y PERF7 esperan el merge del PR #22 (VIZ1 toca `Viewer.tsx` y
   `routers/studies.py`). Siguiente: tras el merge de #22, oleada 3 (PERF4 + PERF6) y luego PERF7 según `PLAN_MVP.md` §21.
+
+### CP-063 · 2026-11-20 · VIZ1: bordes suaves de GTV, MONAI y áreas (solo visualización)
+
+- **Integración:** [PR #22](https://github.com/MasamuneL/Cerberus/pull/22), merge `d1edd20`.
+- `cerberus_api/display.py` + `?smooth=1` en `/files/{gtv|monai_seg|brodmann}.nii.gz`: copia suavizada cacheada en
+  `storage/results/<p>/<t>/display/`. Chip «Bordes suaves» (activo por defecto); GTV en gris claro; malla 3D con σ 1 mm.
+  Volumetría, RANO, Dice y reportes siguen usando las máscaras originales.
+- **Integración con main:** la rama era anterior a FT y PERF. Se fusionó main en la rama (`b9c76f9`). Único
+  conflicto: `PLAN_MVP.md`; VIZ1 pasa a **§22** (§21 = PERF) con sus referencias de §6 y §7 actualizadas.
+- **Corrección en la revisión** (`d313431`): la muestra «Superficie GTV» del panel 3D seguía en rojo; ahora usa el gris de la malla.
+- **Checks del árbol fusionado:** Ruff/formato/Pyright, 1210 tests rápidos, `npm run build`, `verify.mjs` 33/33,
+  `verify-mask-surface.mjs` y `verify-viewer-3d.mjs` en verde. Capturas revisadas (multiplanar con todas las capas, 3D).
+- **Notas:** con el chip activo, las lecturas del cursor sobre GTV y áreas usan la copia suavizada y pueden diferir en el
+  borde (documentado en el PR). La rama `feat/viz-smooth-masks` sigue viva (worktree local `../Cerberus-viz`).
+- Siguiente: PERF4 + PERF6 (oleada 3); luego PERF7 y CFG1 (puertos configurables por env, pedido por el usuario).
