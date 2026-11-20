@@ -7,13 +7,14 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 
 | Ticket | Estado | Rama | Commit | Fecha | Responsable / herramienta | Notas |
 |---|---|---|---|---|---|---|
+| CFG1 · puertos configurables por env (§23) | 🟡 | feat/CFG1-env-ports | | 2026-11-20 | Claude Code (orquestador Opus + hc) | oleada 3 |
 | VIZ1 · bordes suaves de máscaras (§22) | ✅ | feat/viz-smooth-masks | d1edd20 | 2026-11-20 | MasamuneL + Claude Code (revisión/merge) | PR #22; 1210 tests; e2e 33/33 + superficie + 3D; CP-063 |
 | PERF1 · volumetría recortada (§21) | ✅ | feat/PERF1-volumetry-crop | 2e50217 | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #26; 1191 tests; ~1.7 s → 76 ms; CP-059 |
 | PERF2 · caché de volumetría (§21) | ✅ | feat/PERF2-volumetry-cache | 15e1e4d | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #28; 1195 tests; caliente < 5 ms; CP-061 |
 | PERF3 · caché del predictor MONAI (§21) | ✅ | feat/PERF3-predictor-cache | 0f882b7 | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #25; 1181 tests; ~0.06 s/job; CP-060 |
-| PERF4 · encolar sin leer headers (§21) | ⬜ | | | | | desbloqueado (PR #22 integrado) |
+| PERF4 · encolar sin leer headers (§21) | 🟡 | feat/PERF4-study-lookup | | 2026-11-20 | Claude Code (orquestador Opus + hc) | oleada 3 |
 | PERF5 · visor diferido (§21) | ✅ | feat/PERF5-lazy-viewer | d05c119 | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #27; e2e 33/33; entrada 1183→279 kB; CP-062 |
-| PERF6 · caché de buffers del visor (§21) | ⬜ | | | | | desbloqueado (PR #22 integrado) |
+| PERF6 · caché de buffers del visor (§21) | 🟡 | feat/PERF6-viewer-buffer-cache | | 2026-11-20 | Claude Code (orquestador Opus + hc) | oleada 3 |
 | PERF7 · centroide GTV (§21) | ⬜ | | | | | tras PERF6 |
 | FT5 · smoke y manual | ✅ | feat/FT5-smoke-manual | c891208 | 2026-11-19 | Claude Code (orquestador + subagentes) | PR #24; 1180 tests; smoke 13/13 sintético; e2e 33/33; CP-058 |
 | FT4 · evaluación y exportación | ✅ | feat/FT4-evaluate-export | 1f85245 | 2026-11-19 | Claude Code (orquestador + subagentes) | PR #23; 1173 tests; métricas por paciente, baseline TC, export recargable; CP-057 |

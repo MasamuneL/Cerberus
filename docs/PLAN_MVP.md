@@ -1083,3 +1083,19 @@ RANO, Dice y reportes siguen usando las máscaras originales.
 - Aceptación: `backend/tests/test_display.py` (esquinas redondeadas, foco de un vóxel, remuestreo 1 mm → 0.5 mm,
   etiquetas contiguas sin huecos, etiqueta diminuta conservada, caché/regeneración, API 200/400/404) y
   `tools/e2e/verify-mask-surface.mjs` (esfera: volumen ±15 %, radio más uniforme, malla cerrada, foco aislado).
+
+## 23. CFG1 · Puertos configurables por entorno (desarrollo local)
+
+Solicitud del 2026-11-20: poder elegir puertos para evitar conflictos con puertos ocupados. Solo por variables de
+entorno (los ajustes del backend no leen archivos `.env`, así los tests no dependen del entorno local). Con las
+variables sin definir, todo queda exactamente como hoy (8000 / 5173 / 6379).
+
+| Variable | Default | Uso |
+|---|---|---|
+| `CERBERUS_API_HOST` | `127.0.0.1` | host del lanzador `python -m cerberus_api.serve` |
+| `CERBERUS_API_PORT` | `8000` | puerto de la API (lanzador) y destino del proxy `/api` de Vite |
+| `CERBERUS_UI_PORT` | `5173` | puerto de Vite; deriva `CERBERUS_CORS_ORIGINS` y `CERBERUS_APP_ORIGIN` si no se fijan |
+| `CERBERUS_REDIS_URL` | `redis://localhost:6379` | ya existía; para otro puerto: `redis-server --port N` |
+
+Docker sigue con `CERBERUS_HTTP_PORT` y `CERBERUS_KEYCLOAK_HTTP_PORT` (README). Los scripts de `tools/e2e/` usan
+`CERBERUS_UI` o, si falta, `http://localhost:${CERBERUS_UI_PORT:-5173}`. El comando `uvicorn … --port 8000` sigue funcionando.
