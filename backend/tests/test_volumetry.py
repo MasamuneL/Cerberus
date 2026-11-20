@@ -1,5 +1,7 @@
 """Tests de volumetría, RANO volumétrico y serie longitudinal (ticket B3)."""
 
+import os
+from collections.abc import Iterator
 from pathlib import Path
 
 import numpy as np
@@ -8,12 +10,19 @@ from scipy import ndimage as ndi
 
 from cerberus_api.nifti import load_nifti
 from cerberus_api.schemas import Volumetry
-from cerberus_api.volumetry import gtv_volumetry, longitudinal, rano_category
+from cerberus_api.volumetry import _cached_volumetry, gtv_volumetry, longitudinal, rano_category
 from conftest import BRAIN_SLICE, GTV_SLICE, MakeNifti, MakeStudy
 
 SHAPE = (40, 40, 20)
 ISO = (1.0, 1.0, 1.0)
 BRAIN_VOXELS = 36 * 36 * 18  # caja BRAIN_SLICE
+
+
+@pytest.fixture(autouse=True)
+def _clear_volumetry_cache() -> Iterator[None]:
+    _cached_volumetry.cache_clear()
+    yield
+    _cached_volumetry.cache_clear()
 
 
 def _mask(*slices: tuple[slice, slice, slice]) -> np.ndarray:
@@ -71,6 +80,38 @@ def test_small_extent_not_measurable(tmp_path: Path, make_nifti: MakeNifti) -> N
 def test_empty_gtv_raises(tmp_path: Path, make_nifti: MakeNifti) -> None:
     with pytest.raises(ValueError, match="GTV vacío"):
         gtv_volumetry(*_write_pair(make_nifti, tmp_path, _mask()))
+
+
+def test_cache_hit_on_second_call(tmp_path: Path, make_nifti: MakeNifti) -> None:
+    gtv_path, brain_path = _write_pair(make_nifti, tmp_path, _mask(GTV_SLICE))
+    first = gtv_volumetry(gtv_path, brain_path)
+    second = gtv_volumetry(gtv_path, brain_path)
+    info = _cached_volumetry.cache_info()
+    assert (info.hits, info.misses) == (1, 1)
+    assert first == second
+    assert first is not second  # copias: mutar una no contamina el caché
+    first.gtv_cm3 = 99.0
+    assert gtv_volumetry(gtv_path, brain_path).gtv_cm3 == 1.0
+
+
+def test_cache_invalidated_on_rewrite(tmp_path: Path, make_nifti: MakeNifti) -> None:
+    gtv_path, brain_path = _write_pair(make_nifti, tmp_path, _mask(GTV_SLICE))
+    assert gtv_volumetry(gtv_path, brain_path).gtv_cm3 == 1.0
+    mtime_ns = gtv_path.stat().st_mtime_ns
+    make_nifti(gtv_path, _mask((slice(10, 25), slice(10, 20), slice(5, 15))), ISO)  # 1.5 cm³
+    new_ns = mtime_ns + 1_000_000_000  # mtime distinto aunque el sistema de archivos sea grueso
+    os.utime(gtv_path, ns=(new_ns, new_ns))
+    assert gtv_volumetry(gtv_path, brain_path).gtv_cm3 == 1.5
+    assert _cached_volumetry.cache_info().misses == 2
+
+
+def test_empty_gtv_not_cached(tmp_path: Path, make_nifti: MakeNifti) -> None:
+    gtv_path, brain_path = _write_pair(make_nifti, tmp_path, _mask())
+    for _ in range(2):
+        with pytest.raises(ValueError, match="GTV vacío"):
+            gtv_volumetry(gtv_path, brain_path)
+    info = _cached_volumetry.cache_info()
+    assert (info.hits, info.currsize) == (0, 0)
 
 
 def _reference_volumetry(gtv_path: Path, brain_path: Path) -> Volumetry:
