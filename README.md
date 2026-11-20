@@ -279,8 +279,31 @@ cd frontend && npm install && npm run dev                  # terminal 4: UI
 
 - UI de desarrollo (con Vite ejecutándose): <http://localhost:5173>. Si usas Docker: <http://localhost:8080>.
 - Documentación interactiva de la API: <http://localhost:8000/docs>
-- Si el puerto 5173 está ocupado: `cd frontend && npx vite --port 5180 --strictPort`
-  (agrega ese origen a `CERBERUS_CORS_ORIGINS` si llamas a la API sin el proxy de Vite).
+- Alternativa para la API, con host y puerto tomados del entorno: `uv run python -m cerberus_api.serve --reload`.
+
+#### Puertos configurables
+
+Si algún puerto está ocupado, elígelos con variables de entorno (sin definir, todo queda como arriba):
+
+| Variable | Default | Uso |
+|---|---|---|
+| `CERBERUS_API_HOST` | `127.0.0.1` | host del lanzador `python -m cerberus_api.serve` |
+| `CERBERUS_API_PORT` | `8000` | puerto de la API y destino del proxy `/api` de Vite |
+| `CERBERUS_UI_PORT` | `5173` | puerto de Vite; deriva `CERBERUS_CORS_ORIGINS` y `CERBERUS_APP_ORIGIN` si no se fijan |
+| `CERBERUS_REDIS_URL` | `redis://localhost:6379` | para otro puerto de Redis: `redis-server --port N` |
+
+Vite y la API deben ver las mismas variables: expórtalas en la sesión (`export CERBERUS_API_PORT=8001`) o
+anteponlas a cada comando. El worker solo necesita `CERBERUS_REDIS_URL`.
+
+```bash
+export CERBERUS_API_PORT=8001 CERBERUS_UI_PORT=5174
+redis-server --port 6380                                   # terminal 1
+CERBERUS_REDIS_URL=redis://localhost:6380 uv run python -m cerberus_api.worker           # terminal 2
+CERBERUS_REDIS_URL=redis://localhost:6380 uv run python -m cerberus_api.serve --reload   # terminal 3
+cd frontend && npm run dev                                 # terminal 4: UI en :5174, proxy a :8001
+```
+
+Los scripts de `tools/e2e/` usan `CERBERUS_UI` o, si falta, `http://localhost:${CERBERUS_UI_PORT:-5173}`.
 
 ### Arquitectura
 
@@ -448,7 +471,7 @@ Prefijo `CERBERUS_`; los valores por defecto son relativos a la raíz del repo.
 | `CERBERUS_REDIS_URL` | `redis://localhost:6379` |
 | `CERBERUS_MAX_UPLOAD_MB` | `2048` |
 | `CERBERUS_MAX_ZIP_UNCOMPRESSED_MB` | `4096` |
-| `CERBERUS_CORS_ORIGINS` | `["http://localhost:5173"]` |
+| `CERBERUS_CORS_ORIGINS` | `["http://localhost:5173"]` (deriva de `CERBERUS_UI_PORT`) |
 | `CERBERUS_CPU_THREADS` | `auto` (o entero positivo; se lee al arrancar el worker) |
 
 El autoajuste también funciona en desarrollo. Si cambias `CERBERUS_CPU_THREADS`, reinicia el worker.

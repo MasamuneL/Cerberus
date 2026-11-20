@@ -12,7 +12,7 @@ try {
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 });
   const page = await context.newPage();
   await page.route("**/api/**", (route) => ["GET", "HEAD", "OPTIONS"].includes(route.request().method()) ? route.continue() : route.abort());
-  await page.goto(process.env.CERBERUS_UI ?? "http://localhost:5173");
+  await page.goto(process.env.CERBERUS_UI ?? `http://localhost:${process.env.CERBERUS_UI_PORT ?? 5173}`);
   await page.locator(".study-group").filter({ has: page.getByRole("heading", { name: "Paciente 001", exact: true }) }).locator("button.study-item").first().click();
   await page.waitForFunction(() => window.__nv?.volumes?.some((v) => v.name === "brodmann.nii.gz"), null, { timeout: 180000 });
   await page.locator(".canvas-overlay").waitFor({ state: "detached", timeout: 180000 });

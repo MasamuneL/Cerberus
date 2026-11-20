@@ -73,6 +73,10 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379"
     max_upload_mb: int = 2048
     max_zip_uncompressed_mb: int = 4096
+    api_host: str = "127.0.0.1"
+    api_port: int = Field(default=8000, ge=1, le=65535)
+    ui_port: int = Field(default=5173, ge=1, le=65535)
+    # Si no se fijan, se derivan de `ui_port` (ver `_derive_origins`).
     cors_origins: list[str] = ["http://localhost:5173"]
     auth_mode: AuthMode = "off"
     app_origin: str = "http://localhost:5173"
@@ -83,6 +87,16 @@ class Settings(BaseSettings):
     auth_cookie_secure: bool = True
     auth_idle_timeout_seconds: int = Field(default=1800, gt=0)
     auth_absolute_timeout_seconds: int = Field(default=3600, gt=0)
+
+    @model_validator(mode="after")
+    def _derive_origins(self) -> Self:
+        """`CERBERUS_UI_PORT` fija el origen de la UI salvo que CORS o el origen se definan a mano."""
+        ui_origin = f"http://localhost:{self.ui_port}"
+        if "cors_origins" not in self.model_fields_set:
+            self.cors_origins = [ui_origin]
+        if "app_origin" not in self.model_fields_set:
+            self.app_origin = ui_origin
+        return self
 
     @model_validator(mode="after")
     def _validate_auth(self) -> Self:

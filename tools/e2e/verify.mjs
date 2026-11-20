@@ -4,7 +4,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { chromium } from "playwright-core";
 import AxeBuilder from "@axe-core/playwright";
 
-const BASE = process.env.CERBERUS_UI ?? "http://localhost:5173";
+const BASE = process.env.CERBERUS_UI ?? `http://localhost:${process.env.CERBERUS_UI_PORT ?? 5173}`;
 const OUT = new URL("./shots/", import.meta.url).pathname;
 const TIMEOUT = Number(process.env.CERBERUS_TIMEOUT ?? 180000);
 const report = { base: BASE, startedAt: new Date().toISOString(), checks: [], screenshots: [], accessibility: [], expected404: [], networkErrors: [], consoleErrors: [], blockedMutations: [], limitations: [

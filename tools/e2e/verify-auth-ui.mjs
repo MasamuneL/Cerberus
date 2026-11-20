@@ -4,7 +4,7 @@ import {chromium} from 'playwright-core';
 import AxeBuilder from '@axe-core/playwright';
 import {mkdirSync,writeFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
-const BASE=process.env.CERBERUS_UI??'http://localhost:5173', OUT=fileURLToPath(new URL('./shots/auth-ui/',import.meta.url));
+const BASE=process.env.CERBERUS_UI??`http://localhost:${process.env.CERBERUS_UI_PORT??5173}`, OUT=fileURLToPath(new URL('./shots/auth-ui/',import.meta.url));
 mkdirSync(OUT,{recursive:true});
 const browser=await chromium.launch({channel:'chrome',headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--ignore-gpu-blocklist']});
 const checks=[];

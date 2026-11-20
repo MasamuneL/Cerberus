@@ -4,7 +4,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright-core";
 
-const BASE = (process.env.CERBERUS_UI ?? "http://localhost:8080").replace(/\/$/, "");
+const BASE = (process.env.CERBERUS_UI ?? `http://localhost:${process.env.CERBERUS_HTTP_PORT ?? 8080}`).replace(/\/$/, "");
 const OUT = fileURLToPath(new URL("./shots/docker", import.meta.url));
 const TIMEOUT = Number(process.env.CERBERUS_TIMEOUT ?? 180000);
 const authContext = process.env.CERBERUS_QA_STORAGE_STATE ? { storageState: process.env.CERBERUS_QA_STORAGE_STATE } : {};

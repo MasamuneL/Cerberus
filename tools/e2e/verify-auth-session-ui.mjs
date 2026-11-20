@@ -1,7 +1,7 @@
 // QA de sesión y continuidad con HTTP controlado. No prueba el proveedor ni permisos backend.
 import assert from 'node:assert/strict';
 import {chromium} from 'playwright-core';
-const BASE=process.env.CERBERUS_UI??'http://localhost:5173';
+const BASE=process.env.CERBERUS_UI??`http://localhost:${process.env.CERBERUS_UI_PORT??5173}`;
 const browser=await chromium.launch({channel:'chrome',headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
 let passed=0;
 async function scenario(name,body){const context=await browser.newContext();try{await body(context);passed++;console.log('✅ '+name);}catch(error){process.exitCode=1;console.error('❌ '+name+': '+error.message);}finally{await context.close();}}
