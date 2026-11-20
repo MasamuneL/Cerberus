@@ -4,7 +4,7 @@
 > checkpoint. El historial completo está en [`PROGRESS.md`](PROGRESS.md) y el alcance y los contratos en
 > [`PLAN_MVP.md`](PLAN_MVP.md). Las reglas de trabajo están en [`../AGENTS.md`](../AGENTS.md).
 
-**Última actualización:** 2026-11-20 · último checkpoint: CP-061 · rama base: `main`
+**Última actualización:** 2026-11-20 · último checkpoint: CP-062 · rama base: `main`
 
 ## 1. Arranque rápido
 
@@ -31,6 +31,14 @@ Abre las PNG y revísalas: **no te fíes solo de los ✅**. Leer píxeles del ca
 (`preserveDrawingBuffer=false`), así que esos chequeos de píxeles no son confiables.
 
 ## 2. Estado actual
+
+**CP-062 · PERF5 · visor diferido · 2026-11-20:** integrado el [PR #27](https://github.com/MasamuneL/Cerberus/pull/27), merge `d05c119`.
+**Plan PERF en pausa:** PERF1/2/3/5 integrados (CP-059–062). **PERF4/PERF6/PERF7 esperan el merge del PR #22**
+(VIZ1). Al retomar: `gh pr view 22 --json state` = MERGED → oleada 3 (PERF4 + PERF6 en paralelo, worktrees
+`../Cerberus-wt/PERFN` desde `origin/main`), luego PERF7. Detalle de tickets en `PLAN_MVP.md` §21. Lecciones hc:
+`uv` solo vía shim pyenv (lanzar hijos con `env PATH=~/.pyenv/versions/3.11.9/bin:$PATH`), `--add-dir=` al
+final del comando (es variádico), hijos en `--permission-mode auto`. `gh pr merge --delete-branch` ya borra
+el worktree y la rama locales.
 
 **CP-061 · PERF2 · caché de volumetría · 2026-11-20:** integrado el [PR #28](https://github.com/MasamuneL/Cerberus/pull/28), merge `15e1e4d`. Volumetría y longitudinal en caliente < 5 ms.
 

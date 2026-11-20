@@ -11,7 +11,7 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 | PERF2 · caché de volumetría (§21) | ✅ | feat/PERF2-volumetry-cache | 15e1e4d | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #28; 1195 tests; caliente < 5 ms; CP-061 |
 | PERF3 · caché del predictor MONAI (§21) | ✅ | feat/PERF3-predictor-cache | 0f882b7 | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #25; 1181 tests; ~0.06 s/job; CP-060 |
 | PERF4 · encolar sin leer headers (§21) | ⬜ | | | | | espera PR #22 |
-| PERF5 · visor diferido (§21) | 🟡 | feat/PERF5-lazy-viewer | | 2026-11-20 | Claude Code (orquestador Opus + hc) | oleada 1 |
+| PERF5 · visor diferido (§21) | ✅ | feat/PERF5-lazy-viewer | d05c119 | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #27; e2e 33/33; entrada 1183→279 kB; CP-062 |
 | PERF6 · caché de buffers del visor (§21) | ⬜ | | | | | espera PR #22 |
 | PERF7 · centroide GTV (§21) | ⬜ | | | | | espera PR #22 y PERF6 |
 | FT5 · smoke y manual | ✅ | feat/FT5-smoke-manual | c891208 | 2026-11-19 | Claude Code (orquestador + subagentes) | PR #24; 1180 tests; smoke 13/13 sintético; e2e 33/33; CP-058 |
@@ -1072,3 +1072,17 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
   función y 1.4–2.9 ms por HTTP. Respuesta fría == caliente en los 5 pacientes.
 - **Checks:** Ruff/formato/Pyright, 1195 tests rápidos. Revisión independiente (Opus) aprobada.
 - Siguiente: PERF5 en revisión; PERF4/6/7 esperan el PR #22.
+
+### CP-062 · 2026-11-20 · PERF5: visor cargado de forma diferida
+
+- **Integración:** [PR #27](https://github.com/MasamuneL/Cerberus/pull/27), merge `d05c119`.
+- `App.tsx`: `Viewer` con `React.lazy` + `<Suspense>`; el fallback reutiliza `.viewer-panel`/`.placeholder`
+  con el texto existente «Cargando volúmenes…». Niivue solo se importa como valor en `Viewer.tsx`.
+- **Benchmark build:** chunk de entrada 1,183 kB (gzip 420) → 279 kB (gzip 86.5); `Viewer-*.js` 904 kB aparte,
+  sin modulepreload. Login y catálogo ya no descargan Niivue.
+- **Checks:** Ruff/formato/Pyright, 1180 tests (rama), `npm run build`, `verify.mjs` 33/33. Capturas revisadas;
+  fallback ejercitado con un retraso de 3 s. Revisión independiente (Opus) aprobada.
+- **Pendiente (fuera de alcance):** no hay ErrorBoundary. Si falla la descarga del chunk (red caída, redeploy con
+  hashes nuevos), React desmonta el Workspace. Candidato a ticket aparte.
+- **Estado PERF:** PERF1/2/3/5 ✅. PERF4, PERF6 y PERF7 esperan el merge del PR #22 (VIZ1 toca `Viewer.tsx` y
+  `routers/studies.py`). Siguiente: tras el merge de #22, oleada 3 (PERF4 + PERF6) y luego PERF7 según `PLAN_MVP.md` §21.
