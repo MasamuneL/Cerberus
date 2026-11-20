@@ -1,13 +1,15 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { ApiError, getStudy, listStudies } from "./api/client";
 import type { AreasResult, Study, StudyDetail } from "./api/types";
 import SidePanel, { SIDE_TABS, type SideTab } from "./components/SidePanel";
 import UploadPanel from "./components/UploadPanel";
 import ContinuityPanel from "./components/ContinuityPanel";
 import StudyList, { type StudyKey } from "./components/StudyList";
-import Viewer from "./components/Viewer";
 import LoginPanel from "./components/LoginPanel";
 import { useAuth, type AuthControl } from "./hooks/useAuth";
+
+// Niivue pesa ~1 MB: el visor se descarga al abrir el primer estudio, no en el login.
+const Viewer = lazy(() => import("./components/Viewer"));
 
 const errText = (e: unknown) =>
   e instanceof ApiError ? e.detail : e instanceof Error ? e.message : String(e);
@@ -208,14 +210,16 @@ function Workspace({ auth }: { auth: AuthControl }) {
                 Paciente {detail.patient} · {detail.timepoint}
               </h2>
               <div className="study-layout">
-                <Viewer
-                  study={detail}
-                  showSegmentation={detail.has_segmentation}
-                  segmentationVersion={segVersion}
-                  areas={areas}
-                  areasVersion={areasVersion}
-                  focusedLabel={focusedLabel}
-                />
+                <Suspense fallback={<div className="viewer-panel"><p className="placeholder">Cargando volúmenes…</p></div>}>
+                  <Viewer
+                    study={detail}
+                    showSegmentation={detail.has_segmentation}
+                    segmentationVersion={segVersion}
+                    areas={areas}
+                    areasVersion={areasVersion}
+                    focusedLabel={focusedLabel}
+                  />
+                </Suspense>
                 <SidePanel
                   canAnalyze={auth.canAnalyze}
                   study={detail}
