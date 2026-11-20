@@ -37,6 +37,26 @@ const reflected=maskSurface(data,dims,[[-0.5,0,0,12],[0,0.5,0,-8],[0,0,1,4],[0,0
 assert(Math.abs(reflected.volumeMM3-mesh.volumeMM3)<1e-3);
 console.log('✅ focos aislados/mixtos, malla cerrada, affine reflejado y máscara vacía');
 
+// Bordes suaves (sigmaMM > 0): esfera voxelizada → malla cerrada, volumen parecido y sin escalones.
+const sdims=[60,60,30],saff=[[0.5,0,0,0],[0,0.5,0,0],[0,0,1,0],[0,0,0,1]];
+const sphere=new Uint8Array(60*60*30);
+for(let z=0;z<30;z++) for(let y=0;y<60;y++) for(let x=0;x<60;x++){
+  if(((x-30)*0.5)**2+((y-30)*0.5)**2+((z-15))**2<=8**2) sphere[z*3600+y*60+x]=1;
+}
+const voxMesh=maskSurface(sphere,sdims,saff,[1,1,1]);
+const smoothMesh=maskSurface(sphere,sdims,saff,[1,1,1],10,1);
+const trueVol=4/3*Math.PI*8**3;
+assert(Math.abs(smoothMesh.volumeMM3-trueVol)/trueVol<0.15,'El suavizado conserva el volumen aproximado');
+// Desviación del radio respecto a 8 mm: la malla suave se acerca más a la esfera real.
+const rv=(m)=>{const n=m.pts.length/3;const r=[];for(let i=0;i<n;i++){r.push(Math.hypot(m.pts[i*3]-15,m.pts[i*3+1]-15,m.pts[i*3+2]-15));}const mean=r.reduce((a,b)=>a+b,0)/n;return Math.sqrt(r.reduce((a,b)=>a+(b-mean)**2,0)/n);};
+assert(rv(smoothMesh)<rv(voxMesh),`Radio más uniforme con suavizado (${rv(smoothMesh).toFixed(3)} vs ${rv(voxMesh).toFixed(3)})`);
+const sedges=new Map();
+for(let i=0;i<smoothMesh.tris.length;i+=3){const t=smoothMesh.tris.slice(i,i+3);for(let j=0;j<3;j++){const a=t[j],b=t[(j+1)%3],key=[Math.min(a,b),Math.max(a,b)].join(':');sedges.set(key,(sedges.get(key)??0)+1);}}
+assert([...sedges.values()].every(n=>n===2),'Malla suave cerrada');
+const lone=new Uint8Array(8000);lone[at(2,2,2)]=1;
+assert(maskSurface(lone,dims,affine,[1,1,1],10,1)?.tris.length>0,'Un foco de un vóxel sobrevive al difuminado');
+console.log(`✅ bordes suaves: volumen ±15 %, radio σ ${rv(voxMesh).toFixed(3)} → ${rv(smoothMesh).toFixed(3)} mm, foco aislado conservado`);
+
 const gridCode=(await transformWithOxc(readFileSync(new URL('../../frontend/src/components/viewer/volumeGrid.ts',import.meta.url),'utf8'),'volumeGrid.ts')).code;
 const {sameVolumeGrid}=await import('data:text/javascript;base64,'+Buffer.from(gridCode).toString('base64'));
 const image={hdr:{dims:[3,...dims],affine}};
