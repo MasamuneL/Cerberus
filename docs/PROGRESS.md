@@ -7,8 +7,8 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 
 | Ticket | Estado | Rama | Commit | Fecha | Responsable / herramienta | Notas |
 |---|---|---|---|---|---|---|
-| PERF1 · volumetría recortada (§21) | 🟡 | feat/PERF1-volumetry-crop | | 2026-11-20 | Claude Code (orquestador Opus + hc) | oleada 1 |
-| PERF2 · caché de volumetría (§21) | ⬜ | | | | | tras PERF1 |
+| PERF1 · volumetría recortada (§21) | ✅ | feat/PERF1-volumetry-crop | 2e50217 | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #26; 1191 tests; ~1.7 s → 76 ms; CP-059 |
+| PERF2 · caché de volumetría (§21) | 🟡 | feat/PERF2-volumetry-cache | | 2026-11-20 | Claude Code (orquestador Opus + hc) | oleada 2 |
 | PERF3 · caché del predictor MONAI (§21) | 🟡 | feat/PERF3-predictor-cache | | 2026-11-20 | Claude Code (orquestador Opus + hc) | oleada 1 |
 | PERF4 · encolar sin leer headers (§21) | ⬜ | | | | | espera PR #22 |
 | PERF5 · visor diferido (§21) | 🟡 | feat/PERF5-lazy-viewer | | 2026-11-20 | Claude Code (orquestador Opus + hc) | oleada 1 |
@@ -1038,3 +1038,14 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
 - **Pendiente (no ejecutado):** auditoría del dataset completo, piloto GPU, entrenamiento real, validación
   científica, integración en API/UI y mecanismo de exclusión manual de estudios que fallen en `prepare`.
   Ramas `wip/FT*` obsoletas.
+
+### CP-059 · 2026-11-20 · PERF1: volumetría recortada a la caja del GTV
+
+- **Integración:** [PR #26](https://github.com/MasamuneL/Cerberus/pull/26), merge `2e50217`.
+- `gtv_volumetry`: extensiones con `gtv.any(axis=…)` en lugar de `np.argwhere`; `ndi.label` sobre la caja
+  del GTV + 1 vóxel; `gtv.sum()` una sola vez. Fórmulas y redondeos intactos.
+- Test `test_matches_reference_implementation` (copia de la versión previa) en bordes, un vóxel,
+  anisotrópico y máscara aleatoria; revisor comparó los 8 pares reales de `Data/`: 0 diferencias.
+- **Benchmark** `Data/001/t0`: ~1700–1800 ms → 76–80 ms por estudio (`/volumetry`, y cada tiempo de `/longitudinal`).
+- **Checks:** Ruff/formato/Pyright, 1191 tests rápidos. Revisión independiente (Opus) aprobada sin cambios.
+- Siguiente: PERF2 (caché de volumetría); PERF3 y PERF5 en revisión/curso.

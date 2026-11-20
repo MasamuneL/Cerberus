@@ -4,7 +4,7 @@
 > checkpoint. El historial completo está en [`PROGRESS.md`](PROGRESS.md) y el alcance y los contratos en
 > [`PLAN_MVP.md`](PLAN_MVP.md). Las reglas de trabajo están en [`../AGENTS.md`](../AGENTS.md).
 
-**Última actualización:** 2026-11-19 · último checkpoint: CP-058 · rama base: `main`
+**Última actualización:** 2026-11-20 · último checkpoint: CP-059 · rama base: `main`
 
 ## 1. Arranque rápido
 
@@ -31,6 +31,12 @@ Abre las PNG y revísalas: **no te fíes solo de los ✅**. Leer píxeles del ca
 (`preserveDrawingBuffer=false`), así que esos chequeos de píxeles no son confiables.
 
 ## 2. Estado actual
+
+**CP-059 · PERF1 · volumetría ~20× más rápida · 2026-11-20:** integrado el
+[PR #26](https://github.com/MasamuneL/Cerberus/pull/26), merge `2e50217`. Plan PERF en `PLAN_MVP.md` §21
+(7 tickets, sin cambio funcional). En curso: PERF2 (`feat/PERF2-volumetry-cache`), PERF3 (PR #25, en
+revisión), PERF5 (`feat/PERF5-lazy-viewer`). PERF4/PERF6/PERF7 esperan el merge del PR #22 (VIZ1).
+Orquestación con Herdr (`hc`): worktrees en `../Cerberus-wt/PERFN`, prompts y reportes en el scratchpad de la sesión.
 
 **CP-058 · FT5 · pipeline de fine-tuning construido · 2026-11-19:** integrado el
 [PR #24](https://github.com/MasamuneL/Cerberus/pull/24), merge `c891208`. FT0–FT5 completos (PR #18–#24).
