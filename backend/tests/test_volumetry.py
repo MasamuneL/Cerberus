@@ -4,7 +4,10 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from scipy import ndimage as ndi
 
+from cerberus_api.nifti import load_nifti
+from cerberus_api.schemas import Volumetry
 from cerberus_api.volumetry import gtv_volumetry, longitudinal, rano_category
 from conftest import BRAIN_SLICE, GTV_SLICE, MakeNifti, MakeStudy
 
@@ -68,6 +71,68 @@ def test_small_extent_not_measurable(tmp_path: Path, make_nifti: MakeNifti) -> N
 def test_empty_gtv_raises(tmp_path: Path, make_nifti: MakeNifti) -> None:
     with pytest.raises(ValueError, match="GTV vacío"):
         gtv_volumetry(*_write_pair(make_nifti, tmp_path, _mask()))
+
+
+def _reference_volumetry(gtv_path: Path, brain_path: Path) -> Volumetry:
+    """Implementación previa a PERF1 (`argwhere` y `ndi.label` sobre el volumen completo), como referencia."""
+    img = load_nifti(gtv_path)
+    sx, sy, sz = (float(z) for z in img.header.get_zooms()[:3])
+    gtv = np.asanyarray(img.dataobj) > 0
+    brain = np.asanyarray(load_nifti(brain_path).dataobj) > 0
+    vox = sx * sy * sz
+    idx = np.argwhere(gtv)
+    ext = (idx.max(0) - idx.min(0) + 1) * np.array([sx, sy, sz])
+    v = float(gtv.sum() * vox / 1000)
+    abc2 = float(np.prod(ext) / 2 / 1000)
+    labeled = ndi.label(gtv)
+    n_components = labeled[1] if isinstance(labeled, tuple) else labeled
+    return Volumetry(
+        gtv_cm3=round(v, 2),
+        brain_cm3=round(float(brain.sum() * vox / 1000), 1),
+        fraction_pct=round(float(100 * gtv.sum() / brain.sum()), 2),
+        lr_mm=round(float(ext[0]), 1),
+        ap_mm=round(float(ext[1]), 1),
+        si_mm=round(float(ext[2]), 1),
+        abc2_cm3=round(abc2, 2),
+        abc2_error_pct=round(100 * (abc2 - v) / v, 1),
+        components=int(n_components),
+        rano_measurable=bool((ext >= 10).all()),
+        spacing_ok=(sx, sy, sz) != (1.0, 1.0, 1.0),
+    )
+
+
+def _random_mask() -> np.ndarray:
+    return (np.random.default_rng(0).random(SHAPE) < 0.001).astype(np.uint8)
+
+
+@pytest.mark.parametrize(
+    ("gtv", "zooms"),
+    [
+        pytest.param(
+            _mask((slice(5, 8), slice(5, 8), slice(5, 8)), (slice(20, 23), slice(20, 23), slice(10, 13))),
+            ISO,
+            id="varios-componentes",
+        ),
+        pytest.param(_mask((slice(0, 3), slice(10, 14), slice(5, 9))), ISO, id="borde-x-inicio"),
+        pytest.param(_mask((slice(37, 40), slice(10, 14), slice(5, 9))), ISO, id="borde-x-fin"),
+        pytest.param(_mask((slice(10, 14), slice(0, 3), slice(5, 9))), ISO, id="borde-y-inicio"),
+        pytest.param(_mask((slice(10, 14), slice(37, 40), slice(5, 9))), ISO, id="borde-y-fin"),
+        pytest.param(_mask((slice(10, 14), slice(10, 14), slice(0, 3))), ISO, id="borde-z-inicio"),
+        pytest.param(_mask((slice(10, 14), slice(10, 14), slice(17, 20))), ISO, id="borde-z-fin"),
+        pytest.param(_mask((slice(0, 40), slice(0, 40), slice(0, 20))), ISO, id="arreglo-completo"),
+        pytest.param(_mask((slice(7, 8), slice(9, 10), slice(11, 12))), ISO, id="un-voxel"),
+        pytest.param(
+            _mask(GTV_SLICE, (slice(30, 33), slice(30, 33), slice(15, 18))), (0.5, 0.5, 1.0), id="anisotropico"
+        ),
+        pytest.param(_random_mask(), ISO, id="aleatoria"),
+    ],
+)
+def test_matches_reference_implementation(
+    tmp_path: Path, make_nifti: MakeNifti, gtv: np.ndarray, zooms: tuple[float, float, float]
+) -> None:
+    assert gtv.any()
+    gtv_path, brain_path = _write_pair(make_nifti, tmp_path, gtv, zooms)
+    assert gtv_volumetry(gtv_path, brain_path) == _reference_volumetry(gtv_path, brain_path)
 
 
 @pytest.mark.parametrize(

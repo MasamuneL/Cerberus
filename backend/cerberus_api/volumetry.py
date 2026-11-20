@@ -20,7 +20,9 @@ def gtv_volumetry(gtv_path: Path, brain_path: Path) -> Volumetry:
     Portado del cuerpo del loop de `cerberus_eda.py:209-235`, con las mismas fórmulas y redondeos
     (GTV 2 decimales, cerebro 1, fracción 2, extensiones 1, ABC/2 2, error 1).
     A diferencia del notebook, si el GTV está vacío lanza `ValueError`: allí se dividiría entre cero
-    (error de ABC/2) y `argwhere` no tendría índices para las extensiones.
+    (error de ABC/2) y no habría índices para las extensiones.
+    Las extensiones y el etiquetado se calculan sobre la caja envolvente del GTV (ampliada 1 vóxel por lado):
+    todo el GTV cae dentro y la conectividad no cruza fuera, así que el resultado es idéntico al del volumen completo.
     """
     img = load_nifti(gtv_path)
     sx, sy, sz = (float(z) for z in img.header.get_zooms()[:3])
@@ -29,18 +31,28 @@ def gtv_volumetry(gtv_path: Path, brain_path: Path) -> Volumetry:
     if not gtv.any():
         raise ValueError(f"GTV vacío: {Path(gtv_path).name}")
     vox = sx * sy * sz  # mm³ por vóxel
-    idx = np.argwhere(gtv)
+    n_gtv = gtv.sum()
+    # Índices ocupados por eje (LR, AP, SI), sin materializar todas las coordenadas del GTV
+    axes = (
+        np.flatnonzero(gtv.any(axis=(1, 2))),
+        np.flatnonzero(gtv.any(axis=(0, 2))),
+        np.flatnonzero(gtv.any(axis=(0, 1))),
+    )
+    lo = np.array([a[0] for a in axes])
+    hi = np.array([a[-1] for a in axes])
     # Extensión de la caja envolvente en mm (LR, AP, SI)
-    ext = (idx.max(0) - idx.min(0) + 1) * np.array([sx, sy, sz])
-    v = float(gtv.sum() * vox / 1000)  # cm³
+    ext = (hi - lo + 1) * np.array([sx, sy, sz])
+    v = float(n_gtv * vox / 1000)  # cm³
     abc2 = float(np.prod(ext) / 2 / 1000)  # aproximación elipsoidal ABC/2, cm³
+    # Caja ampliada 1 vóxel por lado y recortada a los límites del arreglo
+    box = tuple(slice(max(int(a) - 1, 0), min(int(b) + 2, n)) for a, b, n in zip(lo, hi, gtv.shape, strict=True))
     # `ndi.label` devuelve (etiquetas, n); pyright infiere también `int` (rama con `output`), de ahí el isinstance
-    labeled = ndi.label(gtv)
+    labeled = ndi.label(gtv[box])
     n_components = labeled[1] if isinstance(labeled, tuple) else labeled
     return Volumetry(
         gtv_cm3=round(v, 2),
         brain_cm3=round(float(brain.sum() * vox / 1000), 1),
-        fraction_pct=round(float(100 * gtv.sum() / brain.sum()), 2),
+        fraction_pct=round(float(100 * n_gtv / brain.sum()), 2),
         lr_mm=round(float(ext[0]), 1),
         ap_mm=round(float(ext[1]), 1),
         si_mm=round(float(ext[2]), 1),
