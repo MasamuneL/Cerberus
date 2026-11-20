@@ -497,6 +497,8 @@ backend correspondiente.
 Fuera de las olas, el pipeline de fine-tuning (FT0 → FT1 → FT2 → FT3 → FT4 → FT5, cadena lineal; §8 «Fine-tuning») depende
 solo de B5/B13 ya integrados y no bloquea ni es bloqueado por los tickets de la app.
 
+Fuera de las olas, los tickets de rendimiento PERF1–PERF7 (§21) siguen su propio orden; no cambian contratos.
+
 ## 10. Verificación end-to-end (criterio de MVP terminado)
 
 1. Pasan todos los checks de §5. `uv run pytest -m slow` pasa en una máquina con Data/001 y los pesos.
@@ -1040,3 +1042,21 @@ Depende de F3/F9 y A4, ya integrados. Solo cambia el frontend y su QA; se conser
 
 Integrado mediante PR #16 (merge `0e93254`), conservando el historial del PR #15. Evidencia y cierre
 en `PROGRESS.md`, checkpoint CP-052.
+
+## 21. PERF · Rendimiento sin cambio funcional
+
+Mejoras medidas el 2026-11-20 sobre `Data/001/t0` (512×512×208). Regla común: **ningún resultado, contrato
+(§6/§7) ni comportamiento visible cambia**; cada PR incluye un benchmark antes/después y tests de equivalencia.
+
+| Ticket | Qué | Archivos | Depende de | Criterio de aceptación |
+|---|---|---|---|---|
+| PERF1 | Volumetría recortada a la caja del GTV (sin `argwhere`; `ndi.label` sobre la caja + 1 vóxel) | `volumetry.py` | — | `Volumetry` idéntico a la implementación anterior (test de referencia); ~1.3 s → < 100 ms |
+| PERF2 | Caché `lru_cache` de la volumetría por (ruta, tamaño, mtime_ns, inode) | `volumetry.py` | PERF1 | Reescribir el archivo invalida; GTV vacío sigue lanzando `ValueError`; `/longitudinal` en caliente < 5 ms |
+| PERF3 | Reutilizar el predictor SegResNet entre jobs del worker (clave: pesos + mtime + tamaño) | `segmentation.py` | — | 2 jobs → 1 construcción; pesos nuevos → reconstruye; `segresnet_predictor` intacto |
+| PERF4 | `catalog.find_study` sin leer headers para encolar jobs | `catalog.py`, `routers/studies.py`, `worker.py` | PR #22 | Igual a `get_study` sin `volumes`; header corrupto falla en el job, no al encolar (desviación declarada) |
+| PERF5 | `Viewer` con `React.lazy`: Niivue fuera del chunk inicial | `App.tsx` | — | Chunk de entrada sin Niivue; e2e en verde |
+| PERF6 | Caché de buffers comprimidos de `Data/` por estudio: alternar overlays no re-descarga la base | `Viewer.tsx` | PR #22 | 0 peticiones a la secuencia base al alternar GTV (`verify-overlay-toggle.mjs`); tope 128 MB |
+| PERF7 | Centroide del GTV con bucles anidados (sin `%` ni `Math.floor` por vóxel) | `Viewer.tsx` | PERF6 | Centroide bit-idéntico; e2e en verde |
+
+Orden: oleada 1 = PERF1, PERF3, PERF5 · oleada 2 = PERF2 · oleada 3 (tras merge del PR #22, que toca
+`Viewer.tsx` y `routers/studies.py`) = PERF4, PERF6 · oleada 4 = PERF7.

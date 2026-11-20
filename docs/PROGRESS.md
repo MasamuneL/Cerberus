@@ -7,6 +7,13 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 
 | Ticket | Estado | Rama | Commit | Fecha | Responsable / herramienta | Notas |
 |---|---|---|---|---|---|---|
+| PERF1 · volumetría recortada (§21) | 🟡 | feat/PERF1-volumetry-crop | | 2026-11-20 | Claude Code (orquestador Opus + hc) | oleada 1 |
+| PERF2 · caché de volumetría (§21) | ⬜ | | | | | tras PERF1 |
+| PERF3 · caché del predictor MONAI (§21) | 🟡 | feat/PERF3-predictor-cache | | 2026-11-20 | Claude Code (orquestador Opus + hc) | oleada 1 |
+| PERF4 · encolar sin leer headers (§21) | ⬜ | | | | | espera PR #22 |
+| PERF5 · visor diferido (§21) | 🟡 | feat/PERF5-lazy-viewer | | 2026-11-20 | Claude Code (orquestador Opus + hc) | oleada 1 |
+| PERF6 · caché de buffers del visor (§21) | ⬜ | | | | | espera PR #22 |
+| PERF7 · centroide GTV (§21) | ⬜ | | | | | espera PR #22 y PERF6 |
 | FT5 · smoke y manual | ✅ | feat/FT5-smoke-manual | c891208 | 2026-11-19 | Claude Code (orquestador + subagentes) | PR #24; 1180 tests; smoke 13/13 sintético; e2e 33/33; CP-058 |
 | FT4 · evaluación y exportación | ✅ | feat/FT4-evaluate-export | 1f85245 | 2026-11-19 | Claude Code (orquestador + subagentes) | PR #23; 1173 tests; métricas por paciente, baseline TC, export recargable; CP-057 |
 | FT3 · transferencia y trainer | ✅ | feat/FT3-transfer-trainer | 548cd16 | 2026-11-19 | Claude Code (orquestador + subagentes) | PR #21; 1147 tests; carga estricta, head 1 logit, reanudación determinista; CP-056 |
