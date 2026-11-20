@@ -87,28 +87,46 @@ const VIEWS: { label: string; type: SLICE_TYPE; key: string }[] = [
   { label: "3D", type: SLICE_TYPE.RENDER, key: "5" },
 ];
 
-// Colores reales del render (colormap "red" de Niivue y SEG_LABELS), para que la leyenda no mienta.
-const GTV_SWATCH = "#ff0000";
+// Colores reales del render (colormap GTV_COLORMAP y SEG_LABELS), para que la leyenda no mienta.
+const GTV_SWATCH = "#dcdce1";
+// GTV en gris claro: no compite con el rojo/naranja/amarillo de la segmentación MONAI. El valor 1 de la máscara
+// es gris claro y opaco (A 255); la opacidad de la capa (40 % por defecto) lo deja como un velo sobre la MRI.
+const GTV_COLORMAP_NAME = "gtv-gris";
+const GTV_COLORMAP = {
+  R: [0, 110, 220],
+  G: [0, 110, 220],
+  B: [0, 112, 225],
+  A: [0, 128, 255],
+  I: [0, 128, 255],
+};
 const SEG_SWATCHES: { name: string; color: string }[] = [
   { name: "Edema", color: "#ffdc00" },
   { name: "Núcleo", color: "#ff8c00" },
   { name: "Realce", color: "#ff0000" },
 ];
 
-// Color de la superficie del GTV en 3D (un rojo algo más claro que el overlay, para que la luz se note).
-const GTV_SURFACE_RGBA = new Uint8Array([255, 40, 40, 255]);
+// Color de la superficie del GTV en 3D (el mismo gris claro del overlay; la iluminación da el relieve).
+const GTV_SURFACE_RGBA = new Uint8Array([220, 220, 225, 255]);
 // Profundidad > 1 desactiva el plano de corte (ClipPlaneManager.DEFAULT_DEPTH_AZI_ELEV de Niivue).
 const NO_CLIP: number[] = [2, 0, 0];
 
 /** Superficie del GTV a partir del volumen ya cargado en Niivue (mismo affine que el centroide). */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function gtvSurfaceFromVolume(vol: any): MaskSurface | null {
+// Bordes suaves: σ del difuminado previo de la malla 3D y pares de pasos de Taubin.
+const SMOOTH_SIGMA_MM = 1;
+const SMOOTH_TAUBIN_ITERATIONS = 10;
+
+function gtvSurfaceFromVolume(vol: any, smooth: boolean): MaskSurface | null {
   const data = vol?.img;
   const dims: number[] | undefined = vol?.hdr?.dims;
   const aff: number[][] | undefined = vol?.hdr?.affine;
   const pix: number[] | undefined = vol?.hdr?.pixDims;
   if (!data || !dims || !aff || !pix) return null;
-  return maskSurface(data, [dims[1], dims[2], dims[3]], aff, strideForSpacing(pix.slice(1, 4)));
+  const stride = strideForSpacing(pix.slice(1, 4));
+  // Con bordes suaves: campo difuminado (σ 1 mm) y más pasos de Taubin; si no, la malla de vóxeles de antes.
+  return smooth
+    ? maskSurface(data, [dims[1], dims[2], dims[3]], aff, stride, SMOOTH_TAUBIN_ITERATIONS, SMOOTH_SIGMA_MM)
+    : maskSurface(data, [dims[1], dims[2], dims[3]], aff, stride);
 }
 
 /** ¿El evento de teclado viene de un campo donde las teclas escriben o eligen? */
@@ -224,6 +242,9 @@ export default function Viewer({
   const [areasOn, setAreasOn] = useState(true);
   const [areasOpacity, setAreasOpacity] = useState(0.35);
   const [areasMode, setAreasMode] = useState<AreasMode>("affected");
+  // Bordes suaves: el backend sirve copias suavizadas de GTV/MONAI/áreas solo para verlas (`?smooth=1`);
+  // la volumetría y los reportes siguen usando las máscaras originales.
+  const [smoothEdges, setSmoothEdges] = useState(true);
 
   const [gtvLoaded, setGtvLoaded] = useState(false);
   const [areasLoaded, setAreasLoaded] = useState(false);
@@ -314,6 +335,7 @@ export default function Viewer({
     if (!canvas) return;
     const nv = new Niivue({ backColor: [0, 0, 0, 1] });
     nvRef.current = nv;
+    nv.addColormap(GTV_COLORMAP_NAME, GTV_COLORMAP);
     readyRef.current = nv.attachToCanvas(canvas);
     // Clic/arrastre de la mira y teclas H/J/K/L: Niivue llama a onLocationChange con un NiiVueLocation
     // (mm, vox, frac, values[i] por volumen en orden de carga, string). Ver createOnLocationChange.
@@ -390,13 +412,13 @@ export default function Viewer({
     let segIdx = -1;
     if (study.has_gtv && showGtv) {
       gtvIdx = list.length;
-      list.push({ url: fileUrl(p, t, "gtv"), name: "gtv.nii.gz", colormap: "red", opacity: gtvOpacity });
+      list.push({ url: `${fileUrl(p, t, "gtv")}${smoothEdges ? "?smooth=1" : ""}`, name: "gtv.nii.gz", colormap: GTV_COLORMAP_NAME, opacity: gtvOpacity });
     }
     if (segAvailable && segOn) {
       segIdx = list.length;
       // v invalida la caché del navegador tras una nueva segmentación.
       list.push({
-        url: `${fileUrl(p, t, "monai_seg")}?v=${segmentationVersion}`,
+        url: `${fileUrl(p, t, "monai_seg")}?v=${segmentationVersion}${smoothEdges ? "&smooth=1" : ""}`,
         name: "monai_seg.nii.gz",
         colormap: "warm",
         cal_min: 0.5,
@@ -410,7 +432,7 @@ export default function Viewer({
       areasIdx = list.length;
       // Siempre al final: los índices de GTV y segmentación no cambian.
       list.push({
-        url: `${fileUrl(p, t, "brodmann")}?v=${areasVersion}`,
+        url: `${fileUrl(p, t, "brodmann")}?v=${areasVersion}${smoothEdges ? "&smooth=1" : ""}`,
         name: "brodmann.nii.gz",
         colormap: "gray",
         opacity: areasOpacityRef.current,
@@ -526,7 +548,7 @@ export default function Viewer({
     };
     // gtvOpacity y view se aplican en sus propios efectos sin recargar.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [studyKey, sequence, showGtv, segOn, segAvailable, segmentationVersion, areasOn, areasAvailable, areasVersion]);
+  }, [studyKey, sequence, showGtv, segOn, segAvailable, segmentationVersion, areasOn, areasAvailable, areasVersion, smoothEdges]);
 
   useEffect(() => {
     const nv = nvRef.current;
@@ -667,14 +689,15 @@ export default function Viewer({
       nv.drawScene();
       return;
     }
-    if (current && current.key !== studyKey) {
+    const surfKey = `${studyKey}|${smoothEdges ? "suave" : "voxel"}`;
+    if (current && current.key !== surfKey) {
       nv.removeMesh(current.mesh);
       meshRef.current = null;
     }
     if (!meshRef.current) {
       let cached = surfaceCacheRef.current;
-      if (!cached || cached.key !== studyKey) {
-        cached = { key: studyKey, surf: gtvSurfaceFromVolume(nv.volumes[gi]) };
+      if (!cached || cached.key !== surfKey) {
+        cached = { key: surfKey, surf: gtvSurfaceFromVolume(nv.volumes[gi], smoothEdges) };
         surfaceCacheRef.current = cached;
       }
       const surf = cached.surf;
@@ -684,7 +707,7 @@ export default function Viewer({
       }
       const mesh = new NVMesh(surf.pts, surf.tris, "gtv-superficie", GTV_SURFACE_RGBA, r3d.surfaceOpacity, true, nv.gl);
       nv.addMesh(mesh);
-      meshRef.current = { key: studyKey, mesh };
+      meshRef.current = { key: surfKey, mesh };
       setSurfaceInfo(
         `${(surf.tris.length / 3).toLocaleString("es-MX")} triángulos · ${(surf.volumeMM3 / 1000).toFixed(1)} cm³ (malla)`,
       );
@@ -697,7 +720,7 @@ export default function Viewer({
       nv.setOpacity(gi, 0);
     }
     nv.drawScene();
-  }, [is3D, r3d.surface, r3d.surfaceOpacity, r3d.xray, showGtv, gtvLoaded, loadVersion, studyKey]);
+  }, [is3D, r3d.surface, r3d.surfaceOpacity, r3d.xray, showGtv, gtvLoaded, loadVersion, studyKey, smoothEdges]);
 
   const setCamera = useCallback((azimuth: number, elevation: number) => {
     nvRef.current?.setRenderAzimuthElevation(azimuth, elevation);
@@ -918,6 +941,15 @@ export default function Viewer({
               shortcut="A"
               disabledReason={areasReason}
             />
+            <button
+              type="button"
+              className={`vw-chip${smoothEdges ? "" : " is-off"}`}
+              aria-pressed={smoothEdges}
+              title="Bordes suavizados solo para visualizar; las métricas usan las máscaras originales"
+              onClick={() => setSmoothEdges((x) => !x)}
+            >
+              <span className="vw-chip-name">Bordes suaves</span>
+            </button>
           </>
         }
       >

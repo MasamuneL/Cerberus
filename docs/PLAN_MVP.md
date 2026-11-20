@@ -169,6 +169,7 @@ Configuración que agrega B0 en `pyproject.toml`:
 Data/<patient>/<timepoint>/<int(patient)>_<timepoint>_<sequence>.nii.gz   # misma convención actual
 storage/results/<patient>/<timepoint>/monai_seg.nii.gz                    # mapa de etiquetas uint8
 storage/results/<patient>/<timepoint>/monai_seg.json                      # SegmentationResult
+storage/results/<patient>/<timepoint>/display/<name>.v<N>.nii.gz          # gtv|monai_seg|brodmann suavizados (solo visor, §22)
 storage/staging/<upload_id>/manifest.json                                 # UploadManifest
 storage/staging/<upload_id>/series/<index>.nii.gz                         # series ya convertidas
 storage/tmp/<uuid>/                                                       # DICOM extraído; se borra SIEMPRE (finally)
@@ -229,7 +230,7 @@ actualizas: `schemas.py`, `types.ts` y esta sección.
 | `GET /api/health` | — | `{"status":"ok"}` |
 | `GET /api/studies` | — | `Study[]` ordenado por patient, timepoint |
 | `GET /api/studies/{patient}/{timepoint}` | — | `StudyDetail` · 404 |
-| `GET /api/studies/{patient}/{timepoint}/files/{name}.nii.gz` | name = secuencia o `monai_seg` | binario `application/gzip` · 404 |
+| `GET /api/studies/{patient}/{timepoint}/files/{name}.nii.gz` | name = secuencia, `monai_seg` o `brodmann`; `?smooth=true` opcional (solo `gtv`, `monai_seg`, `brodmann`; §22) | binario `application/gzip` · 404 · 400 si `smooth` con otra secuencia |
 | `GET /api/studies/{patient}/{timepoint}/volumetry` | — | `Volumetry` · 404 si falta gtv o brain_mask |
 | `GET /api/patients/{patient}/longitudinal` | — | `LongitudinalPoint[]` (solo los tiempos con gtv+brain_mask) |
 | `POST /api/studies/{patient}/{timepoint}/segmentation` | — | 202 `{"job_id"}` · 422 si no hay ninguna secuencia MRI de canal |
@@ -1060,3 +1061,25 @@ Mejoras medidas el 2026-11-20 sobre `Data/001/t0` (512×512×208). Regla común:
 
 Orden: oleada 1 = PERF1, PERF3, PERF5 · oleada 2 = PERF2 · oleada 3 (tras merge del PR #22, que toca
 `Viewer.tsx` y `routers/studies.py`) = PERF4, PERF6 · oleada 4 = PERF7.
+
+## 22. VIZ1 · Bordes suaves de GTV, segmentación MONAI y áreas de Brodmann
+
+Solicitud del 2026-11-19: las máscaras se veían pixeleadas (escalera de vóxeles: 0.5 mm en el plano, 1 mm entre
+cortes; MONAI a 1 mm; Brodmann con bloques heredados del atlas MNI). Solo cambia la visualización: volumetría,
+RANO, Dice y reportes siguen usando las máscaras originales.
+
+- Backend (`cerberus_api/display.py`): por etiqueta, filtro gaussiano (σ = 1 mm; 1.5 mm en Brodmann) de la indicadora binaria,
+  remuestreo trilineal a la rejilla del GTV (o de la primera MRI) y umbral 0.5. Con varias etiquetas el contorno
+  sale de suavizar su unión y dentro gana la etiqueta más probable (sin huecos entre áreas vecinas). En el GTV los
+  focos que el suavizado borraría conservan sus vóxeles originales; en MONAI y Brodmann las islas sueltas se
+  suavizan (si no quedaban como bloques crudos) y solo se rescata una etiqueta que desaparecería entera.
+- API: `GET /files/{gtv|monai_seg|brodmann}.nii.gz?smooth=true`, generado la primera vez y cacheado en
+  `results/<p>/<t>/display/<name>.v<DISPLAY_VERSION>.nii.gz` (se regenera si el origen o la referencia son más
+  nuevos o si cambia la versión del algoritmo; escritura atómica).
+- Frontend: chip «Bordes suaves» en la barra de capas (activo por defecto). El GTV pasa de rojo a gris claro
+  (overlay, leyenda y superficie 3D) para no confundirse con el realce de MONAI. En 3D, `maskSurface(..., sigmaMM)`
+  difumina el campo de ocupación antes de *surface nets* (σ = 1 mm, 10 pares de Taubin); los componentes de
+  ≤ 64 vóxeles no se difuminan.
+- Aceptación: `backend/tests/test_display.py` (esquinas redondeadas, foco de un vóxel, remuestreo 1 mm → 0.5 mm,
+  etiquetas contiguas sin huecos, etiqueta diminuta conservada, caché/regeneración, API 200/400/404) y
+  `tools/e2e/verify-mask-surface.mjs` (esfera: volumen ±15 %, radio más uniforme, malla cerrada, foco aislado).
