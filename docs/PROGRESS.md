@@ -9,7 +9,7 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 |---|---|---|---|---|---|---|
 | PERF1 · volumetría recortada (§21) | ✅ | feat/PERF1-volumetry-crop | 2e50217 | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #26; 1191 tests; ~1.7 s → 76 ms; CP-059 |
 | PERF2 · caché de volumetría (§21) | 🟡 | feat/PERF2-volumetry-cache | | 2026-11-20 | Claude Code (orquestador Opus + hc) | oleada 2 |
-| PERF3 · caché del predictor MONAI (§21) | 🟡 | feat/PERF3-predictor-cache | | 2026-11-20 | Claude Code (orquestador Opus + hc) | oleada 1 |
+| PERF3 · caché del predictor MONAI (§21) | ✅ | feat/PERF3-predictor-cache | 0f882b7 | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #25; 1181 tests; ~0.06 s/job; CP-060 |
 | PERF4 · encolar sin leer headers (§21) | ⬜ | | | | | espera PR #22 |
 | PERF5 · visor diferido (§21) | 🟡 | feat/PERF5-lazy-viewer | | 2026-11-20 | Claude Code (orquestador Opus + hc) | oleada 1 |
 | PERF6 · caché de buffers del visor (§21) | ⬜ | | | | | espera PR #22 |
@@ -1049,3 +1049,15 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
 - **Benchmark** `Data/001/t0`: ~1700–1800 ms → 76–80 ms por estudio (`/volumetry`, y cada tiempo de `/longitudinal`).
 - **Checks:** Ruff/formato/Pyright, 1191 tests rápidos. Revisión independiente (Opus) aprobada sin cambios.
 - Siguiente: PERF2 (caché de volumetría); PERF3 y PERF5 en revisión/curso.
+
+### CP-060 · 2026-11-20 · PERF3: predictor MONAI reutilizado entre jobs
+
+- **Integración:** [PR #25](https://github.com/MasamuneL/Cerberus/pull/25), merge `0f882b7`.
+- `_monai_predictor`: caché `_PREDICTORS` de una entrada con clave (ruta resuelta, mtime_ns, tamaño) de los
+  pesos; construcción extraída a `_build_predictor(weights)`. `segresnet_predictor` (FT4) intacto.
+- **Equivalencia:** máscaras TC/WT/ET bit a bit iguales entre job 1, job 2 (caché) y predictor fresco (modelo real, MPS).
+- **Benchmark:** ahorra ~0.06 s por job (construcción en caliente); el job completo (~14 s) queda igual.
+  Ganancia pequeña: el coste real es la inferencia. Memoria: la red (~18 MB) queda residente en el worker.
+- **Checks:** Ruff/formato/Pyright, 1181 tests rápidos (rama). Revisión independiente (Opus) aprobada.
+- **Desviación:** `_build_predictor` sin parámetro `device` (lo elige dentro; permite test sin torch).
+- Siguiente: PERF2 y PERF5.

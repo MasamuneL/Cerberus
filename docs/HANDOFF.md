@@ -4,7 +4,7 @@
 > checkpoint. El historial completo está en [`PROGRESS.md`](PROGRESS.md) y el alcance y los contratos en
 > [`PLAN_MVP.md`](PLAN_MVP.md). Las reglas de trabajo están en [`../AGENTS.md`](../AGENTS.md).
 
-**Última actualización:** 2026-11-20 · último checkpoint: CP-059 · rama base: `main`
+**Última actualización:** 2026-11-20 · último checkpoint: CP-060 · rama base: `main`
 
 ## 1. Arranque rápido
 
@@ -31,6 +31,9 @@ Abre las PNG y revísalas: **no te fíes solo de los ✅**. Leer píxeles del ca
 (`preserveDrawingBuffer=false`), así que esos chequeos de píxeles no son confiables.
 
 ## 2. Estado actual
+
+**CP-060 · PERF3 · predictor MONAI en caché · 2026-11-20:** integrado el
+[PR #25](https://github.com/MasamuneL/Cerberus/pull/25), merge `0f882b7`. Ganancia pequeña (~0.06 s/job), sin cambio de resultados.
 
 **CP-059 · PERF1 · volumetría ~20× más rápida · 2026-11-20:** integrado el
 [PR #26](https://github.com/MasamuneL/Cerberus/pull/26), merge `2e50217`. Plan PERF en `PLAN_MVP.md` §21
