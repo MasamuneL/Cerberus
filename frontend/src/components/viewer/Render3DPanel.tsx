@@ -166,7 +166,7 @@ export default function Render3DPanel({
 
         <div className={`vw-card${surfaceReason ? " is-off" : ""}`}>
           <div className="vw-card-head">
-            <i className="vw-swatch" style={{ background: "#ff2828" }} aria-hidden="true" />
+            <i className="vw-swatch" style={{ background: "#dcdce1" }} aria-hidden="true" />
             <span className="vw-card-name">Superficie GTV</span>
             {surfaceReason && <span className="vw-chip-reason">{surfaceReason}</span>}
           </div>
