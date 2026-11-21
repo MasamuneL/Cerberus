@@ -7,7 +7,7 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 
 | Ticket | Estado | Rama | Commit | Fecha | Responsable / herramienta | Notas |
 |---|---|---|---|---|---|---|
-| CFG1 · puertos configurables por env (§23) | 🟡 | feat/CFG1-env-ports | | 2026-11-20 | Claude Code (orquestador Opus + hc) | oleada 3 |
+| CFG1 · puertos configurables por env (§23) | ✅ | feat/CFG1-env-ports | c491be1 | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #30; 1219 tests; CP-065 |
 | VIZ1 · bordes suaves de máscaras (§22) | ✅ | feat/viz-smooth-masks | d1edd20 | 2026-11-20 | MasamuneL + Claude Code (revisión/merge) | PR #22; 1210 tests; e2e 33/33 + superficie + 3D; CP-063 |
 | PERF1 · volumetría recortada (§21) | ✅ | feat/PERF1-volumetry-crop | 2e50217 | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #26; 1191 tests; ~1.7 s → 76 ms; CP-059 |
 | PERF2 · caché de volumetría (§21) | ✅ | feat/PERF2-volumetry-cache | 15e1e4d | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #28; 1195 tests; caliente < 5 ms; CP-061 |
@@ -1115,3 +1115,18 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
   `_find_files` y no `find_study`, porque necesita las rutas.
 - **Checks:** Ruff/formato/Pyright, 1213 tests rápidos. Revisión independiente (Opus) aprobada.
 - **Pendiente (fuera de alcance):** `routers/uploads.py` `_find_study` recorre `list_studies` entero; podría usar `find_study`.
+
+### CP-065 · 2026-11-20 · CFG1: puertos configurables por entorno
+
+- **Integración:** [PR #30](https://github.com/MasamuneL/Cerberus/pull/30), merge `c491be1`.
+- `Settings`: `api_host` (127.0.0.1), `api_port` (8000) y `ui_port` (5173), con rango 1–65535. `cors_origins` y
+  `app_origin` se derivan de `ui_port` solo si no se fijaron (`model_fields_set`). No se leen archivos `.env`.
+- Nuevo lanzador `uv run python -m cerberus_api.serve [--reload]`; `uvicorn … --port 8000` sigue funcionando.
+- `vite.config.ts` lee `CERBERUS_UI_PORT` y `CERBERUS_API_PORT` (para el proxy). Los scripts de `tools/e2e` usan
+  `CERBERUS_UI_PORT` por defecto, y `verify-docker.mjs` usa `CERBERUS_HTTP_PORT`.
+- Docs: README (desarrollo, con Redis en otro puerto), `AGENTS.md` (Comandos), `PLAN_MVP.md` §5 y §23.
+- **Equivalencia:** sin variables, `Settings().model_dump()` y la config de Vite son idénticos a main. Docker no cambia
+  (CORS y APP_ORIGIN explícitos).
+- **Prueba manual:** API 8011/8012 y UI 5191/5192; `/api/health` responde a través del proxy.
+- **Checks:** Ruff/formato/Pyright, 1219 tests rápidos, `npm run build`. Revisión independiente (Opus) aprobada.
+- **Nota menor:** en Vite, un `CERBERUS_UI_PORT` vacío o no numérico da 0/NaN; la API sí lo rechaza.
