@@ -151,10 +151,15 @@ _PREDICTORS: dict[tuple[str, int, int], tuple[Predictor, str]] = {}
 
 
 def _pick_device() -> str:
-    """Dispositivo de inferencia: cuda → mps → cpu (mismo orden que `runtime.detect_device`)."""
+    """Dispositivo de inferencia: cuda → mps → cpu (mismo orden que `runtime.detect_device`).
+
+    Una GPU sin kernels en esta build de torch (`runtime.cuda_arch_supported`, p. ej. sm_120 con cu126) usa CPU.
+    """
     import torch
 
-    return "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
+    from cerberus_api.runtime import cuda_arch_supported
+
+    return "cuda" if cuda_arch_supported(torch) else "mps" if torch.backends.mps.is_available() else "cpu"
 
 
 def _build_predictor(weights: Path, device: str | None = None) -> tuple[Predictor, str]:
@@ -199,10 +204,21 @@ def _monai_predictor(models_dir: Path) -> tuple[Predictor, str]:
 
 
 CUDA_OOM_WARNING = "La GPU se quedó sin memoria: la segmentación se repitió en CPU"
+# Algunos OOM de CUDA llegan como `RuntimeError` genérico y no como `torch.cuda.OutOfMemoryError`
+_OOM_MARKERS = ("out of memory", "CUDNN_STATUS_ALLOC_FAILED")
+
+
+def _is_cuda_oom(exc: BaseException) -> bool:
+    """`True` si la excepción es un OOM de CUDA (`OutOfMemoryError` o `RuntimeError` con el texto típico)."""
+    import torch
+
+    if isinstance(exc, torch.cuda.OutOfMemoryError):
+        return True
+    return isinstance(exc, RuntimeError) and any(marker in str(exc) for marker in _OOM_MARKERS)
 
 
 def _predict_monai(x: np.ndarray, models_dir: Path, warnings: list[str]) -> tuple[np.ndarray, str]:
-    """Inferencia con el modelo real; ante `torch.cuda.OutOfMemoryError` repite en CPU y lo avisa (HW1).
+    """Inferencia con el modelo real; ante un OOM de CUDA (`_is_cuda_oom`) repite en CPU y lo avisa (HW1).
 
     La caché conserva el predictor CUDA: el siguiente job vuelve a intentarlo en GPU (la VRAM pudo liberarse).
     Devuelve (probabilidades, device que realmente corrió).
@@ -214,7 +230,9 @@ def _predict_monai(x: np.ndarray, models_dir: Path, warnings: list[str]) -> tupl
         return np.asarray(predictor(x)), device
     try:
         return np.asarray(predictor(x)), device
-    except torch.cuda.OutOfMemoryError:
+    except RuntimeError as exc:
+        if not _is_cuda_oom(exc):
+            raise
         logger.warning("CUDA sin memoria en la segmentación; se repite en CPU", exc_info=True)
     torch.cuda.empty_cache()
     cpu_predictor, cpu_device = _build_predictor(_weights_path(models_dir), "cpu")

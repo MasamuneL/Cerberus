@@ -9,9 +9,10 @@ const DEVICE_LABEL: Record<SystemInfo["device"], string> = {
 
 export function systemSummary(s: SystemInfo): string {
   const parts = [DEVICE_LABEL[s.device] ?? s.device];
-  // HW1: con CUDA, modelo y VRAM de la GPU (null en CPU/MPS)
-  if (s.gpu_name) {
-    const vram = s.gpu_memory_gb !== null ? `, ${s.gpu_memory_gb} GB` : "";
+  // HW1: con CUDA, modelo y VRAM de la GPU. Una GPU sin kernels en la rueda llega con device "cpu" y gpu_name:
+  // la causa ya va en warnings, así que la etiqueta sigue diciendo "CPU"
+  if (s.device === "cuda" && s.gpu_name) {
+    const vram = s.gpu_memory_gb != null ? `, ${s.gpu_memory_gb} GB` : "";
     parts[0] = `${parts[0]} (${s.gpu_name}${vram})`;
   }
   parts.push(`${s.threads} ${s.threads === 1 ? "hilo" : "hilos"} (${s.threads_source === "env" ? "fijado" : "auto"})`);

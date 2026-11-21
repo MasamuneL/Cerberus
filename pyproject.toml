@@ -72,7 +72,8 @@ torch-cu126 = ["torch>=2.14.1"]
 
 [tool.uv]
 # `uv sync` local instala la variante CPU, igual que antes de HW1 (el paquete ya no declara torch directamente; MONAI
-# lo pide igual). Para la variante CUDA: `uv sync --no-group torch-cpu --group torch-cu126`.
+# lo pide igual). Para la variante CUDA, **cada** `uv sync` y `uv run` lleva `--no-group torch-cpu --group torch-cu126`
+# (o `uv run --no-sync` tras el sync): un `uv run` sin flags vuelve a los grupos por defecto y reinstala torch CPU.
 default-groups = ["dev", "torch-cpu"]
 conflicts = [[{ group = "torch-cpu" }, { group = "torch-cu126" }]]
 

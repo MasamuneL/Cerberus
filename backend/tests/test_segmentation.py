@@ -214,7 +214,25 @@ def test_pick_device_order(monkeypatch: pytest.MonkeyPatch, cuda: bool, mps: boo
     import torch
 
     monkeypatch.setattr(torch.cuda, "is_available", lambda: cuda)
+    monkeypatch.setattr(torch.cuda, "get_device_capability", lambda index=0: (8, 6))
+    monkeypatch.setattr(torch.cuda, "get_arch_list", lambda: ["sm_80", "sm_86", "sm_90"])
     monkeypatch.setattr(torch.backends.mps, "is_available", lambda: mps)
+    assert segmentation._pick_device() == expected
+
+
+@pytest.mark.parametrize(("capability", "expected"), [((12, 0), "cpu"), ((8, 6), "cuda"), ((8, 9), "cuda")])
+def test_pick_device_unsupported_arch_uses_cpu(
+    monkeypatch: pytest.MonkeyPatch, capability: tuple[int, int], expected: str
+) -> None:
+    """Blackwell (sm_120) con la rueda cu126 (sm_50…sm_90): `is_available()` es True pero no hay kernels → cpu."""
+    import torch
+
+    monkeypatch.setattr(torch.cuda, "is_available", lambda: True)
+    monkeypatch.setattr(torch.cuda, "get_device_capability", lambda index=0: capability)
+    monkeypatch.setattr(
+        torch.cuda, "get_arch_list", lambda: ["sm_50", "sm_60", "sm_70", "sm_75", "sm_80", "sm_86", "sm_90"]
+    )
+    monkeypatch.setattr(torch.backends.mps, "is_available", lambda: False)
     assert segmentation._pick_device() == expected
 
 
@@ -244,11 +262,26 @@ def test_build_predictor_amp_only_on_cuda(
     assert seen == [(device, amp), ("cpu", False)]
 
 
-def test_cuda_oom_falls_back_to_cpu(tmp_path: Path, make_study: MakeStudy, monkeypatch: pytest.MonkeyPatch) -> None:
+def _oom_errors() -> list[BaseException]:
     import torch
 
+    return [
+        torch.cuda.OutOfMemoryError("CUDA out of memory. Tried to allocate 2.00 GiB"),
+        RuntimeError("CUDA error: out of memory"),
+        RuntimeError("cuDNN error: CUDNN_STATUS_ALLOC_FAILED"),
+    ]
+
+
+@pytest.mark.parametrize("error_index", [0, 1, 2])
+def test_cuda_oom_falls_back_to_cpu(
+    tmp_path: Path, make_study: MakeStudy, monkeypatch: pytest.MonkeyPatch, error_index: int
+) -> None:
+    import torch
+
+    error = _oom_errors()[error_index]
+
     def oom_predictor(x: np.ndarray) -> np.ndarray:
-        raise torch.cuda.OutOfMemoryError("CUDA out of memory. Tried to allocate 2.00 GiB")
+        raise error
 
     built: list[tuple[Path, str | None]] = []
 
@@ -297,11 +330,16 @@ def test_real_model_on_data(tmp_path: Path) -> None:
 @pytest.mark.slow
 def test_cuda_fp16_matches_fp32_on_data(tmp_path: Path) -> None:
     """HW1 en una PC NVIDIA: autocast fp16 vs fp32 en 001/t0 (Dice ≥ 0.99 por región) y tiempos en la salida."""
+    import os
     import time
 
     import torch
 
+    print(f"torch {torch.__version__} · build CUDA {torch.version.cuda} · cuda disponible {torch.cuda.is_available()}")
     if not torch.cuda.is_available():
+        # Con CERBERUS_REQUIRE_CUDA=1 un entorno sin CUDA (p. ej. `uv run` que reinstaló torch-cpu) es un fallo
+        if os.environ.get("CERBERUS_REQUIRE_CUDA") == "1":
+            pytest.fail(f"CERBERUS_REQUIRE_CUDA=1 pero no hay CUDA (torch.version.cuda={torch.version.cuda})")
         pytest.skip("Sin GPU CUDA")
     study = REPO_ROOT / "Data" / "001" / "t0"
     weights = REPO_ROOT / "models" / segmentation.BUNDLE_NAME / "models" / "model.pt"

@@ -238,15 +238,63 @@ def test_build_system_info_env_and_invalid(tmp_path: Path, monkeypatch: pytest.M
 # --- GPU (HW1): torch.cuda falso en sys.modules, sin GPU ------------------------------------------
 
 
-def _fake_torch(available: bool, props: object | Exception | None = None) -> types.SimpleNamespace:
+# Rueda cu126 de torch 2.14: sm_50…sm_90, sin PTX
+CU126_ARCHS = ("sm_50", "sm_60", "sm_70", "sm_75", "sm_80", "sm_86", "sm_90")
+
+
+def _fake_torch(
+    available: bool,
+    props: object | Exception | None = None,
+    *,
+    capability: tuple[int, int] = (8, 6),
+    arch_list: tuple[str, ...] = CU126_ARCHS,
+    name: str = "NVIDIA GeForce RTX 3060",
+) -> types.SimpleNamespace:
     def get_device_properties(index: int) -> object:
         assert index == 0
         if isinstance(props, Exception):
             raise props
         return props
 
-    cuda = types.SimpleNamespace(is_available=lambda: available, get_device_properties=get_device_properties)
-    return types.SimpleNamespace(cuda=cuda)
+    cuda = types.SimpleNamespace(
+        is_available=lambda: available,
+        get_device_properties=get_device_properties,
+        get_device_capability=lambda index: capability,
+        get_arch_list=lambda: list(arch_list),
+        get_device_name=lambda index: name,
+    )
+    mps = types.SimpleNamespace(is_available=lambda: False)
+    return types.SimpleNamespace(
+        cuda=cuda, version=types.SimpleNamespace(cuda="12.6"), backends=types.SimpleNamespace(mps=mps)
+    )
+
+
+@pytest.mark.parametrize(
+    ("capability", "arch_list", "expected"),
+    [
+        ((8, 6), CU126_ARCHS, True),  # RTX 30xx: cubin exacto
+        ((8, 9), CU126_ARCHS, True),  # RTX 40xx: sm_86 corre en 8.9 (misma major, minor menor)
+        ((12, 0), CU126_ARCHS, False),  # RTX 50xx (Blackwell): ninguna major 12 ni PTX
+        ((12, 0), (*CU126_ARCHS, "compute_90"), True),  # PTX compute_90 ≤ 12.0 → JIT
+        ((8, 0), ("sm_86", "compute_90"), False),  # minor mayor y PTX más nuevo que la GPU
+        ((9, 0), ("sm_90a",), True),  # sufijo de arquitectura específica
+        ((8, 6), (), True),  # lista vacía: no se pudo leer, se intenta
+        ((8, 6), ("raro",), False),
+    ],
+)
+def test_arch_supported(capability: tuple[int, int], arch_list: tuple[str, ...], expected: bool) -> None:
+    assert runtime.arch_supported(capability, list(arch_list)) is expected
+
+
+def test_detect_device_falls_back_to_cpu_on_unsupported_arch(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setitem(sys.modules, "torch", _fake_torch(True, capability=(12, 0)))
+    assert runtime.detect_device() == "cpu"
+    assert runtime.detect_unsupported_gpu() == ("NVIDIA GeForce RTX 3060", "sm_120", "cu126")
+    monkeypatch.setitem(sys.modules, "torch", _fake_torch(True, capability=(8, 6)))
+    assert runtime.detect_device() == "cuda"
+    assert runtime.detect_unsupported_gpu() is None
+    monkeypatch.setitem(sys.modules, "torch", _fake_torch(True, capability=(12, 0), arch_list=("compute_90",)))
+    assert runtime.detect_device() == "cuda"
 
 
 def test_detect_gpu_reads_name_and_vram(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -288,9 +336,33 @@ def test_build_system_info_gpu_fields(tmp_path: Path, monkeypatch: pytest.Monkey
 
     # Sin CUDA no se consulta la GPU y los campos quedan en null (también en el JSON).
     monkeypatch.setattr(runtime, "detect_gpu", lambda allow_import=True: pytest.fail("no debe leer la GPU"))
+    monkeypatch.setattr(runtime, "detect_unsupported_gpu", lambda allow_import=True: None)
     info = runtime.build_system_info("worker", cgroup_root=root, meminfo=meminfo, container_root=tmp_path, device="cpu")
     assert (info.gpu_name, info.gpu_memory_gb) == (None, None)
     assert '"gpu_name":null' in info.model_dump_json()
+
+
+def test_build_system_info_unsupported_gpu_uses_cpu(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """RTX 50xx (sm_120) con la rueda cu126: device cpu, se conserva el nombre de la GPU y se avisa de la causa."""
+    monkeypatch.setenv("CERBERUS_CPU_THREADS", "auto")
+    monkeypatch.setattr(runtime, "_affinity_cpus", lambda: 14)
+    monkeypatch.setattr(runtime, "platform_str", lambda cpuinfo: "linux/x86_64")
+    root = _cgroup(tmp_path, cpu_max="max 100000", memory_max="max")
+    meminfo = _meminfo(tmp_path, 16 * 1024**2)
+    fake = _fake_torch(True, capability=(12, 0), name="NVIDIA GeForce RTX 5070")
+    monkeypatch.setitem(sys.modules, "torch", fake)
+
+    info = runtime.build_system_info("worker", cgroup_root=root, meminfo=meminfo, container_root=tmp_path)
+    assert (info.device, info.gpu_name, info.gpu_memory_gb) == ("cpu", "NVIDIA GeForce RTX 5070", None)
+    assert info.warnings == [
+        "GPU NVIDIA GeForce RTX 5070 (sm_120) sin kernels en esta build de PyTorch (cu126): se usa CPU"
+    ]
+
+    # Con una GPU compatible no hay aviso de arquitectura.
+    props = types.SimpleNamespace(name="NVIDIA GeForce RTX 3060", total_memory=12 * 1024**3)
+    monkeypatch.setitem(sys.modules, "torch", _fake_torch(True, props, capability=(8, 6)))
+    info = runtime.build_system_info("worker", cgroup_root=root, meminfo=meminfo, container_root=tmp_path)
+    assert (info.device, info.gpu_name, info.warnings) == ("cuda", "NVIDIA GeForce RTX 3060", [])
 
 
 def test_system_info_accepts_reports_without_gpu_fields() -> None:

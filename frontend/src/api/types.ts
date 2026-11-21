@@ -205,7 +205,8 @@ export interface SystemInfo {
   memory_gb: number | null;
   device: "cuda" | "mps" | "cpu";
   warnings: string[];
-  // Solo con device "cuda" (HW1); null en CPU/MPS y en reportes anteriores
+  // Con device "cuda" (HW1); gpu_name también con "cpu" si la GPU no tiene kernels en la rueda (va con un aviso).
+  // null en el resto de casos y en reportes anteriores
   gpu_name: string | null;
   gpu_memory_gb: number | null;
 }
