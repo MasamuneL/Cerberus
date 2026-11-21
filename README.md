@@ -179,7 +179,8 @@ revisa que `ps` no lo liste y que no lo hayas levantado sin el override.
 
 - **Parar:** `Ctrl+C` en el worker y `docker compose -f compose.yaml -f compose.hybrid.yaml down`. Usa siempre los
   mismos dos `-f`: sin el override, `docker compose up` vuelve a crear el worker de Docker, y dos workers sobre la misma
-  cola se repartirían los jobs.
+  cola se repartirían los jobs. Si arrancaste el worker de Docker con `--profile docker-worker`, añade también
+  `--profile docker-worker` al `down` para que no quede ese contenedor.
 - **Volver al worker de Docker:** detén el nativo y levanta el perfil con
   `docker compose -f compose.yaml -f compose.hybrid.yaml --profile docker-worker up -d worker`.
 - **Puerto de Redis:** por defecto 6379. Si ya corre un `redis-server` local (modo desarrollo) o Docker avisa de que el

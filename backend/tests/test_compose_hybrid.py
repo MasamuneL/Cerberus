@@ -39,6 +39,10 @@ def _compose_config(tmp_path: Path, *, profiles: tuple[str, ...] = (), redis_por
 def _require_docker_cli() -> None:
     if shutil.which("docker") is None:
         pytest.skip("Requiere el CLI Docker Compose; no utiliza el daemon ni red")
+    # `docker` sin el plugin Compose v2 (p. ej. solo docker-compose v1) también se salta
+    probe = subprocess.run(["docker", "compose", "version"], capture_output=True, timeout=15, check=False)
+    if probe.returncode != 0:
+        pytest.skip("Requiere el plugin Docker Compose v2")
 
 
 def test_hybrid_override_disables_docker_worker_by_default(tmp_path: Path) -> None:
