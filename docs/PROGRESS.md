@@ -11,7 +11,7 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 | HW3 · registro ANTs fast/full (§25) | ⬜ | feat/HW3-registration-mode | | | Claude Code (orquestador Opus + hc) | oleada 1 |
 | HW4 · modo híbrido macOS (§25) | ⬜ | feat/HW4-macos-hybrid | | | Claude Code (orquestador Opus + hc) | oleada 1 |
 | HW2 · lanzador con detección de hardware (§25) | ⬜ | feat/HW2-hardware-launcher | | | Claude Code (orquestador Opus + hc) | oleada 2 (tras HW1, HW4) |
-| UP1 · subida con find_study (§24) | 🟡 | feat/UP1-upload-find-study | | | Claude Code (orquestador Opus + hc) | |
+| UP1 · subida con find_study (§24) | ✅ | feat/UP1-upload-find-study | 8f02a18 | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #34; 1224 tests; 0.64 → 0.08 ms (marginal); CP-069 |
 | CFG2 · validar puertos en Vite (§24) | ✅ | feat/CFG2-vite-port-validation | bb8be2f | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #33; config sin variables idéntica; inválidos fallan al arrancar; CP-068 |
 | PERF8 · reutilizar NVImage (§24) | 🟡 | feat/PERF8-nvimage-reuse | | | Claude Code (orquestador Opus + hc) | gate < 20 % |
 | ERR1 · ErrorBoundary del visor (§24) | ⬜ | feat/ERR1-viewer-error-boundary | | | Claude Code (orquestador Opus + hc) | oleada 2 |
@@ -1175,3 +1175,13 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
   se rechaza (la API probablemente lo aceptaría).
 - **Checks:** Ruff/formato/Pyright, 1222 tests, `npm run build`. Revisión independiente (Opus) aprobada.
 - Siguiente: UP1 en revisión (PR #34), PERF8 midiendo el gate; luego ERR1.
+
+### CP-069 · 2026-11-20 · UP1: las subidas resuelven el estudio con `find_study`
+
+- **Integración:** [PR #34](https://github.com/MasamuneL/Cerberus/pull/34), merge `8f02a18`. Cierra el pendiente de CP-064.
+- `routers/uploads.py`: se elimina `_find_study` (recorría `list_studies`); `_study_or_500` llama a `catalog.find_study`.
+- **Equivalencia:** mismo `_scan` + `_make_study`, solo cambia el glob (`<p>/<t>/*.nii.gz`); ausente/vacío → `None` → mismo 500.
+  Tests: el `Study` de subida y confirm es `==` al de `list_studies` filtrado; con `list_studies` parcheado para lanzar, siguen dando 201.
+- **Benchmark** 001/t0 (8 estudios): 0.64 → 0.08 ms. **Marginal**: una llamada por subida; crece con el catálogo.
+- **Checks:** Ruff/formato/Pyright, 1224 tests rápidos. Revisión independiente (Opus) aprobada.
+- Siguiente: PERF8 (gate de medición) y ERR1.
