@@ -7,7 +7,7 @@ contra la raíz del repo, no contra el directorio de trabajo, para que API y wor
 from functools import lru_cache
 from ipaddress import ip_address
 from pathlib import Path
-from typing import Self
+from typing import Literal, Self
 from urllib.parse import SplitResult, urlsplit
 
 from pydantic import AnyHttpUrl, Field, SecretStr, TypeAdapter, field_validator, model_validator
@@ -18,6 +18,9 @@ from cerberus_api.identity import AuthMode
 # backend/cerberus_api/config.py → parents[2] = raíz del repo
 REPO_ROOT = Path(__file__).resolve().parents[2]
 _HTTP_URL = TypeAdapter(AnyHttpUrl)
+
+# Perfil del registro ANTs paciente → MNI de las áreas de Brodmann (`atlas.REGISTRATION_PROFILES`, §25 HW3)
+RegistrationMode = Literal["full", "fast"]
 
 
 def _parse_auth_url(value: str) -> SplitResult:
@@ -78,6 +81,8 @@ class Settings(BaseSettings):
     ui_port: int = Field(default=5173, ge=1, le=65535)
     # Si no se fijan, se derivan de `ui_port` (ver `_derive_origins`).
     cors_origins: list[str] = ["http://localhost:5173"]
+    # `CERBERUS_REGISTRATION`: `full` = SyN de referencia; `fast` = más rápido, resolución menor (§25 HW3)
+    registration: RegistrationMode = "full"
     auth_mode: AuthMode = "off"
     app_origin: str = "http://localhost:5173"
     oidc_issuer_url: str | None = None

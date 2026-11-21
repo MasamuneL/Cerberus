@@ -21,6 +21,7 @@ from scipy import ndimage
 from cerberus_api import atlas
 from cerberus_api.area_kb import area_info, domains_for, functions_for
 from cerberus_api.atlas import ATLAS_NAME, affine_of
+from cerberus_api.config import RegistrationMode
 from cerberus_api.nifti import load_nifti
 from cerberus_api.schemas import AffectedArea, AreaLabel, AreasResult, Hemisphere
 
@@ -153,15 +154,18 @@ def compute_area_report(
     return [a for _, a in overlapping] + [a for _, a in nearby], lut
 
 
-def run_area_mapping(study_files: dict[str, Path], out_dir: Path, models_dir: Path) -> AreasResult:
+def run_area_mapping(
+    study_files: dict[str, Path], out_dir: Path, models_dir: Path, registration_mode: RegistrationMode = "full"
+) -> AreasResult:
     """Mapea el atlas al estudio (`atlas.map_atlas`), calcula el reporte y escribe `out_dir/brodmann.json`.
 
     `study_files`: secuencia → ruta NIfTI. Usa `out_dir/monai_seg.nii.gz` (WT = etiquetas >= 1) si existe.
+    `registration_mode`: perfil del registro ANTs (`full`/`fast`, ver `atlas.REGISTRATION_PROFILES`).
     Lanza `ValueError` si no hay GTV o no hay T1 para registrar.
     """
     if "gtv" not in study_files:
         raise ValueError("El estudio no tiene GTV: no se pueden reportar áreas afectadas")
-    mapping = atlas.map_atlas(study_files, out_dir, models_dir)
+    mapping = atlas.map_atlas(study_files, out_dir, models_dir, registration_mode)
     warnings = list(mapping.warnings)
 
     wt_mask: np.ndarray | None = None
