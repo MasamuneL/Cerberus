@@ -11,8 +11,8 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 | EVAL1 · evaluación MONAI en todos los estudios (§26) | ✅ | feat/EVAL1-monai-evaluation | 606277e | 2026-11-21 | Codex (impl.) + Claude Opus (rev.), orquestador Claude Opus + hc | PR #42; Dice 0.824 ± 0.159 (n=8), 0.888 ± 0.026 con 4 canales (n=6); CP-078 |
 | D3R · rescate del diagnóstico de #17 (§26) | ✅ | feat/D3R-diagnostics | fd45b08 | 2026-11-21 | Codex (impl.) + Antigravity (rev.), orquestador Claude Opus + hc | PR #40; 1327 tests; privacidad con test; CP-076 |
 | FT-DOC · fine-tuning: estado y pasos futuros (§26) | 🟡 | feat/FTDOC-future-steps | | | Claude Code (orquestador Opus + hc) | oleada 1; Antigravity |
-| ATLAS1 · aplicar la opción elegida (§26) | ⬜ | feat/ATLAS1-<a\|b\|c> | | | Claude Code (orquestador Opus + hc) | oleada 2; tras gate A/B/C |
-| UI1 · botón «Reintentar» del visor (§26) | ⬜ | feat/UI1-retry-button | | | Claude Code (orquestador Opus + hc) | oleada 2 |
+| ATLAS1 · aplicar la opción elegida (§26) | 🟡 | feat/ATLAS1-a |b\|c> | | oleada 2; opción A (usuario); Codex | Claude Code (orquestador Opus + hc) | oleada 2; tras gate A/B/C |
+| UI1 · botón «Reintentar» del visor (§26) | 🟡 | feat/UI1-retry-button | | | Claude Code (orquestador Opus + hc) | oleada 2; Antigravity |
 | DOC1 · compactar el HANDOFF (§26) | ⬜ | feat/DOC1-handoff-compact | | | Claude Code (orquestador Opus + hc) | oleada 3 |
 | HW1 · imagen CUDA + perfil GPU (§25) | ✅ | feat/HW1-cuda-gpu-profile | 9ee6bc3 | 2026-11-21 | Claude Code (orquestador Opus + hc) | PR #38; 1272 tests; cu126; validación NVIDIA pendiente; CP-074 |
 | HW3 · registro ANTs fast/full (§25) | ✅ | feat/HW3-registration-mode | f1f432a | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #36; 1237 tests; fast 2.6–3.0×; CP-072 |
