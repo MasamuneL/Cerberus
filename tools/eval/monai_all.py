@@ -6,6 +6,7 @@ import os
 import shutil
 import statistics
 import subprocess
+from collections.abc import Collection
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -21,6 +22,7 @@ from cerberus_api.segmentation import CHANNEL_MAP, _to_grid, _weights_path, mask
 from cerberus_api.sequences import validate_file_name, validate_patient, validate_timepoint
 
 METRICS = ("gtv_cm3", "tc_cm3", "dice", "hd95_mm", "recall", "precision")
+AGREEMENT_METRICS = METRICS[2:]
 MASK_FILE = f"{validate_file_name('monai_seg')}.nii.gz"
 RESULT_FILE = "monai_seg.json"
 
@@ -73,14 +75,24 @@ def reusable_result(directory: Path, newer_than_ns: int, channels: dict[str, str
     return result
 
 
-def summarize(rows: list[StudyMetrics]) -> dict[str, dict[str, float | int | None]]:
+def summarize(
+    groups: Collection[list[StudyMetrics]], names: tuple[str, ...] = METRICS
+) -> dict[str, dict[str, float | int | None]]:
+    """Da el mismo peso a cada grupo con valores definidos para la métrica."""
     summary = {}
-    for name in METRICS:
-        values: list[float] = [value for row in rows if (value := getattr(row, name)) is not None]
+    for name in names:
+        values: list[float] = []
+        for group in groups:
+            observed: list[float] = [value for row in group if (value := getattr(row, name)) is not None]
+            if observed:
+                values.append(statistics.mean(observed))
         summary[name] = {
             "n": len(values),
             "mean": statistics.mean(values) if values else None,
             "std": statistics.stdev(values) if len(values) > 1 else None,
+            "median": statistics.median(values) if values else None,
+            "min": min(values) if values else None,
+            "max": max(values) if values else None,
         }
     return summary
 
@@ -94,6 +106,7 @@ def main() -> int:
         "--reuse", action=argparse.BooleanOptionalAction, default=True, help="Reutiliza máscaras vigentes"
     )
     parser.add_argument("--reuse-storage-dir", type=Path, help="Storage adicional de solo lectura para --reuse")
+    parser.add_argument("--study", metavar="P/T", help="Evalúa un estudio, por ejemplo 001/t0")
     parser.add_argument("--out", type=Path, required=True, help="Ruta de la tabla JSON")
     args = parser.parse_args()
 
@@ -106,9 +119,21 @@ def main() -> int:
         parser.error(f"Pesos locales inexistentes: {weights}")
     weights_mtime_ns = weights.stat().st_mtime_ns
     results_dir = args.storage_dir / "results"
-    studies = catalog.list_studies(args.data_dir, results_dir)
-    if not studies:
-        parser.error(f"No se encontraron estudios NIfTI en {args.data_dir}")
+    if args.study is not None:
+        try:
+            patient, _, timepoint = args.study.partition("/")
+            validate_patient(patient)
+            validate_timepoint(timepoint)
+        except ValueError as exc:
+            parser.error(f"--study requiere P/T: {exc}")
+        selected = catalog.find_study(args.data_dir, results_dir, patient, timepoint)
+        if selected is None:
+            parser.error(f"Estudio inexistente: {args.study}")
+        studies = [selected]
+    else:
+        studies = catalog.list_studies(args.data_dir, results_dir)
+        if not studies:
+            parser.error(f"No se encontraron estudios NIfTI en {args.data_dir}")
 
     threads, _ = runtime.configure_threads()
     print(f"Hilos del worker: {threads}", flush=True)
@@ -116,7 +141,9 @@ def main() -> int:
         subprocess.run([uptime], check=False)
 
     rows: list[dict[str, object]] = []
-    measured: list[StudyMetrics] = []
+    measured: list[list[StudyMetrics]] = []
+    complete: list[list[StudyMetrics]] = []
+    by_patient: dict[str, list[StudyMetrics]] = {}
     excluded: list[dict[str, str]] = []
     failed: list[dict[str, str]] = []
     for study in studies:
@@ -174,8 +201,15 @@ def main() -> int:
             failed.append({**key, "reason": str(exc)})
             continue
 
-        print(f"  {source}, {result.device}, Dice {metrics.dice:.6f}", flush=True)
-        measured.append(metrics)
+        zero_channels = [name for name, sequence in channels.items() if sequence is None]
+        print(
+            f"  {source}, {result.device}, Dice {metrics.dice:.6f}, canales a ceros: {', '.join(zero_channels) or '—'}",
+            flush=True,
+        )
+        measured.append([metrics])
+        if not zero_channels:
+            complete.append([metrics])
+        by_patient.setdefault(patient, []).append(metrics)
         rows.append(
             {
                 **key,
@@ -187,10 +221,32 @@ def main() -> int:
             }
         )
 
+    summary = summarize(measured)
+    sensitivity = {
+        "all_studies": {name: summary[name] for name in AGREEMENT_METRICS},
+        "complete_channels": summarize(complete, AGREEMENT_METRICS),
+        "patient_means": summarize(by_patient.values(), AGREEMENT_METRICS),
+    }
+    labels = {
+        "all_studies": "Todos los estudios",
+        "complete_channels": "4 canales completos",
+        "patient_means": "Media por paciente",
+    }
+    print("\nSensibilidad (media ± DE y n por métrica)")
+    print("Subconjunto | Dice | HD95 (mm) | Recall | Precisión")
+    for subset, metrics in sensitivity.items():
+        cells = []
+        for stats in metrics.values():
+            mean, std = stats["mean"], stats["std"]
+            average = f"{mean:.6f}" if mean is not None else "—"
+            deviation = f"{std:.6f}" if std is not None else "—"
+            cells.append(f"{average} ± {deviation} (n={stats['n']})")
+        print(" | ".join([labels[subset], *cells]))
     report = {
         "weights_mtime_utc": datetime.fromtimestamp(weights_mtime_ns / 1e9, UTC).isoformat(),
         "studies": rows,
-        "summary": summarize(measured),
+        "summary": summary,
+        "sensitivity": sensitivity,
         "excluded": excluded,
         "failed": failed,
     }
