@@ -943,3 +943,138 @@ real, unos segundos en CPU, sin `slow`): código 0, temporal borrado, `--work-di
 bloqueada sin intentos (y un intento durante un paso hace fallar el smoke con código 9), temporal borrado también
 ante `KeyboardInterrupt`, camino `PENDING` (código 3) ejercitado parcheando `PENDING`, `git status`/`storage/`/`models/` intactos, rechazo de `--work-dir` dentro del repo o no vacío,
 fallo de un paso (código 9, resto omitido) y restauración del bloqueo de red.
+
+## Estado y pasos futuros
+
+Resumen verificado el 2026-11-21 sobre el estado real del pipeline de fine-tuning, la auditoría de los datos disponibles en el repositorio y la ruta pendiente hasta una eventual evaluación científica e integración.
+
+### 1. Estado actual
+
+- El pipeline **FT0–FT5** está implementado en `backend/cerberus_training/` (CLI `cerberus_training`, esquema estricto `configs/training/gtv_binary.json` y entorno CUDA independiente `training-env/`).
+- Hasta la fecha **solo se ha ejecutado con datos y pesos sintéticos en CPU** mediante los tests automatizados y `uv run python -m cerberus_training smoke --synthetic` (13 pasos con red bloqueada y artefactos marcados `real_finetuning: false`; véase [`PROGRESS.md`](PROGRESS.md) `CP-058`).
+- **No existe ningún entrenamiento real sobre CFB-GBM, ninguna ejecución en GPU CUDA ni ninguna validación científica** del modelo adaptado.
+
+### 2. Inventario real sobre `Data/`
+
+Salida obtenida el 2026-11-21 ejecutando el inventario de FT1 sobre la muestra local del repositorio (`/Users/vikingo/Documents/UDG2/5toSem/BigData/Cerberus/Data`):
+
+```bash
+uv run python -m cerberus_training inventory \
+  --data-root /Users/vikingo/Documents/UDG2/5toSem/BigData/Cerberus/Data \
+  --output /tmp/inventory.jsonl \
+  --summary /tmp/inventory_summary.json
+```
+
+Salida resumida de la CLI:
+
+```text
+Estudios: 8 (1 elegibles, 7 excluidos); pacientes: 5 (1 con algún estudio elegible)
+  exclusión missing_channel: 7 estudio(s) — falta un canal obligatorio del perfil estricto
+  estrato baseline: {'eligible': 1, 'excluded': 4}
+  estrato follow_up: {'excluded': 3}
+  canal T1c (elegibles): {'t1gd': 1}
+  canal T1 (elegibles): {'t1eg': 1}
+  canal T2 (elegibles): {'t2tse': 1}
+  canal FLAIR (elegibles): {'flair': 1}
+Por paciente:
+  001: t0 excluido (missing_channel)
+  002: t0 excluido (missing_channel)
+  003: t0 excluido (missing_channel); t1 excluido (missing_channel)
+  004: t0 ok
+  005: t0 excluido (missing_channel); t1 excluido (missing_channel); t2 excluido (missing_channel)
+```
+
+Desglose por estudio según el manifiesto `inventory.jsonl` generado por el comando:
+
+| Estudio | Estrato | Elegible | Canales faltantes / motivo (`missing_channel`) |
+|---|---|---|---|
+| `001/t0` | `baseline` | No | Falta `T2` (`t2tse`; tiene `t2star`, no aceptado por el perfil estricto) |
+| `002/t0` | `baseline` | No | Faltan `T1` (`t1eg`/`t1tse`) y `FLAIR` (`flair`); sí tiene `t2tse` |
+| `003/t0` | `baseline` | No | Falta `T1` (`t1eg`/`t1tse`); sí tiene `t2tse` |
+| `003/t1` | `follow_up` | No | Falta `T2` (`t2tse`; tiene `t2star`) |
+| `004/t0` | `baseline` | **Sí** | Completo (`t1gd`, `t1eg`, `t2tse`, `flair` y `gtv`) |
+| `005/t0` | `baseline` | No | Falta `T2` (`t2tse`; tiene `t2star`) |
+| `005/t1` | `follow_up` | No | Falta `T2` (`t2tse`; tiene `t2star`) |
+| `005/t2` | `follow_up` | No | Falta `T2` (`t2tse`; tiene `t2star`) |
+
+- Con el perfil estricto (`configs/training/gtv_binary.json`), **solo 1 de 8 estudios (12.5 %) y 1 de 5 pacientes (`004/t0`) son elegibles**, insuficiente incluso para ejecutar `split` (exige al menos 3 pacientes elegibles).
+- De los 7 excluidos, **5** fallan únicamente por ausencia de `t2tse` (cuentan con `t2star`, que la política `t2star_policy: "disabled"` no sustituye) y **2** (`002/t0`, `003/t0`) fallan por ausencia de `T1` y/o `FLAIR`.
+- En la colección completa de TCIA (`https://www.cancerimagingarchive.net/collection/cfb-gbm/`, Tabla 3, consultada el 2026-11-21), `T2` (`t2tse`) figura solo en **125** (`T0`) + **15** (`T1`) + **11** (`T2`) = **151** estudios (frente a `T1Gd`: 264 + 163 + 118 = 545, o `T2*`: 241 + 136 + 94 = 471), por lo que la escasez de `t2tse` se reproducirá al descargar todo CFB-GBM. Cualquier relajación hacia un perfil de compatibilidad deberá declararse como experimento aparte ([`PLAN_PIPELINE_FINETUNING.md`](PLAN_PIPELINE_FINETUNING.md) §4.3).
+
+### 3. Almacenamiento y caché de preprocesado
+
+Medición por estudio local con `du -sh` (y `du -sk` para precisión en KiB) sobre `/Users/vikingo/Documents/UDG2/5toSem/BigData/Cerberus/Data/*/*`:
+
+| Estudio | `du -sh` | `du -sk` (KiB) | Notas |
+|---|---|---|---|
+| `001/t0` | `772M` | `790348` | Incluye `ct` y `rtdose` |
+| `002/t0` | `623M` | `637632` | Incluye `ct` y `rtdose` |
+| `003/t0` | `507M` | `519268` | Incluye `ct` y `rtdose` |
+| `003/t1` | `217M` | `221852` | Seguimiento sin `ct`/`rtdose` |
+| `004/t0` | `759M` | `776828` | Incluye `ct` y `rtdose` |
+| `005/t0` | `468M` | `479064` | Incluye `ct` y `rtdose` |
+| `005/t1` | `255M` | `261380` | Seguimiento sin `ct`/`rtdose` |
+| `005/t2` | `225M` | `229896` | Seguimiento sin `ct`/`rtdose` |
+| **Total / media (8)** | **3 826 MiB / 478.25 MiB** | **3 916 268 / 489 533.5 KiB** | Media exacta: **478.06 MiB (~0.47 GiB)** |
+
+- **Total de estudios en TCIA:** **sin verificar**. En la ficha oficial de la colección ([`https://www.cancerimagingarchive.net/collection/cfb-gbm/`](https://www.cancerimagingarchive.net/collection/cfb-gbm/), versión 4, consultada el 2026-11-21), la columna *Studies* de la tabla *Data Access* aparece vacía; la ficha publica **264 sujetos**, **3 981 imágenes** NIfTI y **208.01 GB** en total, además de la Tabla 3 por modalidad y tiempo (`T1Gd`/`MASK`: 264 + 163 + 118 = 545; `GTV`: 261 + 160 + 122 = 543; `T2`: 125 + 15 + 11 = 151). Al no publicarse la cifra total de estudios, la multiplicación `tamaño medio × total de estudios` queda **sin verificar** (a modo de referencia, 545 × 0.47 GiB ≈ 254 GiB, superior a los 208.01 GB publicados porque 5 de los 8 estudios locales son `t0` con `ct`/`rtdose`, más pesados que `t1`/`t2`).
+- **Caché de preprocesado (`preflight`):** ejecutando `uv run python -m cerberus_training preflight` sobre el inventario real (`004/t0` elegible, grid destino `258×258×208` vóxeles, fórmula `18 B/vóxel + 64 KiB` de [`backend/cerberus_training/preflight.py`](../backend/cerberus_training/preflight.py)):
+  - Cota superior sin recorte por estudio: **0.23 GB** (`249 281 152 B ≈ 0.232 GiB`), **1.11 GB** de RAM pico en `prepare` y **0.28 GB** de RAM de datos por lote (sin activaciones ni gradientes).
+  - Extrapolando ~0.232 GiB/estudio al techo de **151 estudios** con `t2tse` en la Tabla 3 de TCIA, la caché alcanzaría hasta **~35.1 GiB** (supera `preprocess.cache_limit_gb: 20.0` de `configs/training/gtv_binary.json`, por lo que hará falta ampliar ese límite antes de `prepare` sobre la cohorte completa). Si en un experimento futuro de compatibilidad se prepararan los ~545 estudios con `T1Gd`/`MASK`, la cota superior sería **~126.5 GiB**. El tamaño real en disco puede ser menor al recortar al soporte cerebral.
+
+### 4. Pasos futuros en orden
+
+Todos los subcomandos indicados fueron verificados en la CLI actual (`--help`). Se asume una configuración local fuera de Git (p. ej. `CFG=storage/training/gtv_binary.local.json`, copiada de `configs/training/gtv_binary.json` con `paths.data_root`, `paths.work_dir`, `weights.path`, `weights.sha256` real obtenido con `shasum -a 256` y `preprocess.cache_limit_gb` ajustado):
+
+1. **Descarga externa de CFB-GBM** (DOI `10.7937/v9pn-2f72`, CC BY 4.0, 208.01 GB desde [`https://www.cancerimagingarchive.net/collection/cfb-gbm/`](https://www.cancerimagingarchive.net/collection/cfb-gbm/) vía IBM Aspera Connect / NBIA) en una ruta externa de solo lectura, comprobando la estructura `cerberus_v1` (`<paciente>/<tiempo>/<int(paciente)>_<tiempo>_<secuencia>.nii.gz`) y validando configuración y cableado:
+   ```bash
+   uv run python -m cerberus_training validate --config "$CFG"
+   uv run python -m cerberus_training smoke --synthetic
+   ```
+2. **Inventario (`inventory`):**
+   ```bash
+   uv run python -m cerberus_training inventory --config "$CFG" --summary storage/training/inventory_summary.json
+   ```
+   Auditar elegibles, exclusiones (`missing_channel`, `missing_label`), señales de revisión (`empty_label`, `invalid_brain_mask`) y carpetas rechazadas antes de tocar `split`.
+3. **Partición (`split`):**
+   ```bash
+   uv run python -m cerberus_training split --config "$CFG"
+   ```
+   Revisar las particiones 70/15/15, los avisos de duplicados fusionados y verificar `pretraining_overlap` antes de marcarlo como `verified`.
+4. **Estimación y preparación (`preflight` y `prepare`):**
+   ```bash
+   uv run python -m cerberus_training preflight --config "$CFG"
+   uv run python -m cerberus_training prepare --config "$CFG"
+   ```
+   Revisar `prepare_report.json` (errores `geometry_mismatch`, `non_binary_label`, etc.) y confirmar disco disponible.
+5. **Piloto en GPU (`training-env/`, `cu126`):** en la máquina con GPU NVIDIA (driver ≥ 525 para `cu126`, o `cu130` en Blackwell `sm_120`):
+   ```bash
+   uv sync --project training-env --locked
+   uv run --project training-env python -m cerberus_training device --require-cuda
+   uv run --project training-env python -m cerberus_training train --config "$CFG" --dry-run
+   ```
+   Medir VRAM, velocidad por época y decidir si hace falta ajustar `patch_size` o `grad_accum_steps` antes de lanzar el entrenamiento largo (cambiar `patch_size` exige un `--run-id` nuevo).
+6. **Entrenamiento (`train`):**
+   ```bash
+   uv run --project training-env python -m cerberus_training train --config "$CFG" --run-id <run_id>
+   # Si se interrumpe en límite de época:
+   uv run --project training-env python -m cerberus_training train --config "$CFG" --resume storage/training/runs/<run_id>/checkpoints/last.pt
+   ```
+7. **Evaluación frente a la línea base (`EVAL1` / `--baseline`) y exportación (`evaluate`, `export`):** fijar el mínimo de mejora exigible antes de tocar `test`; usar `val` para revisar o ajustar umbral y evaluar `test` una sola vez frente a la salida TC del modelo original (referencia imperfecta; la evaluación previa del modelo base sobre la muestra del repo corresponde a `EVAL1` en [`PLAN_VALIDEZ.md`](PLAN_VALIDEZ.md)):
+   ```bash
+   uv run --project training-env python -m cerberus_training evaluate --run storage/training/runs/<run_id> --split val
+   # Opcional (solo en val, antes de evaluar test):
+   uv run --project training-env python -m cerberus_training evaluate --run storage/training/runs/<run_id> --split val --optimize-threshold
+   # Evaluación única en test (adaptado y línea base en el mismo split):
+   uv run --project training-env python -m cerberus_training evaluate --run storage/training/runs/<run_id> --split test --checkpoint best
+   uv run --project training-env python -m cerberus_training evaluate --run storage/training/runs/<run_id> --split test --baseline
+   uv run --project training-env python -m cerberus_training export --run storage/training/runs/<run_id>
+   ```
+8. **Integración en la aplicación (fuera del alcance actual):** requiere abrir un ticket nuevo tras validar el modelo y actualizar los contratos de disco y API en [`PLAN_MVP.md`](PLAN_MVP.md) (§6 y §7), `backend/cerberus_api/schemas.py` y `frontend/src/api/types.ts` (por ejemplo, para distinguir la máscara binaria GTV de las salidas BraTS TC/WT/ET). Hasta entonces, `export/` es un artefacto experimental independiente.
+
+### 5. Decisión abierta de CP-058 (estudios elegibles que fallan en `prepare`)
+
+- Según [`PROGRESS.md`](PROGRESS.md) (`CP-058`), si un estudio marcado como `eligible: true` en `inventory.jsonl` falla en `prepare` (p. ej. por `geometry_mismatch`, `non_binary_label`, `non_finite` o `empty_brain_mask`), `prepare` termina con código `5` y deja la caché incompleta; `train` exige todos los estudios de `train` y `val` del `splits.json` y falla con código `4`.
+- **Hoy no existe un mecanismo de exclusión manual** posterior a `inventory`: editar `inventory.jsonl` a mano cambia `eligible_records_sha256` y hace que `split` y `train` rechacen el inventario (código `4`).
+- **Decisión pendiente antes de entrenar sobre toda la colección:** definir si (a) se añade un mecanismo explícito y versionado de exclusión por calidad previo a `split` (regenerando `inventory.jsonl` y `splits.json` en un `work_dir` nuevo, sin mirar resultados de `test`), o (b) los casos con `geometry_mismatch` se corrigen mediante registro previo de imágenes fuera del pipeline antes de repetir `inventory`.
+
