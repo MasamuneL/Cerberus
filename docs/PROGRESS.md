@@ -7,11 +7,11 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 
 | Ticket | Estado | Rama | Commit | Fecha | Responsable / herramienta | Notas |
 |---|---|---|---|---|---|---|
-| HW1 · imagen CUDA + perfil GPU (§25) | 🟡 | feat/HW1-cuda-gpu-profile | | | Claude Code (orquestador Opus + hc) | oleada 1 |
+| HW1 · imagen CUDA + perfil GPU (§25) | ✅ | feat/HW1-cuda-gpu-profile | 9ee6bc3 | 2026-11-21 | Claude Code (orquestador Opus + hc) | PR #38; 1272 tests; cu126; validación NVIDIA pendiente; CP-073 |
 | HW3 · registro ANTs fast/full (§25) | ✅ | feat/HW3-registration-mode | f1f432a | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #36; 1237 tests; fast 2.6–3.0×; CP-072 |
 | REG1 · registro MNI reproducible + QC (§25) | ⬜ | feat/REG1-reproducible-registration | | | Claude Code (orquestador Opus + hc) | hallazgo de HW3; oleada 2 |
 | HW4 · modo híbrido macOS (§25) | ✅ | feat/HW4-macos-hybrid | b3512c1 | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #35; 1228 tests; MPS 16–34 s vs Rosetta 87–90 s; CP-071 |
-| HW2 · lanzador con detección de hardware (§25) | ⬜ | feat/HW2-hardware-launcher | | | Claude Code (orquestador Opus + hc) | oleada 2 (tras HW1, HW4) |
+| HW2 · lanzador con detección de hardware (§25) | 🟡 | feat/HW2-hardware-launcher | | | Claude Code (orquestador Opus + hc) | oleada 2 (tras HW1, HW4) |
 | UP1 · subida con find_study (§24) | ✅ | feat/UP1-upload-find-study | 8f02a18 | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #34; 1224 tests; 0.64 → 0.08 ms (marginal); CP-069 |
 | CFG2 · validar puertos en Vite (§24) | ✅ | feat/CFG2-vite-port-validation | bb8be2f | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #33; config sin variables idéntica; inválidos fallan al arrancar; CP-068 |
 | PERF8 · reutilizar NVImage (§24) | ⛔ | — | — | 2026-11-20 | Claude Code (orquestador Opus + hc) | descartado: decodificación ≤ 8 % del toggle (gate 20 %); sin PR; CP-070 |
@@ -1256,3 +1256,24 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
 - **Notas menores (no hechas):** el botón «Reintentar» sale sin estilo y a todo el ancho (`.btn-secondary` solo existe dentro de
   `.upload-panel`); tras un reintento fallido el foco cae a `<body>`. El trailer del commit `04835ef` dice Sonnet 5.5 en vez de Opus 5.5.
 - **Plan §24 cerrado:** CFG2, UP1 y ERR1 ✅; PERF8 descartado por el gate (CP-070).
+
+### CP-073 · 2026-11-21 · HW1: imagen CUDA y perfil GPU NVIDIA
+
+- **Integración:** [PR #38](https://github.com/MasamuneL/Cerberus/pull/38), merge `9ee6bc3`. Fallback: tag `pre-HW1`
+  y `git revert -m 1 9ee6bc3`.
+- torch pasa a dos grupos excluyentes, `torch-cpu` (por defecto) y `torch-cu126` (`[tool.uv] conflicts`). `uv sync` local
+  y la imagen CPU no cambian (freeze y md5 de `site-packages/torch` idénticos). Dockerfile `ARG TORCH_VARIANT=cpu|cu126`.
+  `compose.gpu.yaml`: worker con `cerberus-backend:cuda` y reserva NVIDIA. La imagen CUDA pesa 7.29 GB; la CPU, 1.5 GB.
+- **Por qué cu126:** torch 2.14.1 se publica en cpu, cu126, cu130 y cu132. cu126 admite drivers ≥ 525 y trae kernels sm_50–sm_90.
+- `segmentation.py`: fp16 (`autocast`) solo en CUDA. La salida de la ventana deslizante queda en RAM. Ante OOM (incluidos
+  los `RuntimeError` «out of memory») se repite en CPU con aviso. FT4 sigue en fp32.
+- `runtime.arch_supported`: una GPU sin kernels en la rueda (p. ej. RTX 50xx sm_120 con cu126) usa CPU con aviso, en vez de
+  fallar cada job. `SystemInfo.gpu_name` y `gpu_memory_gb` (opcionales; §7/§16, `types.ts`). La UI muestra «GPU NVIDIA (nombre, N GB)».
+- **Medido en Mac arm64:** máscaras de CPU y MPS bit a bit iguales a main; MPS ~11–15 s.
+- **Revisión** (Opus): CAMBIOS → APROBADO. B1: un `uv run` sin flags reinstalaba torch CPU y el test CUDA se saltaba.
+  B2: fallback por arquitectura. También se aplicaron los recomendados.
+- **Pendiente:** validar en la PC NVIDIA con `CERBERUS_REQUIRE_CUDA=1 uv run --no-group torch-cpu --group torch-cu126 pytest -m slow -k cuda_fp16 -s`
+  y `docker stats` (¿bastan 6g de `mem_limit` con CUDA?). Para HW2: variante cu130 para Blackwell y ajuste de memoria.
+- **Checks:** Ruff/formato/Pyright, 1272 tests, `npm run build`.
+- Siguiente: HW2 (lanzador). Después, REG1.
+
