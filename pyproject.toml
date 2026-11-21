@@ -130,7 +130,7 @@ url = "https://download.pytorch.org/whl/cu126"
 explicit = true
 
 # cu130 (HW2): publica torch 2.14.1+cu130 cp311 (manylinux_2_28 x86_64/aarch64 y win_amd64), con kernels para
-# Blackwell; exige driver NVIDIA ≥ 580. tools/launch/ la elige solo con compute capability ≥ 12.0.
+# Blackwell; exige driver NVIDIA ≥ 580. tools/launch/ la elige solo con compute capability ≥ 10.0.
 [[tool.uv.index]]
 name = "pytorch-cu130"
 url = "https://download.pytorch.org/whl/cu130"

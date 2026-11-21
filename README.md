@@ -128,7 +128,7 @@ En Windows (PowerShell 5.1 o 7), con las mismas opciones:
 | Lo mismo con Blackwell (RTX 50xx, cc ≥ 10.0) y driver ≥ 580 | `compose.yaml` + `compose.gpu.yaml`, torch `cu130` | CUDA (fp16) | CPU |
 | Blackwell con driver < 580 | `compose.yaml` y un aviso para actualizar el driver | CPU | CPU |
 | Linux, WSL2 o Windows sin NVIDIA (o con `--cpu`) | `compose.yaml` | CPU | CPU |
-| Linux o Windows arm64 | `compose.yaml` (backend `linux/amd64` emulado) | CPU emulada | CPU emulada; sugiere `--fast` |
+| Linux o Windows arm64 (también con NVIDIA: GB10/DGX Spark, Grace, Jetson) | `compose.yaml` (backend `linux/amd64` emulado; la GPU se ignora con un aviso, porque CUDA no funciona emulado) | CPU emulada | CPU emulada; sugiere `--fast` |
 
 GPU NVIDIA: en Linux hace falta [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/)
 (el lanzador comprueba el runtime `nvidia` en `docker info` y, si falta, avisa y usa CPU); en Windows basta Docker
@@ -138,15 +138,18 @@ Además del modo, el lanzador fija estas variables **solo si no las definiste t�
 
 | Variable | Valor del lanzador |
 |---|---|
-| `CERBERUS_WORKER_MEM_LIMIT` | `clamp(RAM de Docker − 2 GB, 5 GB, 12 GB)`; con GPU el mínimo es 6 GB (contexto CUDA). Con menos de 5 GB libres para el worker avisa (pico ~4.2 GB con 001/t0). No aplica al modo híbrido |
-| `CERBERUS_TORCH_VARIANT` | `cu126` o `cu130` según la compute capability y el driver (lo lee `compose.gpu.yaml`) |
+| `CERBERUS_WORKER_MEM_LIMIT` | `clamp(RAM de Docker − 2 GB, 5 GB, 12 GB)`; con GPU el mínimo es 6 GB (contexto CUDA). Con menos de 5 GB libres para el worker avisa (pico ~4.2 GB con 001/t0). No aplica al modo híbrido. Ojo: con Docker Desktop de 8 GB (~7.65 GiB) queda en **5g**, no en el `6g` que usa `docker compose up` a mano |
+| `CERBERUS_TORCH_VARIANT` | `cu126` o `cu130` según la compute capability y el driver (lo lee `compose.gpu.yaml`). El mínimo de 525 para cu126 se apoya en la *minor version compatibility* de CUDA 12: basta para las ruedas, pero sin JIT de PTX |
 | `CERBERUS_REGISTRATION` | `fast` con `--fast`. Con ≤ 4 CPU en Docker o con emulación lo sugiere sin aplicarlo |
 | `CERBERUS_UID` / `CERBERUS_GID` | en Linux y WSL2, `$(id -u)` / `$(id -g)` |
 
 Precedencia: **entorno de la terminal > `.env` de la raíz > valor del lanzador > default de `compose.yaml`**. Compose
 lee `.env` por su cuenta; el lanzador lo lee también para no exportar encima nada de lo que contiene y para pasar al worker
-nativo (que no lee `.env`) los mismos `CERBERUS_*_PATH`, `CERBERUS_REDIS_PORT`, `CERBERUS_CPU_THREADS` y
-`CERBERUS_REGISTRATION`.
+nativo (que no lee `.env`) los mismos `CERBERUS_*_PATH`, `CERBERUS_REDIS_PORT`, `CERBERUS_CPU_THREADS`,
+`CERBERUS_REGISTRATION`, `CERBERUS_MAX_UPLOAD_MB` y `CERBERUS_MAX_ZIP_UNCOMPRESSED_MB`. Dos límites: el lanzador solo
+lee el `.env` de la raíz (si usas `COMPOSE_ENV_FILES` o `--env-file`, define ahí también lo que no quieras que proponga
+él), y una variable vacía en la terminal (`CERBERUS_X=`) cuenta como tuya: el informe la muestra vacía aunque Compose
+aplique su default (`:-…`).
 
 | Opción | Efecto |
 |---|---|
@@ -159,7 +162,8 @@ nativo (que no lee `.env`) los mismos `CERBERUS_*_PATH`, `CERBERUS_REDIS_PORT`, 
 
 En el modo híbrido el worker nativo queda en segundo plano con PID y log en `storage/launch/` (`worker.pid` y
 `worker.log`); `storage/launch/compose-files` guarda los `-f` para el `down`. Hace falta `uv` en el `PATH` (o
-`CERBERUS_UV=/ruta/a/uv`). Si el puerto de Redis (6379) está ocupado, el lanzador se detiene y pide
+`CERBERUS_UV=/ruta/a/uv`); antes de arrancarlo corre `uv sync --locked`, que se detiene si `uv.lock` no coincide con
+`pyproject.toml`. Si el worker ya corre, `up` lo reutiliza: para que cargue código nuevo, `down` y luego `up`. Si el puerto de Redis (6379) está ocupado, el lanzador se detiene y pide
 `CERBERUS_REDIS_PORT=6390` u otro libre. Para varias copias en paralelo, cambia también `COMPOSE_PROJECT_NAME`,
 `CERBERUS_HTTP_PORT` y `CERBERUS_KEYCLOAK_HTTP_PORT`.
 
