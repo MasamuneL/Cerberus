@@ -21,7 +21,6 @@ dependencies = [
     "pydicom>=3.0.2",
     "python-multipart>=0.0.32",
     "scipy>=1.17.1",
-    "torch>=2.14.1",
     "uvicorn[standard]>=0.54.0",
 ]
 
@@ -63,9 +62,20 @@ runtime = [
     "pydicom>=3.0.2",
     "python-multipart>=0.0.32",
     "scipy>=1.17.1",
-    "torch>=2.14.1",
     "uvicorn[standard]>=0.54.0",
 ]
+# Variantes de torch (HW1, docs/PLAN_MVP.md §25). Son excluyentes (`[tool.uv] conflicts`) y cada una fija su índice en
+# `[tool.uv.sources]`. `torch-cpu` es la de siempre: rueda CPU en Linux y PyPI en macOS/Windows (MPS en Apple
+# Silicon). `torch-cu126` es la imagen GPU NVIDIA: `uv sync --only-group runtime --only-group torch-cu126`.
+torch-cpu = ["torch>=2.14.1"]
+torch-cu126 = ["torch>=2.14.1"]
+
+[tool.uv]
+# `uv sync` local instala la variante CPU, igual que antes de HW1 (el paquete ya no declara torch directamente; MONAI
+# lo pide igual). Para la variante CUDA, **cada** `uv sync` y `uv run` lleva `--no-group torch-cpu --group torch-cu126`
+# (o `uv run --no-sync` tras el sync): un `uv run` sin flags vuelve a los grupos por defecto y reinstala torch CPU.
+default-groups = ["dev", "torch-cpu"]
+conflicts = [[{ group = "torch-cpu" }, { group = "torch-cu126" }]]
 
 [build-system]
 requires = ["hatchling"]
@@ -95,9 +105,20 @@ testpaths = ["backend/tests"]
 markers = ["slow: tests que usan el modelo MONAI real o dcm2niix real"]
 
 [tool.uv.sources]
-torch = [{ index = "pytorch-cpu", marker = "sys_platform == 'linux'" }]
+torch = [
+    { index = "pytorch-cpu", group = "torch-cpu", marker = "sys_platform == 'linux'" },
+    # CUDA solo existe para Linux y Windows; en macOS la variante cae en la rueda de PyPI (sin CUDA).
+    { index = "pytorch-cu126", group = "torch-cu126", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+]
 
 [[tool.uv.index]]
 name = "pytorch-cpu"
 url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+# cu126 es el índice con driver más amplio que publica torch 2.14.1 cp311 (cu128/cu129 no la publican; cu130/cu132
+# exigen driver ≥ 580). Es el mismo índice que training-env/.
+[[tool.uv.index]]
+name = "pytorch-cu126"
+url = "https://download.pytorch.org/whl/cu126"
 explicit = true

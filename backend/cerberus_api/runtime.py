@@ -20,7 +20,7 @@ import subprocess
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 from cerberus_api.schemas import SystemInfo
 
@@ -33,6 +33,8 @@ THREAD_ENV_VARS = ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS",
 MAX_AUTO_THREADS = 8
 # Pico medido del worker con 001/t0: ~4.2 GiB (MONAI en CPU + registro ANTs SyN)
 LOW_MEMORY_GB = 5.0
+# Por debajo de esta VRAM la ventana deslizante en fp16 puede quedarse sin memoria y volver a CPU (HW1)
+LOW_GPU_MEMORY_GB = 4.0
 
 CGROUP_ROOT = Path("/sys/fs/cgroup")
 MEMINFO = Path("/proc/meminfo")
@@ -147,11 +149,88 @@ def detect_memory_gb(cgroup_root: Path = CGROUP_ROOT, meminfo: Path = MEMINFO) -
     return round(total / _GIB, 1) if total is not None else None
 
 
+def _parse_arch(arch: str) -> tuple[str, int, int] | None:
+    """`"sm_86"` → `("sm", 8, 6)`, `"sm_120"` → `("sm", 12, 0)`, `"compute_90"` → `("compute", 9, 0)`.
+
+    Ignora sufijos como la `a` de `sm_90a`. `None` si no reconoce el formato.
+    """
+    kind, _, rest = arch.partition("_")
+    digits = "".join(ch for ch in rest if ch.isdigit()) if rest[:1].isdigit() else ""
+    if kind not in ("sm", "compute") or len(digits) < 2:
+        return None
+    return kind, int(digits[:-1]), int(digits[-1])
+
+
+def arch_supported(capability: tuple[int, int], arch_list: list[str]) -> bool:
+    """`True` si la rueda de torch trae kernels que corren en una GPU con esa capability (HW1).
+
+    Compatibilidad binaria de CUDA: un cubin `sm_XY` corre en la misma major con minor ≥ Y; el PTX `compute_XY`
+    se compila con JIT en cualquier capability ≥ XY. Misma idea que `cerberus_training.device._arch_warnings`
+    (que avisa cuando la capability exacta no está), pero aquí decide si se puede usar la GPU.
+    Una lista vacía (no se pudo leer) cuenta como compatible.
+    """
+    if not arch_list:
+        return True
+    major, minor = capability
+    for arch in arch_list:
+        parsed = _parse_arch(arch)
+        if parsed is None:
+            continue
+        kind, a_major, a_minor = parsed
+        if kind == "sm" and a_major == major and a_minor <= minor:
+            return True
+        if kind == "compute" and (a_major, a_minor) <= (major, minor):
+            return True
+    return False
+
+
+def _gpu_arch(torch: Any) -> tuple[str, bool]:
+    """(`"sm_XY"` de la GPU 0, ¿la rueda tiene kernels para ella?). Errores del driver → compatible (se intenta)."""
+    try:
+        major, minor = torch.cuda.get_device_capability(0)
+        compiled = list(torch.cuda.get_arch_list())
+    except (RuntimeError, AssertionError, AttributeError):
+        return "sm_??", True
+    return f"sm_{major}{minor}", arch_supported((major, minor), compiled)
+
+
+def cuda_arch_supported(torch: Any) -> bool:
+    """`True` si hay CUDA **y** la rueda de torch trae kernels para la GPU 0 (`torch` es el módulo ya importado).
+
+    Una RTX 50xx (sm_120) con la rueda cu126 (sm_50…sm_90) da `is_available() == True`, pero el primer kernel
+    falla con «no kernel image is available»: en ese caso se usa CPU.
+    """
+    return bool(torch.cuda.is_available()) and _gpu_arch(torch)[1]
+
+
+def detect_unsupported_gpu(allow_import: bool = True) -> tuple[str, str, str] | None:
+    """(nombre, `sm_XY`, `cuNNN` de la rueda) si hay una GPU CUDA sin kernels en esta build de torch; si no `None`."""
+    if not allow_import and "torch" not in sys.modules:
+        return None
+    try:
+        import torch
+    except ImportError:
+        return None
+    try:
+        if not torch.cuda.is_available():
+            return None
+        arch, supported = _gpu_arch(torch)
+        if supported:
+            return None
+        name = str(torch.cuda.get_device_name(0))
+    except (RuntimeError, AssertionError, AttributeError):
+        return None
+    cuda = torch.version.cuda
+    build = f"cu{cuda.replace('.', '')}" if cuda else "sin CUDA"
+    return name, arch, build
+
+
 def detect_device(allow_import: bool = True) -> Device:
-    """Dispositivo de cálculo: cuda → mps → cpu (mismo orden que `segmentation._monai_predictor`).
+    """Dispositivo de cálculo: cuda → mps → cpu (mismo orden que `segmentation._pick_device`).
 
     Importa torch solo si `allow_import` (el worker lo hace **después** de `configure_threads`); la API no
-    lo importa para no cargar ~400 MB, y si torch no está en memoria responde `"cpu"`.
+    lo importa para no cargar ~400 MB, y si torch no está en memoria responde `"cpu"`. Una GPU sin kernels en
+    esta build de torch (`cuda_arch_supported`) no cuenta como cuda.
     """
     if not allow_import and "torch" not in sys.modules:
         return "cpu"
@@ -159,11 +238,32 @@ def detect_device(allow_import: bool = True) -> Device:
         import torch
     except ImportError:
         return "cpu"
-    if torch.cuda.is_available():
+    if cuda_arch_supported(torch):
         return "cuda"
     if torch.backends.mps.is_available():
         return "mps"
     return "cpu"
+
+
+def detect_gpu(allow_import: bool = True) -> tuple[str | None, float | None]:
+    """Nombre y VRAM total (GB, 1 decimal) de la GPU CUDA 0; `(None, None)` sin CUDA (HW1).
+
+    Mismo criterio de import que `detect_device`. Cualquier error del driver al leer las propiedades se trata como
+    "sin datos": el reporte de recursos nunca debe tumbar el arranque del worker.
+    """
+    if not allow_import and "torch" not in sys.modules:
+        return None, None
+    try:
+        import torch
+    except ImportError:
+        return None, None
+    try:
+        if not torch.cuda.is_available():
+            return None, None
+        props = torch.cuda.get_device_properties(0)
+        return str(props.name), round(props.total_memory / _GIB, 1)
+    except (RuntimeError, AssertionError, AttributeError):
+        return None, None
 
 
 def in_container(root: Path = Path("/")) -> bool:
@@ -256,7 +356,9 @@ def build_system_info(
     container_root: Path = Path("/"),
     device: Device | None = None,
 ) -> SystemInfo:
-    """`SystemInfo` del proceso actual con warnings en español (memoria baja, plataforma emulada, env inválido).
+    """`SystemInfo` del proceso actual con warnings en español (memoria baja, plataforma emulada, env inválido,
+    VRAM < 4 GB, GPU sin kernels en la rueda). `gpu_name`/`gpu_memory_gb` se leen con `device="cuda"`; con otro
+    device solo se rellena `gpu_name` si hay una GPU CUDA incompatible con esta build de torch.
 
     No aplica hilos (usa `configure_threads` para eso). `device=None` lo detecta: el worker importa torch, la API
     no (ver `detect_device`).
@@ -268,8 +370,15 @@ def build_system_info(
     plat = platform_str(cpuinfo)
     if device is None:
         device = detect_device(allow_import=source == "worker")
+    gpu_name, gpu_memory_gb = detect_gpu(allow_import=source == "worker") if device == "cuda" else (None, None)
 
     warnings: list[str] = []
+    if device != "cuda":
+        # GPU presente pero sin kernels en la rueda (p. ej. sm_120 con cu126): se conserva el nombre para ver la causa
+        unsupported = detect_unsupported_gpu(allow_import=source == "worker")
+        if unsupported is not None:
+            gpu_name, arch, build = unsupported
+            warnings.append(f"GPU {gpu_name} ({arch}) sin kernels en esta build de PyTorch ({build}): se usa CPU")
     if _is_invalid_env(env_value):
         warnings.append(f"{ENV_THREADS}={env_value!r} no es válido: se usa auto ({threads} hilos)")
     if memory_gb is not None and memory_gb < LOW_MEMORY_GB:
@@ -278,6 +387,10 @@ def build_system_info(
         )
     if "(emulado" in plat:
         warnings.append("Plataforma emulada: el cálculo será más lento")
+    if gpu_memory_gb is not None and gpu_memory_gb < LOW_GPU_MEMORY_GB:
+        warnings.append(
+            f"GPU con poca memoria ({gpu_memory_gb:g} GB): la segmentación puede quedarse sin VRAM y volver a CPU"
+        )
 
     return SystemInfo(
         source=source,
@@ -290,4 +403,6 @@ def build_system_info(
         memory_gb=memory_gb,
         device=device,
         warnings=warnings,
+        gpu_name=gpu_name,
+        gpu_memory_gb=gpu_memory_gb,
     )

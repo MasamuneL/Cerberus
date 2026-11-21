@@ -160,6 +160,20 @@ Las dependencias específicas del notebook están en el grupo opcional `notebook
 por defecto. Para ejecutar la referencia archivada, usar `uv run --group notebook` y las rutas de
 [`ARCHIVO.md`](ARCHIVO.md). La app web y el grupo `runtime` de Docker no dependen de esos archivos.
 
+torch va en dos grupos excluyentes (HW1, §25; `[tool.uv] conflicts`): `torch-cpu` (por defecto en `uv sync`: rueda
+CPU en Linux, PyPI en macOS/Windows) y `torch-cu126` (índice `pytorch-cu126`, Linux/Windows). La imagen elige con
+`--build-arg TORCH_VARIANT=cpu|cu126` (`uv sync --only-group runtime --only-group torch-<variante>`). GPU NVIDIA en
+Docker (Linux o Windows con WSL2; driver ≥ 525 y NVIDIA Container Toolkit):
+`docker compose -f compose.yaml -f compose.gpu.yaml up -d --build` (solo el worker usa la GPU, imagen
+`cerberus-backend:cuda`). En local, la variante CUDA exige los mismos flags en **cada** `uv sync` y `uv run`:
+`uv run --no-group torch-cpu --group torch-cu126 …`, o bien `uv sync --no-group torch-cpu --group torch-cu126` y después
+`uv run --no-sync …` (o `UV_NO_SYNC=1`). Un `uv run` sin flags vuelve a sincronizar los grupos por defecto y reinstala
+torch CPU sin avisar. Validación en la PC NVIDIA:
+`CERBERUS_REQUIRE_CUDA=1 uv run --no-group torch-cpu --group torch-cu126 pytest -m slow -k cuda_fp16 -s` (imprime
+`torch.version.cuda` y falla, en vez de saltarse, si no hay CUDA). La rueda cu126 trae kernels sm_50…sm_90: una GPU
+sin kernels compatibles (p. ej. RTX 50xx Blackwell, sm_120) cae a CPU con un aviso en `/api/system`
+(`runtime.cuda_arch_supported`).
+
 Configuración que agrega B0 en `pyproject.toml`:
 - `[build-system]` hatchling; `[tool.hatch.build.targets.wheel] packages = ["backend/cerberus_api"]`.
 - `[tool.ruff]` line-length 120, target-version py311; lint select `E,F,I,UP,B`.
@@ -218,6 +232,12 @@ actualizas: `schemas.py`, `types.ts` y esta sección.
   "metrics_vs_gtv": null, // ampliación B13: objeto {tc: MaskMetrics, wt: MaskMetrics}; null sin GTV o resultado antiguo
   "dice_vs_gtv": { "tc": 0.71, "wt": 0.55 },          // null si no hay gtv
   "warnings": ["Canal T2 faltante: se usaron ceros", "Sin brain_mask: no hay skull-strip"] }
+
+// SystemInfo (GET /api/system, §16); gpu_name y gpu_memory_gb (HW1) con device "cuda", null en otro caso
+// (salvo gpu_name con "cpu" cuando la GPU no tiene kernels en la rueda de torch; va con un aviso en warnings)
+{ "source": "worker", "reported_at": "2026-11-20T18:00:00Z", "in_container": true, "platform": "linux/x86_64",
+  "cpus_available": 8.0, "threads": 7, "threads_source": "auto", "memory_gb": 6.0, "device": "cuda",
+  "warnings": [], "gpu_name": "NVIDIA GeForce RTX 3060", "gpu_memory_gb": 11.7 }
 
 // JobStatus
 { "job_id": "…", "status": "queued|in_progress|complete|failed|not_found", "result": {…}|null, "error": "…"|null }
@@ -730,7 +750,10 @@ computadora?
 
 `GET /api/system` devuelve `source` (`worker` o `api`), `reported_at`, `in_container`, `platform`,
 `cpus_available`, `threads`, `threads_source` (`auto` o `env`), `memory_gb` (puede ser `null`),
-`device` (`cuda`, `mps` o `cpu`) y `warnings`. Es información detectada al publicar el reporte, no un
+`device` (`cuda`, `mps` o `cpu`), `warnings` y, desde HW1 (§25), `gpu_name` y `gpu_memory_gb` (nombre y VRAM total de
+la GPU 0; `null` salvo con `cuda`; aviso si la VRAM es < 4 GB). Si hay GPU CUDA pero la rueda de torch no trae
+kernels para su arquitectura (p. ej. sm_120 con cu126), `device` es `cpu`, `gpu_name` conserva el nombre y `warnings`
+explica la causa. Es información detectada al publicar el reporte, no un
 monitor de utilización en tiempo real; el QA registra la ausencia de TTL del reporte del worker (B12).
 
 Las peticiones condicionales a archivos de estudios admiten `If-None-Match` y, en su ausencia,
@@ -1129,7 +1152,7 @@ GPU solo NVIDIA. Con la configuración por defecto (CPU, `full`, fp32) los resul
 
 | Ticket | Qué | Archivos | Depende de | Criterio de aceptación |
 |---|---|---|---|---|
-| HW1 | Variante CUDA de la imagen (`TORCH_VARIANT=cpu\|cu12x`, conflicto de extras en uv) + `compose.gpu.yaml` (reserva NVIDIA para el worker); `segresnet_predictor(..., amp=False)` con autocast fp16 solo en cuda, salida de la ventana deslizante en CPU y vuelta a CPU ante OOM (aviso en `warnings`); `SystemInfo.gpu_name`/`gpu_memory_gb` opcionales | `pyproject.toml`, `uv.lock`, `docker/backend.Dockerfile`, `compose.gpu.yaml`, `segmentation.py`, `runtime.py`, `schemas.py`, `frontend/src/api/types.ts` | — | Imagen CPU y `uv sync` local idénticos; tests con `torch.cuda` mockeado (amp solo en cuda, OOM → cpu, campos de GPU); en PC NVIDIA: `device: cuda` en `/api/system`, Dice fp16 vs fp32 ≥ 0.99 en 001/t0 y tiempo medido |
+| HW1 | Variante CUDA de la imagen (`TORCH_VARIANT=cpu\|cu126`, grupos excluyentes `torch-cpu`/`torch-cu126` en uv: `--only-group` omite los extras) + `compose.gpu.yaml` (reserva NVIDIA para el worker); `segresnet_predictor(..., amp=False)` con autocast fp16 solo en cuda, salida de la ventana deslizante en CPU y vuelta a CPU ante OOM (`OutOfMemoryError` o `RuntimeError` «out of memory»/`CUDNN_STATUS_ALLOC_FAILED`; aviso en `warnings`); GPU sin kernels en la rueda (`runtime.cuda_arch_supported`, p. ej. sm_120 con cu126) → cpu con aviso; `SystemInfo.gpu_name`/`gpu_memory_gb` opcionales. Variante `cu130` para Blackwell: pendiente en HW2 | `pyproject.toml`, `uv.lock`, `docker/backend.Dockerfile`, `compose.gpu.yaml`, `segmentation.py`, `runtime.py`, `schemas.py`, `frontend/src/api/types.ts` | — | Imagen CPU y `uv sync` local idénticos; tests con `torch.cuda` mockeado (amp solo en cuda, OOM → cpu, campos de GPU); en PC NVIDIA: `device: cuda` en `/api/system`, Dice fp16 vs fp32 ≥ 0.99 en 001/t0 y tiempo medido |
 | HW3 | `CERBERUS_REGISTRATION=full\|fast`: perfil de registro ANTs; `full` = actual; `fast` = SyN con menos iteraciones / SyNQuick y spacing 2 mm; el perfil entra en `_cache_key` y en `registration` («(rápido)») | `config.py`, `atlas.py`, `worker.py`, tests | — | `full` bit a bit igual (kwargs de `ants.registration` sin cambio); caché distinta por modo; valor inválido falla en settings; benchmark 001/t0 + otro paciente: `fast` ≥ 2×; en estudios donde `full` es estable (Dice `full` vs `full` ≥ 0.9) coinciden las «Afectadas» con solape ≥ 0.5 cm³ (±1 área de borde 0.4–0.6 cm³). Enmendado en CP-072: el criterio estricto no es medible porque `full` no es determinista (ver REG1) |
 | HW4 | Modo híbrido macOS Apple Silicon: `compose.hybrid.yaml` (worker de Docker desactivado, Redis solo en `127.0.0.1:${CERBERUS_REDIS_PORT:-6379}`) + worker nativo (`uv run`) con MPS y ANTs arm64 sobre los mismos `Data/`, `storage/`, `models/` | `compose.hybrid.yaml`, `README.md` | — | `/api/system`: `darwin/arm64`, `mps`, `in_container: false`; la API del contenedor sirve los resultados del worker nativo; tiempos vs Docker+Rosetta medidos |
 | HW2 | Lanzador `tools/launch/up.sh` + `up.ps1`: detecta SO/arquitectura, CPU/RAM de Docker y NVIDIA; elige `compose.gpu.yaml`, modo híbrido o normal; fija `CERBERUS_WORKER_MEM_LIMIT = clamp(MemDocker − 2 GB, 5, 12 GB)`; sugiere `fast` con ≤ 4 CPU o emulación; respeta variables ya definidas; `--dry-run`, `--cpu`, `--no-hybrid`, `--fast`, `down`. Tope `MAX_AUTO_THREADS` 8 → 16 solo si el benchmark da > 15 % | `tools/launch/`, `runtime.py` (condicional), `README.md`, §5 | HW1, HW4 | `bash -n` + shellcheck; `--dry-run` correcto en Mac arm, Linux con/sin NVIDIA y Windows WSL2; README con tabla «Qué usa cada SO» |
