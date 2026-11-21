@@ -9,7 +9,7 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 |---|---|---|---|---|---|---|
 | HW1 · imagen CUDA + perfil GPU (§25) | ✅ | feat/HW1-cuda-gpu-profile | 9ee6bc3 | 2026-11-21 | Claude Code (orquestador Opus + hc) | PR #38; 1272 tests; cu126; validación NVIDIA pendiente; CP-074 |
 | HW3 · registro ANTs fast/full (§25) | ✅ | feat/HW3-registration-mode | f1f432a | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #36; 1237 tests; fast 2.6–3.0×; CP-072 |
-| REG1 · registro MNI reproducible + QC (§25) | ⬜ | feat/REG1-reproducible-registration | | | Claude Code (orquestador Opus + hc) | hallazgo de HW3; oleada 2 |
+| REG1 · registro MNI reproducible + QC (§25) | 🟡 | feat/REG1-reproducible-registration | | | Claude Code (orquestador Opus + hc) | hallazgo de HW3; oleada 2 |
 | HW4 · modo híbrido macOS (§25) | ✅ | feat/HW4-macos-hybrid | b3512c1 | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #35; 1228 tests; MPS 16–34 s vs Rosetta 87–90 s; CP-071 |
 | HW2 · lanzador con detección de hardware (§25) | ✅ | feat/HW2-hardware-launcher | f68173b | 2026-11-21 | Claude Code (orquestador Opus + hc) | PR #39; 1310 tests; up.ps1 sin ejecutar en Windows; CP-075 |
 | UP1 · subida con find_study (§24) | ✅ | feat/UP1-upload-find-study | 8f02a18 | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #34; 1224 tests; 0.64 → 0.08 ms (marginal); CP-069 |
