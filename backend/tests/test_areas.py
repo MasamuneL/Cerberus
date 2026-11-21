@@ -27,7 +27,7 @@ from cerberus_api.areas import (
     run_area_mapping,
 )
 from cerberus_api.atlas import AtlasMapping
-from cerberus_api.config import REPO_ROOT, Settings
+from cerberus_api.config import REPO_ROOT, RegistrationMode, Settings
 from cerberus_api.deps import get_redis, settings_dep
 from cerberus_api.main import app
 from cerberus_api.schemas import AreaLabel, AreasResult, Hemisphere
@@ -229,7 +229,9 @@ def test_run_area_mapping_passes_registration_mode(
     modes: list[str] = []
     real = atlas.map_atlas
 
-    def spy(study_files: dict[str, Path], out_dir: Path, models_dir: Path, mode: str = "full") -> AtlasMapping:
+    def spy(
+        study_files: dict[str, Path], out_dir: Path, models_dir: Path, mode: RegistrationMode = "full"
+    ) -> AtlasMapping:
         modes.append(mode)
         return real(study_files, out_dir, models_dir, mode)
 
@@ -315,7 +317,7 @@ def test_worker_map_areas(settings: Settings, make_study: MakeStudy, monkeypatch
     make_study(settings.data_dir, seqs=("t1gd", "gtv", "brain_mask"))
     calls: list[tuple[dict[str, Path], Path, Path, str]] = []
 
-    def fake_run(study_files: dict[str, Path], out_dir: Path, models_dir: Path, mode: str) -> AreasResult:
+    def fake_run(study_files: dict[str, Path], out_dir: Path, models_dir: Path, mode: RegistrationMode) -> AreasResult:
         calls.append((study_files, out_dir, models_dir, mode))
         return _sample_result()
 

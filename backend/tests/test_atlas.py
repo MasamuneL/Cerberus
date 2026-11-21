@@ -198,7 +198,8 @@ def test_map_atlas_registration_mode(tmp_path: Path, fake_register: list[int]) -
     map_atlas(files, out, tmp_path / "m", "fast")
     assert len(fake_register) == 2  # misma huella: se reutiliza
     map_atlas(files, out, tmp_path / "m", "full")
-    assert len(fake_register) == 3  # `fast` sobrescribió mni/: `full` vuelve a registrar
+    assert len(fake_register) == 2  # cada modo tiene su directorio: `full` reutiliza mni/
+    assert (out / "mni").is_dir() and (out / "mni_fast").is_dir()
 
 
 def test_cache_key_depends_on_mode_and_full_key_is_unchanged(tmp_path: Path) -> None:

@@ -303,8 +303,8 @@ def map_atlas(
 ) -> AtlasMapping:
     """Registra el estudio a MNI y escribe `out_dir/brodmann.nii.gz` en el grid de la referencia.
 
-    `study_files`: secuencia → ruta NIfTI. Las transformaciones se guardan en `out_dir/mni/` y se reutilizan
-    si las entradas y el perfil `mode` no cambiaron. Lanza `ValueError` si no hay T1 para registrar.
+    `study_files`: secuencia → ruta NIfTI. Las transformaciones se guardan en `out_dir/mni/` (`mni_fast/` en `fast`)
+    y se reutilizan si las entradas y el perfil `mode` no cambiaron. Lanza `ValueError` si no hay T1 para registrar.
     """
     import ants
 
@@ -328,7 +328,8 @@ def map_atlas(
     split_img, split_entries = split_hemispheres(atlas_img, labels)
     names: dict[int, tuple[str, Hemisphere]] = {v: (name, hemi) for v, name, hemi in split_entries}
 
-    mni_dir = out_dir / "mni"
+    # Un directorio por modo: `full` conserva `mni/` (y su caché) y alternar modos no se pisa
+    mni_dir = out_dir / ("mni" if mode == "full" else f"mni_{mode}")
     out_dir.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="cerberus_atlas_") as tmp_str:
         tmp = Path(tmp_str)
