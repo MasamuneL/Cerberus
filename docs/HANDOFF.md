@@ -4,7 +4,7 @@
 > checkpoint. El historial completo está en [`PROGRESS.md`](PROGRESS.md) y el alcance y los contratos en
 > [`PLAN_MVP.md`](PLAN_MVP.md). Las reglas de trabajo están en [`../AGENTS.md`](../AGENTS.md).
 
-**Última actualización:** 2026-11-20 · último checkpoint: CP-069 · rama base: `main`
+**Última actualización:** 2026-11-20 · último checkpoint: CP-070 · rama base: `main`
 
 ## 1. Arranque rápido
 
@@ -31,6 +31,8 @@ Abre las PNG y revísalas: **no te fíes solo de los ✅**. Leer píxeles del ca
 (`preserveDrawingBuffer=false`), así que esos chequeos de píxeles no son confiables.
 
 ## 2. Estado actual
+
+**CP-070 · PERF8 descartado · 2026-11-20:** la decodificación es ≤ 8 % del toggle (gate 20 %); el ~92 % son `addVolume`/`updateGLVolume`/render con SwiftShader. Pendiente medido: perfilar ese tramo y valorar agrupar refrescos GL o alternar por opacidad sin recargar. Plan §24 restante: ERR1 (en curso).
 
 **CP-069 · UP1 · subidas con `find_study` · 2026-11-20:** [PR #34](https://github.com/MasamuneL/Cerberus/pull/34), merge `8f02a18`. Ganancia marginal (0.64 → 0.08 ms). Plan §24 restante: PERF8 (gate de medición en curso) y ERR1 (oleada 2).
 

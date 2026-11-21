@@ -13,8 +13,8 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 | HW2 · lanzador con detección de hardware (§25) | ⬜ | feat/HW2-hardware-launcher | | | Claude Code (orquestador Opus + hc) | oleada 2 (tras HW1, HW4) |
 | UP1 · subida con find_study (§24) | ✅ | feat/UP1-upload-find-study | 8f02a18 | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #34; 1224 tests; 0.64 → 0.08 ms (marginal); CP-069 |
 | CFG2 · validar puertos en Vite (§24) | ✅ | feat/CFG2-vite-port-validation | bb8be2f | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #33; config sin variables idéntica; inválidos fallan al arrancar; CP-068 |
-| PERF8 · reutilizar NVImage (§24) | 🟡 | feat/PERF8-nvimage-reuse | | | Claude Code (orquestador Opus + hc) | gate < 20 % |
-| ERR1 · ErrorBoundary del visor (§24) | ⬜ | feat/ERR1-viewer-error-boundary | | | Claude Code (orquestador Opus + hc) | oleada 2 |
+| PERF8 · reutilizar NVImage (§24) | ⛔ | — | — | 2026-11-20 | Claude Code (orquestador Opus + hc) | descartado: decodificación ≤ 8 % del toggle (gate 20 %); sin PR; CP-070 |
+| ERR1 · ErrorBoundary del visor (§24) | 🟡 | feat/ERR1-viewer-error-boundary | | | Claude Code (orquestador Opus + hc) | oleada 2 |
 | CFG1 · puertos configurables por env (§23) | ✅ | feat/CFG1-env-ports | c491be1 | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #30; 1219 tests; CP-065 |
 | VIZ1 · bordes suaves de máscaras (§22) | ✅ | feat/viz-smooth-masks | d1edd20 | 2026-11-20 | MasamuneL + Claude Code (revisión/merge) | PR #22; 1210 tests; e2e 33/33 + superficie + 3D; CP-063 |
 | PERF1 · volumetría recortada (§21) | ✅ | feat/PERF1-volumetry-crop | 2e50217 | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #26; 1191 tests; ~1.7 s → 76 ms; CP-059 |
@@ -1185,3 +1185,23 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
 - **Benchmark** 001/t0 (8 estudios): 0.64 → 0.08 ms. **Marginal**: una llamada por subida; crece con el catálogo.
 - **Checks:** Ruff/formato/Pyright, 1224 tests rápidos. Revisión independiente (Opus) aprobada.
 - Siguiente: PERF8 (gate de medición) y ERR1.
+
+### CP-070 · 2026-11-20 · PERF8 descartado por el gate de medición
+
+- **Sin integración:** no hubo commit ni PR; rama y worktree borrados. Decisión del usuario: descartar y anotar.
+- **Medición** (001/t0, base `t1gd` con GTV, MONAI y áreas, Chrome headless + SwiftShader, mediana de 3 corridas, instrumentación
+  temporal no commiteada):
+
+| Toggle | Total (ms) | Descarga + decodificación (ms) | Decodificación ahorrable (ms) | Ahorrable / total |
+|---|---|---|---|---|
+| ocultar GTV | 16112 | 1277 | 782 | 4.9 % |
+| mostrar GTV | 27193 | 1105 | 1266 | 5.1 % |
+| bordes suaves off | 26205 | 1325 | 566 | 2.3 % |
+| bordes suaves on | 26236 | 1088 | 1208 | 4.9 % |
+
+- Aunque se eliminara toda la etapa de descarga y decodificación, el toggle bajaría como mucho ~1–1.3 s (≤ 8 %). El ~92 % está
+  después: `nv.volumes = []`, `addVolume` × N (cada uno refresca capas GL), `setOpacity`, `setColormapLabel` + `updateGLVolume`,
+  `setSliceType` y el render.
+- **Pendiente nuevo (hipótesis no medida):** agrupar los refrescos GL en un solo `updateGLVolume` por lote, o alternar capas con
+  opacidad 0 sin recargar. Antes de un ticket, perfilar ese ~92 % por llamada. Con GPU real (no SwiftShader) el reparto puede cambiar.
+- Siguiente: ERR1 en curso.
