@@ -32,6 +32,8 @@ Abre las PNG y revísalas: **no te fíes solo de los ✅**. Leer píxeles del ca
 
 ## 2. Estado actual
 
+**CP-075 · HW2 · lanzador por hardware · 2026-11-21:** [PR #39](https://github.com/MasamuneL/Cerberus/pull/39), merge `f68173b` (fallback: tag `pre-HW2`). Camino recomendado: `tools/launch/up.sh` (Windows: `up.ps1`); `--dry-run` muestra la decisión. HW1–HW4 completos. Pendiente manual: ejecutar `up.ps1` en Windows y validar en la PC NVIDIA. Siguiente: REG1 (registro ANTs reproducible + QC).
+
 **CP-074 · HW1 · imagen CUDA · 2026-11-21:** [PR #38](https://github.com/MasamuneL/Cerberus/pull/38), merge `9ee6bc3` (fallback: tag `pre-HW1`). NVIDIA: `docker compose -f compose.yaml -f compose.gpu.yaml up -d --build`. Variante CUDA local: cada `uv run` lleva `--no-group torch-cpu --group torch-cu126`. Pendiente: validar en la PC NVIDIA (comando en CP-074). Plan §25 restante: HW2 (en curso), REG1.
 
 **CP-073 · ERR1 · ErrorBoundary del visor · 2026-11-21:** [PR #37](https://github.com/MasamuneL/Cerberus/pull/37), merge `84cc549`. **Plan §24 cerrado** (CFG2, UP1, ERR1 ✅; PERF8 descartado). Pendientes nuevos: estilo y foco del botón «Reintentar» del visor; perfilar el ~92 % del toggle de capas (refrescos GL) antes de otro ticket de rendimiento (CP-070). **Cierre §24:** en main pasaron Ruff/formato/Pyright, 1237 tests rápidos, 7 slow y `npm run build`; la pasada final de e2e (2026-11-21) no fue concluyente: con load average 40–49 (VM de Docker + sesión HW en paralelo), SwiftShader bloquea el hilo ~180 s tras decodificar y todo expira. Repetir `verify`, `verify-viewer-3d`, `verify-mask-surface`, `verify-overlay-toggle` y `verify-viewer-chunk-error` con la máquina en reposo (en los PR pasaron: 33/33, 7/7, 3/3, 4/4, 5/5).

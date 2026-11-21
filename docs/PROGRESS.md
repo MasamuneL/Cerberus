@@ -11,7 +11,7 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 | HW3 · registro ANTs fast/full (§25) | ✅ | feat/HW3-registration-mode | f1f432a | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #36; 1237 tests; fast 2.6–3.0×; CP-072 |
 | REG1 · registro MNI reproducible + QC (§25) | ⬜ | feat/REG1-reproducible-registration | | | Claude Code (orquestador Opus + hc) | hallazgo de HW3; oleada 2 |
 | HW4 · modo híbrido macOS (§25) | ✅ | feat/HW4-macos-hybrid | b3512c1 | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #35; 1228 tests; MPS 16–34 s vs Rosetta 87–90 s; CP-071 |
-| HW2 · lanzador con detección de hardware (§25) | 🟡 | feat/HW2-hardware-launcher | | | Claude Code (orquestador Opus + hc) | oleada 2 (tras HW1, HW4) |
+| HW2 · lanzador con detección de hardware (§25) | ✅ | feat/HW2-hardware-launcher | f68173b | 2026-11-21 | Claude Code (orquestador Opus + hc) | PR #39; 1310 tests; up.ps1 sin ejecutar en Windows; CP-075 |
 | UP1 · subida con find_study (§24) | ✅ | feat/UP1-upload-find-study | 8f02a18 | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #34; 1224 tests; 0.64 → 0.08 ms (marginal); CP-069 |
 | CFG2 · validar puertos en Vite (§24) | ✅ | feat/CFG2-vite-port-validation | bb8be2f | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #33; config sin variables idéntica; inválidos fallan al arrancar; CP-068 |
 | PERF8 · reutilizar NVImage (§24) | ⛔ | — | — | 2026-11-20 | Claude Code (orquestador Opus + hc) | descartado: decodificación ≤ 8 % del toggle (gate 20 %); sin PR; CP-070 |
@@ -1276,4 +1276,32 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
   y `docker stats` (¿bastan 6g de `mem_limit` con CUDA?). Para HW2: variante cu130 para Blackwell y ajuste de memoria.
 - **Checks:** Ruff/formato/Pyright, 1272 tests, `npm run build`.
 - Siguiente: HW2 (lanzador). Después, REG1.
+
+### CP-075 · 2026-11-21 · HW2: lanzador con detección de hardware + variante cu130
+
+- **Integración:** [PR #39](https://github.com/MasamuneL/Cerberus/pull/39), merge `f68173b`. Fallback: tag `pre-HW2`
+  y `git revert -m 1 f68173b`.
+- `tools/launch/up.sh` (macOS/Linux/WSL2, bash 3.2+) y `up.ps1` (PowerShell 5.1+/7). Detectan SO, arquitectura,
+  CPU/RAM de Docker y NVIDIA, y eligen el modo:
+  - NVIDIA → `compose.gpu.yaml` con cu126, o cu130 si cc ≥ 10.0 y driver ≥ 580; con driver viejo, CPU con aviso.
+  - darwin/arm64 → modo híbrido con el worker nativo (PID y log en `storage/launch/`).
+  - arm64 con NVIDIA fuera del híbrido → ignora la GPU.
+  - Resto → `compose.yaml`.
+- Fija `CERBERUS_WORKER_MEM_LIMIT = clamp(RAM Docker − 2, 5, 12 GB)` (mínimo 6 con GPU) y `CERBERUS_UID/GID` en
+  Linux/WSL2, y sugiere `--fast` con ≤ 4 CPU o emulación. Nunca pisa variables del entorno ni del `.env`.
+  Opciones: `--dry-run`, `--cpu`, `--no-hybrid`, `--fast`, `--foreground`, `down`.
+- Grupo `torch-cu130` (índice cu130). La imagen CPU y `uv sync` local no cambian (exports idénticos a main).
+- `MAX_AUTO_THREADS` se queda en 8: las áreas ganan 12–19 % con 12–14 hilos solo con poca carga (n = 2), dentro del
+  ruido. Además, más hilos empeoran la reproducibilidad del afín (REG1).
+- **Prueba real (Mac arm64):** el stack híbrido arrancó en 46 s con `/api/system` = darwin/arm64, mps,
+  `in_container: false`, y `down` lo bajó limpio.
+- **Revisión** (Opus): CAMBIOS → APROBADO.
+  - B1: `$VAR»` rompía bash 3.2 con UTF-8.
+  - R1–R11 aplicados: código de salida de `nvidia-smi`, arm64+NVIDIA, límites de subida al worker nativo,
+    TERM en `up.ps1 down`, validación del PID, `uv sync --locked`.
+- **Checks:** shellcheck, `bash -n` (5 y 3.2), Ruff/formato/Pyright, 1310 tests.
+- **Pendiente manual:**
+  - `up.ps1` no se ha ejecutado nunca: en Windows, correr `--dry-run` e `Invoke-ScriptAnalyzer`.
+  - Validar en la PC NVIDIA (CP-074) y probar cu130 en una Blackwell.
+- **Plan §25:** HW1–HW4 ✅. Queda REG1.
 
