@@ -8,7 +8,8 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 | Ticket | Estado | Rama | Commit | Fecha | Responsable / herramienta | Notas |
 |---|---|---|---|---|---|---|
 | HW1 · imagen CUDA + perfil GPU (§25) | 🟡 | feat/HW1-cuda-gpu-profile | | | Claude Code (orquestador Opus + hc) | oleada 1 |
-| HW3 · registro ANTs fast/full (§25) | 🟡 | feat/HW3-registration-mode | | | Claude Code (orquestador Opus + hc) | oleada 1 |
+| HW3 · registro ANTs fast/full (§25) | ✅ | feat/HW3-registration-mode | f1f432a | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #36; 1237 tests; fast 2.6–3.0×; CP-072 |
+| REG1 · registro MNI reproducible + QC (§25) | ⬜ | feat/REG1-reproducible-registration | | | Claude Code (orquestador Opus + hc) | hallazgo de HW3; oleada 2 |
 | HW4 · modo híbrido macOS (§25) | ✅ | feat/HW4-macos-hybrid | b3512c1 | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #35; 1228 tests; MPS 16–34 s vs Rosetta 87–90 s; CP-071 |
 | HW2 · lanzador con detección de hardware (§25) | ⬜ | feat/HW2-hardware-launcher | | | Claude Code (orquestador Opus + hc) | oleada 2 (tras HW1, HW4) |
 | UP1 · subida con find_study (§24) | ✅ | feat/UP1-upload-find-study | 8f02a18 | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #34; 1224 tests; 0.64 → 0.08 ms (marginal); CP-069 |
@@ -1219,4 +1220,23 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
 - **Checks:** Ruff/formato/Pyright, 1228 tests tras traer main. Revisión independiente (Opus) aprobada; sus 2 nits aplicados.
 - En curso: HW1 (CUDA) y HW3 (PR #36, en revisión). Hallazgo de HW3: el registro `full` no es determinista entre
   corridas (004/t0, Dice 0.18 contra sí mismo); ticket aparte por definir.
+
+### CP-072 · 2026-11-20 · HW3: registro ANTs `full`/`fast` para áreas de Brodmann
+
+- **Integración:** [PR #36](https://github.com/MasamuneL/Cerberus/pull/36), merge `f1f432a`. Fallback: tag `pre-HW3`
+  y `git revert -m 1 f1f432a`.
+- `CERBERUS_REGISTRATION=full|fast` (default `full`, validado en `Settings.registration`; llega a API y worker en
+  `compose.yaml`). `full` es bit a bit el de antes: mismos kwargs de `ants.registration` y misma huella de caché, así
+  que las cachés existentes siguen valiendo. `fast` = SyN `(20,10,0)` con imagen móvil **y plantilla MNI** a 2 mm.
+  Cada modo tiene su caché y su directorio (`mni/` y `mni_fast/`). `registration` termina en «(rápido)».
+- **Benchmark** (en frío, 2 corridas, máquina con carga alta): 001/t0 31.8/27.6 → 10.8/9.5 s (2.9×); 004/t0 3.0×;
+  005/t1 2.6×. `antsRegistrationSyNQuick[s]` salió más lento (0.61×) y se descartó.
+- **Calidad:** en 001/t0 las «Afectadas» con solape ≥ 0.5 cm³ son idénticas. En 005/t1 solo falta un área de 0.0 cm³.
+  En 004/t0 la comparación no es válida: `full` no coincide consigo mismo (Jaccard 0.59). El criterio se enmendó en §25.
+- **Revisión** (Opus): CAMBIOS → APROBADO. Se aplicaron B1 (tipado de los spies en tests; pyright no se había corrido
+  bien sobre el worktree) y R1 (un directorio `mni` por modo).
+- **Hallazgo → REG1** (§25): el registro `full` no es determinista con varios hilos. En 004/t0 la etapa afín cae en
+  mínimos distintos (Dice 0.18). La caché lo oculta, pero cualquier re-registro puede cambiar el reporte de áreas.
+- **Checks:** Ruff/formato/Pyright, 1237 tests tras traer main.
+- En curso: HW1 (CUDA). Luego HW2 (lanzador) y REG1.
 

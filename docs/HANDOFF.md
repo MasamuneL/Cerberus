@@ -32,6 +32,8 @@ Abre las PNG y revísalas: **no te fíes solo de los ✅**. Leer píxeles del ca
 
 ## 2. Estado actual
 
+**CP-072 · HW3 · registro full/fast · 2026-11-20:** [PR #36](https://github.com/MasamuneL/Cerberus/pull/36), merge `f1f432a` (fallback: tag `pre-HW3`). `CERBERUS_REGISTRATION=fast` es ~3× más rápido; `full` sigue por defecto e idéntico. Nuevo ticket REG1 (§25): el registro `full` no es determinista con varios hilos (004/t0). Plan §25 restante: HW1 (implementando), HW2, REG1.
+
 **CP-071 · HW4 · modo híbrido macOS · 2026-11-20:** [PR #35](https://github.com/MasamuneL/Cerberus/pull/35), merge `b3512c1` (fallback: tag `pre-HW4`). Mac Apple Silicon: `docker compose -f compose.yaml -f compose.hybrid.yaml up -d` + worker nativo (README). Plan §25 en curso: HW1 (CUDA, implementando), HW3 (PR #36, en revisión); HW2 (lanzador) tras HW1. Ojo: registro ANTs `full` no determinista entre corridas (hallazgo HW3).
 
 **CP-070 · PERF8 descartado · 2026-11-20:** la decodificación es ≤ 8 % del toggle (gate 20 %); el ~92 % son `addVolume`/`updateGLVolume`/render con SwiftShader. Pendiente medido: perfilar ese tramo y valorar agrupar refrescos GL o alternar por opacidad sin recargar. Plan §24 restante: ERR1 (en curso).
