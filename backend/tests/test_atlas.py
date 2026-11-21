@@ -1,11 +1,13 @@
 """Tests de atlas.py: hemisferios con un atlas sintético y `map_atlas` con transformación identidad.
 
-Los rápidos no usan red ni corren el registro ANTs (se reemplaza `_register` por una afín identidad); el `slow`
-registra de verdad Data/001/t0.
+Los rápidos no usan red ni corren el registro ANTs. Los `slow` registran estudios reales.
 """
 
 import hashlib
 import json
+import os
+import subprocess
+import sys
 import time
 from pathlib import Path
 from typing import Any
@@ -16,7 +18,7 @@ import numpy as np
 import pytest
 from scipy.ndimage import distance_transform_edt
 
-from cerberus_api import atlas
+from cerberus_api import atlas, linear_reg
 from cerberus_api.atlas import (
     WARN_LARGE_GTV,
     WARN_NO_BRAIN,
@@ -27,7 +29,7 @@ from cerberus_api.atlas import (
     split_hemispheres,
     which_to_invert,
 )
-from cerberus_api.config import REPO_ROOT, RegistrationMode
+from cerberus_api.config import REPO_ROOT, RegistrationMode, Settings
 from cerberus_api.nifti import load_nifti
 
 LABELS = ["Background", "Brodmann area 4", "Putamen"]
@@ -202,31 +204,32 @@ def test_map_atlas_registration_mode(tmp_path: Path, fake_register: list[int]) -
     assert (out / "mni").is_dir() and (out / "mni_fast").is_dir()
 
 
-def test_cache_key_depends_on_mode_and_full_key_is_unchanged(tmp_path: Path) -> None:
+@pytest.mark.parametrize("mode", ["full", "fast"])
+def test_cache_key_invalidates_pre_reg1_transforms(tmp_path: Path, mode: RegistrationMode) -> None:
     files = _study(tmp_path / "s", ("t1eg", "brain_mask", "gtv"))
     assert atlas._cache_key(files, "t1eg", "full") != atlas._cache_key(files, "t1eg", "fast")
     assert atlas._cache_key(files, "t1eg") == atlas._cache_key(files, "t1eg", "full")
 
-    # La huella de `full` es la de antes de HW3: las cachés existentes siguen válidas
+    # Ambas huellas de HW3 dejan de servir aunque los archivos de transformación sigan en disco.
     h = hashlib.sha256()
     for seq in ("t1eg", "brain_mask", "gtv"):
         st = files[seq].stat()
         h.update(f"{seq}:{files[seq].resolve()}:{st.st_size}:{st.st_mtime_ns};".encode())
-    h.update(b"SyN:1.5:5.0:42")
-    assert atlas._cache_key(files, "t1eg", "full") == h.hexdigest()
+    h.update(b"SyN:1.5:5.0:42" if mode == "full" else b"SyN:2.0:5.0:42:fast:2.0:[('reg_iterations', (20, 10, 0))]")
+    tx = tmp_path / "pat2mni_0GenericAffine.mat"
+    tx.touch()
+    (tmp_path / atlas.CACHE_FILE).write_text(json.dumps({"key": h.hexdigest(), "invtransforms": [tx.name]}))
+    assert atlas._load_cached(tmp_path, atlas._cache_key(files, "t1eg", mode)) is None
 
 
 def _capture_registration(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path, mode: RegistrationMode
-) -> tuple[dict[str, object], tuple[float, ...]]:
-    """Corre `_register` con `ants.registration` falso: devuelve sus kwargs y el spacing de la imagen móvil."""
-    seen: dict[str, object] = {}
-    spacing: list[tuple[float, ...]] = []
+) -> list[dict[str, Any]]:
+    """Ejecuta ambas etapas con ANTs y el subproceso simulados."""
+    calls: list[dict[str, Any]] = []
 
     def fake_registration(**kwargs: object) -> dict[str, list[str]]:
-        seen.update(kwargs)
-        moving: Any = kwargs["moving"]
-        spacing.append(tuple(float(z) for z in moving.spacing))
+        calls.append(kwargs)
         out = Path(str(kwargs["outprefix"]))
         affine = out.parent / (out.name + "0GenericAffine.mat")
         affine.write_bytes(b"")
@@ -236,42 +239,56 @@ def _capture_registration(
     mask = nib.Nifti1Image(np.ones((6, 6, 6), np.uint8), np.eye(4))
     monkeypatch.setattr(atlas, "fetch_template", lambda models_dir: (template, mask))
     monkeypatch.setattr(ants, "registration", fake_registration)
+    monkeypatch.setenv("ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS", "8")
+
+    def fake_run(command: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
+        assert command == [sys.executable, "-m", "cerberus_api.linear_reg"]
+        assert kwargs["env"]["ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS"] == "1"
+        assert os.environ["ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS"] == "8"
+        payload = json.loads(kwargs["input"])
+        return subprocess.CompletedProcess(command, 0, json.dumps(linear_reg.run_affine(payload)), "")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
 
     study = tmp_path / "study"
     files = _study(study, ("t1eg", "brain_mask", "gtv"))
     work = tmp_path / "work"
     work.mkdir()
     atlas._register(files, "t1eg", tmp_path / "mni", tmp_path / "models", work, mode)
-    return seen, spacing[0]
+    return calls
 
 
-def test_register_full_keeps_ants_kwargs(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    """`full`: los kwargs de `ants.registration` y el spacing son exactamente los de antes de HW3."""
-    kwargs, spacing = _capture_registration(monkeypatch, tmp_path, "full")
-    assert set(kwargs) == {
-        "fixed",
-        "moving",
-        "type_of_transform",
-        "outprefix",
-        "mask",
-        "moving_mask",
-        "mask_all_stages",
-        "random_seed",
-    }
-    assert kwargs["type_of_transform"] == "SyN" and kwargs["mask_all_stages"] is True
-    assert kwargs["random_seed"] == 42
-    assert np.allclose(spacing, (1.5, 1.5, 1.5))
+@pytest.mark.parametrize(("mode", "spacing", "iterations"), [("full", 1.5, None), ("fast", 2.0, (20, 10, 0))])
+def test_register_fixes_affine_threads_and_seeds(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    mode: RegistrationMode,
+    spacing: float,
+    iterations: tuple[int, int, int] | None,
+) -> None:
+    affine, syn = _capture_registration(monkeypatch, tmp_path, mode)
+    assert affine["type_of_transform"] == "Affine"
+    assert affine["aff_iterations"] == (2100, 1200, 1200, 0)
+    assert affine["aff_shrink_factors"] == (4, 2, 2, 1)
+    assert syn["type_of_transform"] == "SyNOnly"
+    assert syn["initial_transform"] == [affine["outprefix"] + "0GenericAffine.mat"]
+    assert syn.get("reg_iterations") == iterations
+    for stage in (affine, syn):
+        assert stage["random_seed"] == 42 and stage["mask_all_stages"] is True
+        assert np.allclose(stage["moving"].spacing, (spacing,) * 3)
+    assert np.allclose(syn["fixed"].spacing, (1 if mode == "full" else 2,) * 3)
     meta = json.loads((tmp_path / "mni" / atlas.CACHE_FILE).read_text(encoding="utf-8"))
-    assert meta["registration_mode"] == "full" and meta["type_of_transform"] == "SyN"
+    assert meta["registration_mode"] == mode and meta["type_of_transform"] == "SyN"
+    assert meta["registration_version"] == atlas.REGISTRATION_VERSION
 
 
-def test_register_fast_changes_profile(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    profile = atlas.REGISTRATION_PROFILES["fast"]
-    kwargs, spacing = _capture_registration(monkeypatch, tmp_path, "fast")
-    assert kwargs["type_of_transform"] == profile.type_of_transform
-    assert all(kwargs[k] == v for k, v in profile.extra_kwargs.items())
-    assert kwargs["mask_all_stages"] is True and kwargs["random_seed"] == 42
-    assert np.allclose(spacing, (profile.spacing_mm,) * 3) and profile.spacing_mm > atlas.MOVING_SPACING_MM
+def test_register_affine_reports_child_failure(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    def fail(command: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
+        return subprocess.CompletedProcess(command, 1, "", "error de prueba")
+
+    monkeypatch.setattr(subprocess, "run", fail)
+    with pytest.raises(RuntimeError, match=r"código 1.*error de prueba"):
+        atlas._register_affine(tmp_path)
 
 
 def test_map_atlas_warnings(tmp_path: Path, fake_register: list[int]) -> None:
@@ -340,3 +357,21 @@ def test_real_mapping_on_data(tmp_path: Path) -> None:
     print(f"\nmap_atlas 001/t0: {elapsed:.1f} s · {len(values)} etiquetas · {res.registration} · {res.warnings}")
     for n, v in top:
         print(f"  {v:3d} {names[v][0]} ({names[v][1]}): {n} vóxeles GTV")
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("mode", ["full", "fast"])
+def test_real_registration_is_reproducible(tmp_path: Path, mode: RegistrationMode) -> None:
+    settings = Settings()
+    files = _files(settings.data_dir / "004" / "t0")
+    if not {"t1eg", "t1gd", "brain_mask", "gtv"} <= files.keys():
+        pytest.skip("Sin los NIfTI de registro de 004/t0")
+    atlas_dir = settings.models_dir / "atlas" / "talairach_atlas"
+    if not all((atlas_dir / name).is_file() for name in ("ba.nii.gz", "ba-labels.json")):
+        pytest.skip("Sin el atlas Talairach-Brodmann en caché")
+
+    first = map_atlas(files, tmp_path / "first", settings.models_dir, mode)
+    second = map_atlas(files, tmp_path / "second", settings.models_dir, mode)
+    first_labels = np.asarray(load_nifti(first.label_path).dataobj)
+    assert np.any(first_labels)
+    np.testing.assert_array_equal(first_labels, np.asarray(load_nifti(second.label_path).dataobj))

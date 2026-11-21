@@ -7,7 +7,8 @@ Flujo:
    `MOVING_SPACING_MM` isotrópico (solo para acelerar el registro) y se registra a la plantilla MNI152 de 1 mm
    (enmascarada con su máscara de cerebro) con ANTs SyN (perfil `full`; `fast` usa 2 mm en ambas, ver
    `REGISTRATION_PROFILES`). El GTV dilatado `GTV_MARGIN_MM` se excluye del costo (`moving_mask`) para que el
-   tumor no deforme el campo.
+   tumor no deforme el campo. REG1 fija la semilla en las dos etapas y ejecuta la afín con un hilo en otro
+   proceso. La etapa no lineal (SyNOnly) parte de esa afín y usa los hilos del worker.
 2. El atlas, separado por hemisferio en MNI, vuelve al grid de la secuencia de referencia del visor (t1gd si
    existe) con `invtransforms` + `genericLabel`. Las transformaciones viven en el espacio físico, así que sirven
    para cualquier secuencia del estudio (todas están co-registradas en el dataset).
@@ -17,7 +18,10 @@ Flujo:
 
 import hashlib
 import json
+import os
 import shutil
+import subprocess
+import sys
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -47,6 +51,9 @@ LARGE_GTV_FRACTION = 0.10
 # "SyN" de ANTsPy: afín + SyN con reg_iterations=(40, 20, 0).
 TYPE_OF_TRANSFORM = "SyN"
 RANDOM_SEED = 42
+AFFINE_THREADS = 1
+# Se invalida la caché de HW3 al cambiar cómo se estima la afín en ambos perfiles.
+REGISTRATION_VERSION = 2
 
 
 @dataclass(frozen=True)
@@ -183,11 +190,7 @@ def _mask_on(img: nib.Nifti1Image, ref: nib.Nifti1Image) -> np.ndarray:
 
 
 def _cache_key(study_files: dict[str, Path], moving_seq: str, mode: RegistrationMode = "full") -> str:
-    """Huella del registro: archivos de entrada (ruta, tamaño, mtime) + perfil y parámetros.
-
-    La huella de `full` es idéntica a la de antes de HW3 (no invalida cachés existentes); `fast` añade su
-    modo y sus kwargs para no mezclar transformaciones de ambos perfiles.
-    """
+    """Huella del registro: archivos de entrada (ruta, tamaño, mtime), perfil, parámetros y versión."""
     profile = REGISTRATION_PROFILES[mode]
     h = hashlib.sha256()
     for seq in (moving_seq, "brain_mask", "gtv"):
@@ -200,6 +203,7 @@ def _cache_key(study_files: dict[str, Path], moving_seq: str, mode: Registration
     h.update(f"{profile.type_of_transform}:{profile.spacing_mm}:{GTV_MARGIN_MM}:{RANDOM_SEED}".encode())
     if mode != "full":
         h.update(f":{mode}:{profile.fixed_spacing_mm}:{sorted(profile.extra_kwargs.items())}".encode())
+    h.update(f":v{REGISTRATION_VERSION}:{AFFINE_THREADS}".encode())
     return h.hexdigest()
 
 
@@ -216,6 +220,31 @@ def _load_cached(mni_dir: Path, key: str) -> list[str] | None:
         return None
     inv = [str(mni_dir / name) for name in meta.get("invtransforms", [])]
     return inv if inv and all(Path(p).is_file() for p in inv) else None
+
+
+def _register_affine(tmp: Path) -> str:
+    """Lanza la etapa afín con el número de hilos fijado antes de inicializar ITK."""
+    result = subprocess.run(
+        [sys.executable, "-m", "cerberus_api.linear_reg"],
+        input=json.dumps(
+            {
+                "fixed": str(tmp / "fixed.nii.gz"),
+                "moving": str(tmp / "moving.nii.gz"),
+                "mask": str(tmp / "fixed_mask.nii.gz"),
+                "moving_mask": str(tmp / "moving_mask.nii.gz"),
+                "outprefix": str(tmp / "linear_"),
+                "random_seed": RANDOM_SEED,
+            }
+        ),
+        env={**os.environ, "ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS": str(AFFINE_THREADS)},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        detail = result.stderr.strip()[-500:]
+        raise RuntimeError(f"Falló la etapa afín del registro (código {result.returncode}): {detail}")
+    return str(json.loads(result.stdout))
 
 
 def _register(
@@ -265,6 +294,8 @@ def _register(
     nib.save(nib.Nifti1Image(moving_np, moving_img.affine), tmp / "moving.nii.gz")
     nib.save(nib.Nifti1Image(cost.astype(np.uint8), moving_img.affine), tmp / "moving_mask.nii.gz")
 
+    affine = _register_affine(tmp)
+
     # Limpia transformaciones viejas: ANTsPy arma la lista de salida con glob(outprefix + "*")
     if mni_dir.exists():
         shutil.rmtree(mni_dir)
@@ -272,11 +303,12 @@ def _register(
     reg = ants.registration(
         fixed=ants.image_read(str(tmp / "fixed.nii.gz")),
         moving=ants.image_read(str(tmp / "moving.nii.gz")),
-        type_of_transform=profile.type_of_transform,
+        type_of_transform="SyNOnly",
+        initial_transform=[affine],  # ANTs colapsa la afín inicial en los archivos de salida.
         outprefix=str(mni_dir / TX_PREFIX),
         mask=ants.image_read(str(tmp / "fixed_mask.nii.gz")),
         moving_mask=ants.image_read(str(tmp / "moving_mask.nii.gz")),
-        mask_all_stages=True,  # el GTV queda fuera del costo también en la etapa afín
+        mask_all_stages=True,
         random_seed=RANDOM_SEED,
         **profile.extra_kwargs,
     )
@@ -286,6 +318,7 @@ def _register(
         "moving_sequence": moving_seq,
         "registration_mode": mode,
         "type_of_transform": profile.type_of_transform,
+        "registration_version": REGISTRATION_VERSION,
         "fwdtransforms": [Path(p).name for p in reg["fwdtransforms"]],
         "invtransforms": [Path(p).name for p in inv],
     }
