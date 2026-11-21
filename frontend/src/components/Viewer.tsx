@@ -194,6 +194,29 @@ function buildAreasColormap(areas: AreasResult, mode: AreasMode, focus: number |
   return cm;
 }
 
+// Caché de descargas comprimidas del estudio actual: alternar GTV o «Bordes suaves» no vuelve a bajar la
+// base. Solo URLs sin `v=` (archivos de Data/: secuencia base y GTV crudo o `?smooth=1`); MONAI y áreas
+// llevan versión y siguen pasando por la red con ETag/304. Como máximo 1 base + 2 variantes de GTV.
+const VOLUME_CACHE_MAX_BYTES = 128 * 1024 * 1024; // rtdose (~388 MB) no se cachea
+
+/**
+ * `fetchVolume` con caché en memoria. Niivue no transfiere ni muta el ArrayBuffer recibido (v0.69.0,
+ * `dist/index.js`: :32807 lo usa tal cual, :27181 → :24864 lo descomprime a un buffer nuevo y :25008
+ * copia los vóxeles con `slice`), así que el mismo buffer se puede volver a decodificar sin copiarlo.
+ */
+async function fetchVolumeCached(cache: Map<string, ArrayBuffer>, url: string, signal: AbortSignal): Promise<ArrayBuffer> {
+  const hit = cache.get(url);
+  if (hit) return hit;
+  const buffer = await fetchVolume(url, signal);
+  if (!/[?&]v=/.test(url) && buffer.byteLength <= VOLUME_CACHE_MAX_BYTES) {
+    const isGtv = (u: string) => u.split("?")[0].endsWith("/files/gtv.nii.gz");
+    // Una sola secuencia base: al cambiarla se descarta la anterior (las variantes de GTV se quedan).
+    if (!isGtv(url)) for (const key of cache.keys()) if (!isGtv(key)) cache.delete(key);
+    cache.set(url, buffer);
+  }
+  return buffer;
+}
+
 function visibleSequences(study: StudyDetail): string[] {
   return study.sequences.filter((s) => !HIDDEN.has(s));
 }
@@ -219,6 +242,7 @@ export default function Viewer({
   const areasIdxRef = useRef<number>(-1);
   const centeredStudyRef = useRef<string | null>(null); // estudio ya centrado en el GTV
   const loadChainRef = useRef<Promise<void>>(Promise.resolve()); // cargas en serie (ver efecto de carga)
+  const volumeCacheRef = useRef<Map<string, ArrayBuffer> | null>(null); // ver fetchVolumeCached
 
   const sequences = visibleSequences(study);
   const studyKey = `${study.patient}/${study.timepoint}`;
@@ -393,10 +417,23 @@ export default function Viewer({
     if (crosshairReadoutRef.current) pushReadout(crosshairReadoutRef.current);
   };
 
+  // Caché de buffers ligada al estudio: se vacía al cambiar de estudio y al desmontar el visor. Va antes
+  // del efecto de carga para que este ya vea la del estudio nuevo.
+  useEffect(() => {
+    const buffers = new Map<string, ArrayBuffer>();
+    volumeCacheRef.current = buffers;
+    return () => {
+      buffers.clear();
+      if (volumeCacheRef.current === buffers) volumeCacheRef.current = null;
+    };
+  }, [studyKey]);
+
   // Carga/recarga de volúmenes reutilizando la misma instancia.
   useEffect(() => {
     const ready = readyRef.current;
     if (!ready || !sequence) return;
+    // Una descarga en vuelo del estudio anterior escribe en su propio Map, ya descartado.
+    const volumeCache = volumeCacheRef.current ?? new Map<string, ArrayBuffer>();
     let cancelled = false;
     const controller = new AbortController();
     const { patient: p, timepoint: t } = study;
@@ -463,7 +500,7 @@ export default function Viewer({
         const nv = await ready;
         if (cancelled) return;
         const volumes = await Promise.all(list.map(async (item) => {
-          const buffer = await fetchVolume(item.url, controller.signal);
+          const buffer = await fetchVolumeCached(volumeCache, item.url, controller.signal);
           controller.signal.throwIfAborted();
           return NVImage.loadFromUrl({
             ...item,
