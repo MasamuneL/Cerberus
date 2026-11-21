@@ -297,3 +297,23 @@ button.vw-chip:hover:not(:disabled) { background: var(--vw-surface-2); border-co
 .vw-r3d-check:has(input:disabled) { cursor: not-allowed; color: var(--vw-muted); }
 .vw-r3d-label { min-width: 4.6rem; }
 .vw-r3d-info { margin: 0; font-family: var(--vw-mono); font-size: 0.7rem; color: var(--vw-muted); }
+
+/* --- Botón secundario del visor (p. ej. «Reintentar» en ViewerErrorBoundary) ------------------ */
+.vw-btn-secondary {
+  align-self: flex-start;
+  width: auto;
+  padding: 0.35rem 0.8rem;
+  background: transparent;
+  color: var(--text, #e6edf3);
+  border: 1px solid var(--border, #2d3640);
+  border-radius: var(--radius, 4px);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color var(--transition, 120ms ease-out), border-color var(--transition, 120ms ease-out);
+}
+.vw-btn-secondary:hover:not(:disabled) {
+  background: var(--surface-2, #1d242e);
+  border-color: var(--border-strong, #3d4854);
+}
+.vw-btn-secondary:disabled { opacity: 0.45; cursor: not-allowed; }
