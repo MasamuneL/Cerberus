@@ -8,7 +8,7 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 | Ticket | Estado | Rama | Commit | Fecha | Responsable / herramienta | Notas |
 |---|---|---|---|---|---|---|
 | ATLAS0 · informe de espacios del atlas (§26) | 🟡 | feat/ATLAS0-atlas-spaces | | | Claude Code (orquestador Opus + hc) | oleada 1; Antigravity |
-| EVAL1 · evaluación MONAI en todos los estudios (§26) | 🟡 | feat/EVAL1-monai-evaluation | | | Claude Code (orquestador Opus + hc) | oleada 1; Codex |
+| EVAL1 · evaluación MONAI en todos los estudios (§26) | ✅ | feat/EVAL1-monai-evaluation | 606277e | 2026-11-21 | Codex (impl.) + Claude Opus (rev.), orquestador Claude Opus + hc | PR #42; Dice 0.824 ± 0.159 (n=8), 0.888 ± 0.026 con 4 canales (n=6); CP-078 |
 | D3R · rescate del diagnóstico de #17 (§26) | ✅ | feat/D3R-diagnostics | fd45b08 | 2026-11-21 | Codex (impl.) + Antigravity (rev.), orquestador Claude Opus + hc | PR #40; 1327 tests; privacidad con test; CP-076 |
 | FT-DOC · fine-tuning: estado y pasos futuros (§26) | 🟡 | feat/FTDOC-future-steps | | | Claude Code (orquestador Opus + hc) | oleada 1; Antigravity |
 | ATLAS1 · aplicar la opción elegida (§26) | ⬜ | feat/ATLAS1-<a\|b\|c> | | | Claude Code (orquestador Opus + hc) | oleada 2; tras gate A/B/C |
@@ -1357,3 +1357,22 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
   `/bin/ps`), 2 slow de reproducibilidad.
 - **Sin validar:** reproducibilidad en otros estudios (solo 004/t0) y en Linux/Docker amd64.
 - **Siguiente:** EVAL1 (#42), ATLAS0 (#43) y FT-DOC (#44, ronda 2) en revisión.
+
+### CP-078 · 2026-11-21 · EVAL1: evaluación de MONAI frente a GTV en los 8 estudios (§26)
+
+- **Integración:** [PR #42](https://github.com/MasamuneL/Cerberus/pull/42), merge `606277e`. Implementó Codex
+  (gpt-6.2-sol); revisó Claude Opus: CAMBIOS (presentación) → APROBADO tras la ronda 2.
+- `tools/eval/monai_all.py` reutiliza `run_segmentation` y las métricas de B13 (`mask_metrics`); valida que cada
+  máscara reutilizada sea posterior a los pesos y a las entradas. Opciones `--reuse`, `--study P/T`, `--out` (JSON).
+  Resultado en [`docs/EVAL_MONAI.md`](EVAL_MONAI.md).
+- **Números (TC (núcleo) = etiquetas 2+3 frente a GTV, grid 1 mm):** n = 8 estudios de 5 pacientes, sin exclusiones.
+  Dice 0.824 ± 0.159 (mediana 0.876, rango 0.438–0.931); HD95 6.04 ± 4.22 mm; recall 0.773; precisión 0.889.
+  Con los 4 canales completos (n = 6): Dice **0.888 ± 0.026**. Media por paciente (n = 5): 0.829 ± 0.085.
+  003/t0 (T1 a ceros) es el atípico (Dice 0.438), pero con n = 2 estudios con canales faltantes no se atribuye causa.
+- **Reproducibilidad:** el revisor reejecutó el script: 60 celdas a ±1e-6 (máx. 4.9e-7). Inferencia nueva en CPU:
+  001/t0 bit a bit; 002/t0 (máscara original en MPS) difiere en 1 vóxel (ΔDice 1.2e-5). ±1e-6 solo reutilizando
+  máscaras. Frente al `metrics_vs_gtv.tc` de la API: Δ ≤ 2.1e-4 (unión con ET).
+- **Límites declarados:** SegResNet preentrenado en BraTS; T2* en el canal T2 en 5 estudios; TC ≠ GTV; n pequeño
+  con medidas repetidas (005 aporta 3 filas).
+- **Checks:** Ruff/formato/Pyright, 1310 tests rápidos.
+- **Siguiente:** ATLAS0 (#43, en revisión) y FT-DOC (#44, ronda 3).
