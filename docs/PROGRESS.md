@@ -15,7 +15,7 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 | UP1 · subida con find_study (§24) | ✅ | feat/UP1-upload-find-study | 8f02a18 | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #34; 1224 tests; 0.64 → 0.08 ms (marginal); CP-069 |
 | CFG2 · validar puertos en Vite (§24) | ✅ | feat/CFG2-vite-port-validation | bb8be2f | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #33; config sin variables idéntica; inválidos fallan al arrancar; CP-068 |
 | PERF8 · reutilizar NVImage (§24) | ⛔ | — | — | 2026-11-20 | Claude Code (orquestador Opus + hc) | descartado: decodificación ≤ 8 % del toggle (gate 20 %); sin PR; CP-070 |
-| ERR1 · ErrorBoundary del visor (§24) | 🟡 | feat/ERR1-viewer-error-boundary | | | Claude Code (orquestador Opus + hc) | oleada 2 |
+| ERR1 · ErrorBoundary del visor (§24) | ✅ | feat/ERR1-viewer-error-boundary | 84cc549 | 2026-11-21 | Claude Code (orquestador Opus + hc) | PR #37; e2e chunk-error 5/5 dev y preview; verify 33/33; +0.24 kB gzip; CP-073 |
 | CFG1 · puertos configurables por env (§23) | ✅ | feat/CFG1-env-ports | c491be1 | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #30; 1219 tests; CP-065 |
 | VIZ1 · bordes suaves de máscaras (§22) | ✅ | feat/viz-smooth-masks | d1edd20 | 2026-11-20 | MasamuneL + Claude Code (revisión/merge) | PR #22; 1210 tests; e2e 33/33 + superficie + 3D; CP-063 |
 | PERF1 · volumetría recortada (§21) | ✅ | feat/PERF1-volumetry-crop | 2e50217 | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #26; 1191 tests; ~1.7 s → 76 ms; CP-059 |
@@ -1240,3 +1240,19 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
 - **Checks:** Ruff/formato/Pyright, 1237 tests tras traer main.
 - En curso: HW1 (CUDA). Luego HW2 (lanzador) y REG1.
 
+### CP-073 · 2026-11-21 · ERR1: ErrorBoundary con reintento para el visor diferido
+
+- **Integración:** [PR #37](https://github.com/MasamuneL/Cerberus/pull/37), merge `84cc549`. Cierra el pendiente de CP-062 y el plan §24.
+- Nuevo `ViewerErrorBoundary` (clase): alerta «No se pudo cargar el visor.» + «Reintentar» dentro de `.viewer-panel`.
+  `App.tsx`: factoría `loadViewer()` (un `lazy` nuevo por reintento, porque React cachea el import rechazado), `key` por estudio.
+  El `SidePanel` queda fuera del boundary y sigue montado. También captura errores de render del `Viewer`.
+- **Desviación (justificada en la revisión):** al reintentar, `reloadFailedStylesheets()` clona los `<link rel=stylesheet>` fallidos.
+  El helper de preload de Vite 8.3.5 (`dist/node/chunks/node.js:27006-27084`) no vuelve a pedir un CSS fallido y el visor salía sin
+  estilos en el build. En dev no hace nada (el CSS va en `<style>`). La detección se basa en Chrome (`SecurityError` en `cssRules`).
+- **Sin errores nada cambia:** el `key` no remonta más que antes (`setDetail(null)` ya desmontaba al cambiar de estudio).
+  Entrada 86.50 → 86.74 kB gzip; chunk del visor igual.
+- Nuevo `tools/e2e/verify-viewer-chunk-error.mjs`: 5/5 en dev y en `vite preview`. `verify.mjs` 33/33. axe sin violaciones en el fallback.
+- **Checks:** Ruff/formato/Pyright, 1224 tests, `npm run build`. Revisión independiente (Opus) aprobada.
+- **Notas menores (no hechas):** el botón «Reintentar» sale sin estilo y a todo el ancho (`.btn-secondary` solo existe dentro de
+  `.upload-panel`); tras un reintento fallido el foco cae a `<body>`. El trailer del commit `04835ef` dice Sonnet 5.5 en vez de Opus 5.5.
+- **Plan §24 cerrado:** CFG2, UP1 y ERR1 ✅; PERF8 descartado por el gate (CP-070).
