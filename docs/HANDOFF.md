@@ -4,7 +4,7 @@
 > checkpoint. El historial completo está en [`PROGRESS.md`](PROGRESS.md) y el alcance y los contratos en
 > [`PLAN_MVP.md`](PLAN_MVP.md). Las reglas de trabajo están en [`../AGENTS.md`](../AGENTS.md).
 
-**Última actualización:** 2026-11-20 · último checkpoint: CP-067 · rama base: `main`
+**Última actualización:** 2026-11-20 · último checkpoint: CP-068 · rama base: `main`
 
 ## 1. Arranque rápido
 
@@ -31,6 +31,8 @@ Abre las PNG y revísalas: **no te fíes solo de los ✅**. Leer píxeles del ca
 (`preserveDrawingBuffer=false`), así que esos chequeos de píxeles no son confiables.
 
 ## 2. Estado actual
+
+**CP-068 · CFG2 · Vite valida puertos · 2026-11-20:** [PR #33](https://github.com/MasamuneL/Cerberus/pull/33), merge `bb8be2f`. Plan §24 en curso: UP1 (PR #34, en revisión), PERF8 (gate de medición), ERR1 (oleada 2). En paralelo, otra sesión lleva el plan §25 (HW1–HW4). Pendientes §24 restantes: ErrorBoundary (ERR1), `uploads` con `find_study` (UP1), reutilizar NVImage (PERF8).
 
 **CP-067 · PERF7 · plan PERF completo · 2026-11-20:** [PR #32](https://github.com/MasamuneL/Cerberus/pull/32), merge `e01ea78`. PERF1–PERF7, VIZ1 y CFG1 integrados. Pendientes anotados: ErrorBoundary para el chunk diferido del visor (CP-062), `uploads._find_study` con `find_study` (CP-064), reutilizar el NVImage decodificado al alternar capas (CP-066) y validar `CERBERUS_UI_PORT` en Vite (CP-065).
 

@@ -12,7 +12,7 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 | HW4 · modo híbrido macOS (§25) | ⬜ | feat/HW4-macos-hybrid | | | Claude Code (orquestador Opus + hc) | oleada 1 |
 | HW2 · lanzador con detección de hardware (§25) | ⬜ | feat/HW2-hardware-launcher | | | Claude Code (orquestador Opus + hc) | oleada 2 (tras HW1, HW4) |
 | UP1 · subida con find_study (§24) | 🟡 | feat/UP1-upload-find-study | | | Claude Code (orquestador Opus + hc) | |
-| CFG2 · validar puertos en Vite (§24) | 🟡 | feat/CFG2-vite-port-validation | | | Claude Code (orquestador Opus + hc) | |
+| CFG2 · validar puertos en Vite (§24) | ✅ | feat/CFG2-vite-port-validation | bb8be2f | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #33; config sin variables idéntica; inválidos fallan al arrancar; CP-068 |
 | PERF8 · reutilizar NVImage (§24) | 🟡 | feat/PERF8-nvimage-reuse | | | Claude Code (orquestador Opus + hc) | gate < 20 % |
 | ERR1 · ErrorBoundary del visor (§24) | ⬜ | feat/ERR1-viewer-error-boundary | | | Claude Code (orquestador Opus + hc) | oleada 2 |
 | CFG1 · puertos configurables por env (§23) | ✅ | feat/CFG1-env-ports | c491be1 | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #30; 1219 tests; CP-065 |
@@ -1162,3 +1162,16 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
 - **Benchmark** (navegador, 001/t0, 54.5 M vóxeles): ~39 → 31 ms (−19 %). El coste dominante es recorrer el volumen.
 - **Checks:** Ruff/formato/Pyright, 1222 tests, `npm run build`, `verify.mjs` 33/33. Revisión independiente (Opus) aprobada.
 - **Plan PERF completo:** PERF1–PERF7 ✅ (CP-059–067), con VIZ1 (CP-063) y CFG1 (CP-065) integrados en la misma sesión.
+
+### CP-068 · 2026-11-20 · CFG2: Vite valida los puertos del entorno
+
+- **Integración:** [PR #33](https://github.com/MasamuneL/Cerberus/pull/33), merge `bb8be2f`. Cierra la nota menor de CP-065.
+- `frontend/vite.config.ts`: `parsePort(name, fallback)` para `CERBERUS_UI_PORT` y `CERBERUS_API_PORT`. Ausente → default;
+  presente debe casar `^\d+$` y estar en 1–65535, si no Vite sale con «<VAR> debe ser un entero entre 1 y 65535 (recibido: "…")».
+- **Equivalencia:** sin variables, `loadConfigFromFile` da `{port: 5173, proxy: {"/api": "http://localhost:8000"}}` en main y en la rama.
+- **Pruebas manuales:** `""`, `abc`, `0`, `70000`, `5.5`, `-1`, `1e3`, `65536`, `" 5197"` → exit 1; 5191/5197 arrancan y el proxy
+  responde; `CERBERUS_API_PORT=9` → 502 (el proxy usa la variable).
+- **Desviación:** antes un valor inválido arrancaba en un puerto aleatorio/NaN; ahora falla al arrancar. Un espacio inicial
+  se rechaza (la API probablemente lo aceptaría).
+- **Checks:** Ruff/formato/Pyright, 1222 tests, `npm run build`. Revisión independiente (Opus) aprobada.
+- Siguiente: UP1 en revisión (PR #34), PERF8 midiendo el gate; luego ERR1.

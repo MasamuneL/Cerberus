@@ -1101,7 +1101,7 @@ variables sin definir, todo queda exactamente como hoy (8000 / 5173 / 6379).
 | `CERBERUS_REDIS_URL` | `redis://localhost:6379` | ya existía; para otro puerto: `redis-server --port N` |
 
 Docker sigue con `CERBERUS_HTTP_PORT` y `CERBERUS_KEYCLOAK_HTTP_PORT` (README). Los scripts de `tools/e2e/` usan
-`CERBERUS_UI` o, si falta, `http://localhost:${CERBERUS_UI_PORT:-5173}`. El comando `uvicorn … --port 8000` sigue funcionando.
+`CERBERUS_UI` o, si falta, `http://localhost:${CERBERUS_UI_PORT:-5173}`. El comando `uvicorn … --port 8000` sigue funcionando. Desde CFG2 (§24), Vite rechaza al arrancar un `CERBERUS_UI_PORT` o `CERBERUS_API_PORT` presente que no sea un entero 1–65535.
 
 ## 24. Pendientes post-PERF (tras CP-067)
 
