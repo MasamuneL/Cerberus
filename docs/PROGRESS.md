@@ -13,7 +13,7 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 | FT-DOC · fine-tuning: estado y pasos futuros (§26) | ✅ | feat/FTDOC-future-steps | 2bd4edd | 2026-11-21 | Antigravity (impl.) + Codex (rev.), orquestador Claude Opus + hc | PR #44; 3 rondas + corrección final del orquestador; 1/8 elegible; CP-080 |
 | ATLAS1 · aplicar la opción elegida (§26) | ✅ | feat/ATLAS1-a | 32f9242 | 2026-11-21 | Codex (impl.) + Claude Opus (rev.), orquestador Claude Opus + hc | PR #46; opción A (Lancaster); 8/8 reportes cambian; storage remapeado; CP-081 |
 | UI1 · botón «Reintentar» del visor (§26) | ✅ | feat/UI1-retry-button | e1848c9 | 2026-11-21 | Antigravity (impl.) + Claude Sonnet (rev.), orquestador Claude Opus + hc | PR #45; chunk-error 5/5, verify 33/33, axe 0; CP-082 |
-| DOC1 · compactar el HANDOFF (§26) | ⬜ | feat/DOC1-handoff-compact | | | Claude Code (orquestador Opus + hc) | oleada 3 |
+| DOC1 · compactar el HANDOFF (§26) | ✅ | feat/DOC1-handoff-compact | 7765919 | 2026-11-21 | Antigravity (impl.) + Claude Sonnet (rev.), orquestador Claude Opus + hc | PR #47; HANDOFF §2 en 27 líneas; regla de CP en §12; CP-083 |
 | HW1 · imagen CUDA + perfil GPU (§25) | ✅ | feat/HW1-cuda-gpu-profile | 9ee6bc3 | 2026-11-21 | Claude Code (orquestador Opus + hc) | PR #38; 1272 tests; cu126; validación NVIDIA pendiente; CP-074 |
 | HW3 · registro ANTs fast/full (§25) | ✅ | feat/HW3-registration-mode | f1f432a | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #36; 1237 tests; fast 2.6–3.0×; CP-072 |
 | REG1 · registro MNI reproducible + QC (§25) | ✅ | feat/REG1-reproducible-registration | b69de94 | 2026-11-21 | Codex (impl.) + Antigravity (rev.), orquestador Claude Opus + hc | PR #41; 3/3 hashes full y fast en 004/t0; fast +15 %; QC pendiente; CP-077 |
@@ -1485,3 +1485,16 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
 - **e2e:** `verify-viewer-chunk-error` 5/5 (implementador y revisor); `verify` 33/33 del implementador y del
   orquestador (carga 8–16, `CERBERUS_TIMEOUT=300000`); el revisor no lo reprodujo con carga 10–22 y main fallaba igual.
 - **Recomendado no aplicado:** `pendingRetryFocus` puede quedar en `true` tras un reintento correcto (caso improbable).
+
+### CP-083 · 2026-11-21 · DOC1: HANDOFF compacto y regla de numeración de CP (§26)
+
+- **Integración:** [PR #47](https://github.com/MasamuneL/Cerberus/pull/47), merge `7765919`. Implementó Antigravity
+  (gemini-4-hydrogen-high); revisó Claude Sonnet: APROBADO (comprobó token a token que cada párrafo borrado está en su
+  CP o en README/AGENTS; solo se perdieron datos obsoletos: hash intermedio de A2, ramas ya integradas).
+- `HANDOFF.md` §2: de ~330 a 27 líneas (qué funciona, qué no es válido todavía, pendientes priorizados, cómo
+  arrancar). Lo que faltaba en las entradas CP se añadió antes de borrar (19 entradas).
+- `PLAN_MVP.md` §12: «Antes de escribir un checkpoint: `git pull --rebase`; N = mayor CP existente + 1; si el push se
+  rechaza, recalcula N».
+- Recomendados aplicados por el orquestador en este checkpoint: cabecera «último checkpoint» al día y la regla de no
+  reabrir lo cerrado / acordar alcance del QA (estaba en el bloque borrado «Cómo retomar»).
+- **Siguiente:** cierre de §26 (checks, slow, build y 5 e2e en main con carga baja).

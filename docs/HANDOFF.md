@@ -4,7 +4,7 @@
 > checkpoint. El historial completo está en [`PROGRESS.md`](PROGRESS.md) y el alcance y los contratos en
 > [`PLAN_MVP.md`](PLAN_MVP.md). Las reglas de trabajo están en [`../AGENTS.md`](../AGENTS.md).
 
-**Última actualización:** 2026-11-21 · último checkpoint: CP-074 · rama base: `main`
+**Última actualización:** 2026-11-21 · último checkpoint: CP-083 · rama base: `main`
 
 ## 1. Arranque rápido
 
@@ -32,7 +32,7 @@ Abre las PNG y revísalas: **no te fíes solo de los ✅**. Leer píxeles del ca
 
 ## 2. Estado actual
 
-Última integración relevante: **CP-082** (ronda §26 en cierre; historial completo en [`PROGRESS.md`](PROGRESS.md)).
+Última integración relevante: **CP-083** (ronda §26 en cierre; historial completo en [`PROGRESS.md`](PROGRESS.md)).
 
 ### Qué funciona
 - **App web (MVP + §13–§24):** visor 2D/3D Niivue (capas, bordes suaves, fallback `ViewerErrorBoundary` y botón «Reintentar» `UI1`), volumetría/RANO longitudinal, segmentación MONAI (`EVAL1`: Dice TC vs GTV 0.824 ± 0.159 en n=8, 0.888 ± 0.026 con 4 canales en n=6; [`EVAL_MONAI.md`](EVAL_MONAI.md)), subida NIfTI/DICOM y auth OIDC/Keycloak A0–A4 (`demo`/`demo`).
@@ -57,6 +57,7 @@ Abre las PNG y revísalas: **no te fíes solo de los ✅**. Leer píxeles del ca
 ### Cómo arrancar
 - **Recomendado (Docker + hardware):** `tools/launch/up.sh --dry-run` y `tools/launch/up.sh` (Windows: `tools\launch\up.ps1`). Detalles en [`README.md`](../README.md) y reglas en [`AGENTS.md`](../AGENTS.md).
 - **Desarrollo nativo (4 terminales) y checks:** ver `§1. Arranque rápido` arriba.
+- **No reabrir lo cerrado:** UX/UI, Docker, autoajuste y caché 304 ya están hechos. Las correcciones del QA y las propuestas de §4 requieren acordar alcance con el usuario; no empezarlas como continuación automática.
 
 ## 3. Lecciones aprendidas (léelas, ahorran horas)
 - **Niivue `scene.crosshairPos` es una fracción 0–1, no mm.** Para centrar: vóxel (orden del archivo) → mm con
