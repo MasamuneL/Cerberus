@@ -415,7 +415,10 @@ def map_atlas(
     header = ref_img.header.copy()
     header.set_data_dtype(np.uint8)
     header.set_slope_inter(1, 0)
-    header["descrip"] = ATLAS_NAME.encode("ascii")
+    description = ATLAS_NAME.encode("ascii")
+    # NIfTI-1 reserva 80 bytes para descrip y truncaría un nombre más largo.
+    assert len(description) <= 80
+    header["descrip"] = description
     label_path = out_dir / "brodmann.nii.gz"
     with tempfile.TemporaryDirectory(prefix=".cerberus_atlas_", dir=out_dir) as publish_dir:
         pending_label = Path(publish_dir) / label_path.name

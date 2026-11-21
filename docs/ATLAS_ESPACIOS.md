@@ -275,13 +275,14 @@ uptime
 
 uv run python tools/eval/atlas_lancaster.py \
   --data-dir "$CERBERUS_DATA_DIR" \
+  --models-dir "$CERBERUS_MODELS_DIR" \
   --results-dir "$CERBERUS_STORAGE_DIR/results" \
   --before-results-dir storage/results \
   --out "$CERBERUS_STORAGE_DIR/atlas_lancaster.json"
 uptime
 ```
 
-El JSON incluye áreas por hemisferio, entradas, salidas, cambios de categoría y desplazamientos de centroides. `--before-results-dir` es opcional para medir solo el efecto de Lancaster. El mapa y el reporte se reemplazan en el próximo mapeo de cada estudio, con el nombre de atlas que identifica Lancaster. La API puede seguir mostrando el reporte histórico hasta que se vuelva a mapear el estudio. Las transformaciones REG1 se reutilizan cuando su huella coincide.
+El JSON incluye áreas por hemisferio, entradas, salidas, cambios de categoría y desplazamientos de centroides. `--before-results-dir` es opcional para medir solo el efecto de Lancaster. El mapa y el reporte se reemplazan en el próximo mapeo de cada estudio, con el nombre de atlas que identifica Lancaster. Hasta entonces, la API muestra el reporte histórico con un aviso sobre el posible desplazamiento de las áreas. Las transformaciones REG1 se reutilizan cuando su huella coincide.
 
 ---
 

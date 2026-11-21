@@ -3,6 +3,10 @@
 Lee los mapas y reportes ATLAS1 de --results-dir. Reproyecta el atlas sin
 Lancaster usando los mni/ de esos resultados. Si se indica --before-results-dir,
 compara además con los reportes históricos previos a REG1 y ATLAS1.
+
+La comparación usa recuentos, categorías y solapes definidos por el GTV.
+El cálculo sin Lancaster omite WT y la salida excluye las métricas WT del
+reporte con Lancaster, donde pueden existir si hay segmentación MONAI.
 """
 
 from __future__ import annotations
@@ -131,6 +135,7 @@ def compare(before: dict[str, Any], after: dict[str, Any]) -> dict[str, Any]:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--data-dir", type=Path, required=True, help="Directorio de estudios NIfTI")
+    parser.add_argument("--models-dir", type=Path, help="Directorio de modelos (por defecto, el de Cerberus)")
     parser.add_argument("--results-dir", type=Path, required=True, help="Resultados ATLAS1 en modo full")
     parser.add_argument("--before-results-dir", type=Path, help="Resultados históricos previos a REG1")
     parser.add_argument("--out", type=Path, required=True, help="Archivo JSON de salida")
@@ -140,7 +145,8 @@ def main() -> None:
     if not studies:
         parser.error(f"No hay estudios en {args.data_dir}")
 
-    atlas_img, labels = atlas.fetch_atlas(Settings().models_dir)
+    models_dir = args.models_dir if args.models_dir is not None else Settings().models_dir
+    atlas_img, labels = atlas.fetch_atlas(models_dir)
     split_img, entries = atlas.split_hemispheres(atlas_img, labels)
     results = []
     with tempfile.TemporaryDirectory(prefix="cerberus_atlas_eval_") as tmp:

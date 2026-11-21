@@ -16,7 +16,7 @@ from redis.exceptions import RedisError
 from cerberus_api import catalog
 from cerberus_api.access import enqueue_owned_job
 from cerberus_api.areas import AREAS_JSON
-from cerberus_api.atlas import MOVING_PRIORITY
+from cerberus_api.atlas import ATLAS_NAME, MOVING_PRIORITY
 from cerberus_api.config import Settings
 from cerberus_api.deps import REDIS_UNAVAILABLE, PrincipalDep, RedisDep, SettingsDep
 from cerberus_api.display import SIGMA_MM, SMOOTHABLE, display_path, ensure_smoothed
@@ -279,6 +279,12 @@ def get_areas(patient: str, timepoint: str, settings: SettingsDep) -> AreasResul
     if not path.is_file():
         raise HTTPException(status_code=404, detail="Reporte de áreas no encontrado")
     try:
-        return AreasResult.model_validate_json(path.read_text(encoding="utf-8"))
+        result = AreasResult.model_validate_json(path.read_text(encoding="utf-8"))
     except ValidationError as exc:
         raise HTTPException(status_code=500, detail="brodmann.json corrupto") from exc
+    if result.atlas != ATLAS_NAME:
+        result.warnings.append(
+            "Reporte anterior a la proyección Talairach→MNI152 (Lancaster 2007): las áreas pueden estar "
+            "desplazadas ~5 mm. Vuelve a mapear el estudio."
+        )
+    return result
