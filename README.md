@@ -283,6 +283,30 @@ Cada medición se hizo dos veces; el registro «en frío» se obtuvo apartando l
 
 La segmentación coincide con la de Docker (001/t0: Dice TC 0.857).
 
+### Diagnóstico de un 502
+
+Desde la raíz del proyecto, captura el estado de los servicios y genera el reporte en un contenedor
+temporal. Si arrancaste con archivos Compose adicionales, usa los mismos argumentos `-f` en ambos
+comandos. La imagen de la API debe estar construida con esta versión de Cerberus.
+
+```bash
+cerberus_estado=$(docker compose ps --all --orphans=false --format json) &&
+  (umask 077; set -C; printf '%s\n' "${cerberus_estado:-[]}" |
+    docker compose run --rm --no-deps --pull never -T --entrypoint python api \
+      -m cerberus_api.diagnostics --compose-stdin > cerberus-diagnostico.json)
+```
+
+En desarrollo local, o si Docker no está disponible, comprueba la muestra y el acceso a las carpetas
+con el entorno local de Python del proyecto.
+
+```bash
+uv run python -m cerberus_api.diagnostics --export cerberus-diagnostico.json
+```
+
+Comparte `cerberus-diagnostico.json`. Contiene códigos de diagnóstico, nombres de servicios predefinidos
+y acciones sugeridas. El comando sale con código 1 si detecta algún error y genera el reporte igualmente.
+Si el archivo ya existe, usa otro nombre.
+
 ### Identidad, sesiones y permisos de la demo (A1–A4)
 
 **Acceso a la demo local:** usuario `demo`, contraseña `demo`.
