@@ -7,14 +7,15 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 
 | Ticket | Estado | Rama | Commit | Fecha | Responsable / herramienta | Notas |
 |---|---|---|---|---|---|---|
-| HW1 · imagen CUDA + perfil GPU (§25) | ⬜ | feat/HW1-cuda-gpu-profile | | | Claude Code (orquestador Opus + hc) | oleada 1 |
-| HW3 · registro ANTs fast/full (§25) | ⬜ | feat/HW3-registration-mode | | | Claude Code (orquestador Opus + hc) | oleada 1 |
-| HW4 · modo híbrido macOS (§25) | ⬜ | feat/HW4-macos-hybrid | | | Claude Code (orquestador Opus + hc) | oleada 1 |
+| HW1 · imagen CUDA + perfil GPU (§25) | 🟡 | feat/HW1-cuda-gpu-profile | | | Claude Code (orquestador Opus + hc) | oleada 1 |
+| HW3 · registro ANTs fast/full (§25) | ✅ | feat/HW3-registration-mode | f1f432a | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #36; 1237 tests; fast 2.6–3.0×; CP-072 |
+| REG1 · registro MNI reproducible + QC (§25) | ⬜ | feat/REG1-reproducible-registration | | | Claude Code (orquestador Opus + hc) | hallazgo de HW3; oleada 2 |
+| HW4 · modo híbrido macOS (§25) | ✅ | feat/HW4-macos-hybrid | b3512c1 | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #35; 1228 tests; MPS 16–34 s vs Rosetta 87–90 s; CP-071 |
 | HW2 · lanzador con detección de hardware (§25) | ⬜ | feat/HW2-hardware-launcher | | | Claude Code (orquestador Opus + hc) | oleada 2 (tras HW1, HW4) |
-| UP1 · subida con find_study (§24) | 🟡 | feat/UP1-upload-find-study | | | Claude Code (orquestador Opus + hc) | |
-| CFG2 · validar puertos en Vite (§24) | 🟡 | feat/CFG2-vite-port-validation | | | Claude Code (orquestador Opus + hc) | |
-| PERF8 · reutilizar NVImage (§24) | 🟡 | feat/PERF8-nvimage-reuse | | | Claude Code (orquestador Opus + hc) | gate < 20 % |
-| ERR1 · ErrorBoundary del visor (§24) | ⬜ | feat/ERR1-viewer-error-boundary | | | Claude Code (orquestador Opus + hc) | oleada 2 |
+| UP1 · subida con find_study (§24) | ✅ | feat/UP1-upload-find-study | 8f02a18 | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #34; 1224 tests; 0.64 → 0.08 ms (marginal); CP-069 |
+| CFG2 · validar puertos en Vite (§24) | ✅ | feat/CFG2-vite-port-validation | bb8be2f | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #33; config sin variables idéntica; inválidos fallan al arrancar; CP-068 |
+| PERF8 · reutilizar NVImage (§24) | ⛔ | — | — | 2026-11-20 | Claude Code (orquestador Opus + hc) | descartado: decodificación ≤ 8 % del toggle (gate 20 %); sin PR; CP-070 |
+| ERR1 · ErrorBoundary del visor (§24) | ✅ | feat/ERR1-viewer-error-boundary | 84cc549 | 2026-11-21 | Claude Code (orquestador Opus + hc) | PR #37; e2e chunk-error 5/5 dev y preview; verify 33/33; +0.24 kB gzip; CP-073 |
 | CFG1 · puertos configurables por env (§23) | ✅ | feat/CFG1-env-ports | c491be1 | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #30; 1219 tests; CP-065 |
 | VIZ1 · bordes suaves de máscaras (§22) | ✅ | feat/viz-smooth-masks | d1edd20 | 2026-11-20 | MasamuneL + Claude Code (revisión/merge) | PR #22; 1210 tests; e2e 33/33 + superficie + 3D; CP-063 |
 | PERF1 · volumetría recortada (§21) | ✅ | feat/PERF1-volumetry-crop | 2e50217 | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #26; 1191 tests; ~1.7 s → 76 ms; CP-059 |
@@ -1162,3 +1163,96 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
 - **Benchmark** (navegador, 001/t0, 54.5 M vóxeles): ~39 → 31 ms (−19 %). El coste dominante es recorrer el volumen.
 - **Checks:** Ruff/formato/Pyright, 1222 tests, `npm run build`, `verify.mjs` 33/33. Revisión independiente (Opus) aprobada.
 - **Plan PERF completo:** PERF1–PERF7 ✅ (CP-059–067), con VIZ1 (CP-063) y CFG1 (CP-065) integrados en la misma sesión.
+
+### CP-068 · 2026-11-20 · CFG2: Vite valida los puertos del entorno
+
+- **Integración:** [PR #33](https://github.com/MasamuneL/Cerberus/pull/33), merge `bb8be2f`. Cierra la nota menor de CP-065.
+- `frontend/vite.config.ts`: `parsePort(name, fallback)` para `CERBERUS_UI_PORT` y `CERBERUS_API_PORT`. Ausente → default;
+  presente debe casar `^\d+$` y estar en 1–65535, si no Vite sale con «<VAR> debe ser un entero entre 1 y 65535 (recibido: "…")».
+- **Equivalencia:** sin variables, `loadConfigFromFile` da `{port: 5173, proxy: {"/api": "http://localhost:8000"}}` en main y en la rama.
+- **Pruebas manuales:** `""`, `abc`, `0`, `70000`, `5.5`, `-1`, `1e3`, `65536`, `" 5197"` → exit 1; 5191/5197 arrancan y el proxy
+  responde; `CERBERUS_API_PORT=9` → 502 (el proxy usa la variable).
+- **Desviación:** antes un valor inválido arrancaba en un puerto aleatorio/NaN; ahora falla al arrancar. Un espacio inicial
+  se rechaza (la API probablemente lo aceptaría).
+- **Checks:** Ruff/formato/Pyright, 1222 tests, `npm run build`. Revisión independiente (Opus) aprobada.
+- Siguiente: UP1 en revisión (PR #34), PERF8 midiendo el gate; luego ERR1.
+
+### CP-069 · 2026-11-20 · UP1: las subidas resuelven el estudio con `find_study`
+
+- **Integración:** [PR #34](https://github.com/MasamuneL/Cerberus/pull/34), merge `8f02a18`. Cierra el pendiente de CP-064.
+- `routers/uploads.py`: se elimina `_find_study` (recorría `list_studies`); `_study_or_500` llama a `catalog.find_study`.
+- **Equivalencia:** mismo `_scan` + `_make_study`, solo cambia el glob (`<p>/<t>/*.nii.gz`); ausente/vacío → `None` → mismo 500.
+  Tests: el `Study` de subida y confirm es `==` al de `list_studies` filtrado; con `list_studies` parcheado para lanzar, siguen dando 201.
+- **Benchmark** 001/t0 (8 estudios): 0.64 → 0.08 ms. **Marginal**: una llamada por subida; crece con el catálogo.
+- **Checks:** Ruff/formato/Pyright, 1224 tests rápidos. Revisión independiente (Opus) aprobada.
+- Siguiente: PERF8 (gate de medición) y ERR1.
+
+### CP-070 · 2026-11-20 · PERF8 descartado por el gate de medición
+
+- **Sin integración:** no hubo commit ni PR; rama y worktree borrados. Decisión del usuario: descartar y anotar.
+- **Medición** (001/t0, base `t1gd` con GTV, MONAI y áreas, Chrome headless + SwiftShader, mediana de 3 corridas, instrumentación
+  temporal no commiteada):
+
+| Toggle | Total (ms) | Descarga + decodificación (ms) | Decodificación ahorrable (ms) | Ahorrable / total |
+|---|---|---|---|---|
+| ocultar GTV | 16112 | 1277 | 782 | 4.9 % |
+| mostrar GTV | 27193 | 1105 | 1266 | 5.1 % |
+| bordes suaves off | 26205 | 1325 | 566 | 2.3 % |
+| bordes suaves on | 26236 | 1088 | 1208 | 4.9 % |
+
+- Aunque se eliminara toda la etapa de descarga y decodificación, el toggle bajaría como mucho ~1–1.3 s (≤ 8 %). El ~92 % está
+  después: `nv.volumes = []`, `addVolume` × N (cada uno refresca capas GL), `setOpacity`, `setColormapLabel` + `updateGLVolume`,
+  `setSliceType` y el render.
+- **Pendiente nuevo (hipótesis no medida):** agrupar los refrescos GL en un solo `updateGLVolume` por lote, o alternar capas con
+  opacidad 0 sin recargar. Antes de un ticket, perfilar ese ~92 % por llamada. Con GPU real (no SwiftShader) el reparto puede cambiar.
+- Siguiente: ERR1 en curso.
+
+### CP-071 · 2026-11-20 · HW4: modo híbrido macOS Apple Silicon
+
+- **Integración:** [PR #35](https://github.com/MasamuneL/Cerberus/pull/35), merge `b3512c1`. Fallback: tag `pre-HW4`
+  (main antes del merge) y `git revert -m 1 b3512c1`.
+- `compose.hybrid.yaml`: el worker de Docker queda bajo el perfil `docker-worker` (no arranca por defecto) y Redis se
+  publica solo en `127.0.0.1:${CERBERUS_REDIS_PORT:-6379}`. El worker corre nativo (`uv run`) con MPS y ANTs arm64
+  sobre los mismos `Data/`, `storage/` y `models/`. README: sección «Mac Apple Silicon: modo híbrido».
+- `backend/tests/test_compose_hybrid.py` (4 tests de `docker compose config`, sin daemon ni red; se saltan sin Compose v2).
+- **Medido en 001/t0** (Mac arm64 con carga alta de otras sesiones, 2 corridas): segmentación 16–34 s nativo contra
+  87–90 s en Docker+Rosetta; áreas en frío 26–38 s contra 67–70 s; con caché de registro 9 s contra 31 s.
+- **Checks:** Ruff/formato/Pyright, 1228 tests tras traer main. Revisión independiente (Opus) aprobada; sus 2 nits aplicados.
+- En curso: HW1 (CUDA) y HW3 (PR #36, en revisión). Hallazgo de HW3: el registro `full` no es determinista entre
+  corridas (004/t0, Dice 0.18 contra sí mismo); ticket aparte por definir.
+
+### CP-072 · 2026-11-20 · HW3: registro ANTs `full`/`fast` para áreas de Brodmann
+
+- **Integración:** [PR #36](https://github.com/MasamuneL/Cerberus/pull/36), merge `f1f432a`. Fallback: tag `pre-HW3`
+  y `git revert -m 1 f1f432a`.
+- `CERBERUS_REGISTRATION=full|fast` (default `full`, validado en `Settings.registration`; llega a API y worker en
+  `compose.yaml`). `full` es bit a bit el de antes: mismos kwargs de `ants.registration` y misma huella de caché, así
+  que las cachés existentes siguen valiendo. `fast` = SyN `(20,10,0)` con imagen móvil **y plantilla MNI** a 2 mm.
+  Cada modo tiene su caché y su directorio (`mni/` y `mni_fast/`). `registration` termina en «(rápido)».
+- **Benchmark** (en frío, 2 corridas, máquina con carga alta): 001/t0 31.8/27.6 → 10.8/9.5 s (2.9×); 004/t0 3.0×;
+  005/t1 2.6×. `antsRegistrationSyNQuick[s]` salió más lento (0.61×) y se descartó.
+- **Calidad:** en 001/t0 las «Afectadas» con solape ≥ 0.5 cm³ son idénticas. En 005/t1 solo falta un área de 0.0 cm³.
+  En 004/t0 la comparación no es válida: `full` no coincide consigo mismo (Jaccard 0.59). El criterio se enmendó en §25.
+- **Revisión** (Opus): CAMBIOS → APROBADO. Se aplicaron B1 (tipado de los spies en tests; pyright no se había corrido
+  bien sobre el worktree) y R1 (un directorio `mni` por modo).
+- **Hallazgo → REG1** (§25): el registro `full` no es determinista con varios hilos. En 004/t0 la etapa afín cae en
+  mínimos distintos (Dice 0.18). La caché lo oculta, pero cualquier re-registro puede cambiar el reporte de áreas.
+- **Checks:** Ruff/formato/Pyright, 1237 tests tras traer main.
+- En curso: HW1 (CUDA). Luego HW2 (lanzador) y REG1.
+
+### CP-073 · 2026-11-21 · ERR1: ErrorBoundary con reintento para el visor diferido
+
+- **Integración:** [PR #37](https://github.com/MasamuneL/Cerberus/pull/37), merge `84cc549`. Cierra el pendiente de CP-062 y el plan §24.
+- Nuevo `ViewerErrorBoundary` (clase): alerta «No se pudo cargar el visor.» + «Reintentar» dentro de `.viewer-panel`.
+  `App.tsx`: factoría `loadViewer()` (un `lazy` nuevo por reintento, porque React cachea el import rechazado), `key` por estudio.
+  El `SidePanel` queda fuera del boundary y sigue montado. También captura errores de render del `Viewer`.
+- **Desviación (justificada en la revisión):** al reintentar, `reloadFailedStylesheets()` clona los `<link rel=stylesheet>` fallidos.
+  El helper de preload de Vite 8.3.5 (`dist/node/chunks/node.js:27006-27084`) no vuelve a pedir un CSS fallido y el visor salía sin
+  estilos en el build. En dev no hace nada (el CSS va en `<style>`). La detección se basa en Chrome (`SecurityError` en `cssRules`).
+- **Sin errores nada cambia:** el `key` no remonta más que antes (`setDetail(null)` ya desmontaba al cambiar de estudio).
+  Entrada 86.50 → 86.74 kB gzip; chunk del visor igual.
+- Nuevo `tools/e2e/verify-viewer-chunk-error.mjs`: 5/5 en dev y en `vite preview`. `verify.mjs` 33/33. axe sin violaciones en el fallback.
+- **Checks:** Ruff/formato/Pyright, 1224 tests, `npm run build`. Revisión independiente (Opus) aprobada.
+- **Notas menores (no hechas):** el botón «Reintentar» sale sin estilo y a todo el ancho (`.btn-secondary` solo existe dentro de
+  `.upload-panel`); tras un reintento fallido el foco cae a `<body>`. El trailer del commit `04835ef` dice Sonnet 5.5 en vez de Opus 5.5.
+- **Plan §24 cerrado:** CFG2, UP1 y ERR1 ✅; PERF8 descartado por el gate (CP-070).

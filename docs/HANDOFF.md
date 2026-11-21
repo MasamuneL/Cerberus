@@ -4,7 +4,7 @@
 > checkpoint. El historial completo está en [`PROGRESS.md`](PROGRESS.md) y el alcance y los contratos en
 > [`PLAN_MVP.md`](PLAN_MVP.md). Las reglas de trabajo están en [`../AGENTS.md`](../AGENTS.md).
 
-**Última actualización:** 2026-11-20 · último checkpoint: CP-067 · rama base: `main`
+**Última actualización:** 2026-11-20 · último checkpoint: CP-073 · rama base: `main`
 
 ## 1. Arranque rápido
 
@@ -31,6 +31,18 @@ Abre las PNG y revísalas: **no te fíes solo de los ✅**. Leer píxeles del ca
 (`preserveDrawingBuffer=false`), así que esos chequeos de píxeles no son confiables.
 
 ## 2. Estado actual
+
+**CP-073 · ERR1 · ErrorBoundary del visor · 2026-11-21:** [PR #37](https://github.com/MasamuneL/Cerberus/pull/37), merge `84cc549`. **Plan §24 cerrado** (CFG2, UP1, ERR1 ✅; PERF8 descartado). Pendientes nuevos: estilo y foco del botón «Reintentar» del visor; perfilar el ~92 % del toggle de capas (refrescos GL) antes de otro ticket de rendimiento (CP-070).
+
+**CP-072 · HW3 · registro full/fast · 2026-11-20:** [PR #36](https://github.com/MasamuneL/Cerberus/pull/36), merge `f1f432a` (fallback: tag `pre-HW3`). `CERBERUS_REGISTRATION=fast` es ~3× más rápido; `full` sigue por defecto e idéntico. Nuevo ticket REG1 (§25): el registro `full` no es determinista con varios hilos (004/t0). Plan §25 restante: HW1 (implementando), HW2, REG1.
+
+**CP-071 · HW4 · modo híbrido macOS · 2026-11-20:** [PR #35](https://github.com/MasamuneL/Cerberus/pull/35), merge `b3512c1` (fallback: tag `pre-HW4`). Mac Apple Silicon: `docker compose -f compose.yaml -f compose.hybrid.yaml up -d` + worker nativo (README). Plan §25 en curso: HW1 (CUDA, implementando), HW3 (PR #36, en revisión); HW2 (lanzador) tras HW1. Ojo: registro ANTs `full` no determinista entre corridas (hallazgo HW3).
+
+**CP-070 · PERF8 descartado · 2026-11-20:** la decodificación es ≤ 8 % del toggle (gate 20 %); el ~92 % son `addVolume`/`updateGLVolume`/render con SwiftShader. Pendiente medido: perfilar ese tramo y valorar agrupar refrescos GL o alternar por opacidad sin recargar. Plan §24 restante: ERR1 (en curso).
+
+**CP-069 · UP1 · subidas con `find_study` · 2026-11-20:** [PR #34](https://github.com/MasamuneL/Cerberus/pull/34), merge `8f02a18`. Ganancia marginal (0.64 → 0.08 ms). Plan §24 restante: PERF8 (gate de medición en curso) y ERR1 (oleada 2).
+
+**CP-068 · CFG2 · Vite valida puertos · 2026-11-20:** [PR #33](https://github.com/MasamuneL/Cerberus/pull/33), merge `bb8be2f`. Plan §24 en curso: UP1 (PR #34, en revisión), PERF8 (gate de medición), ERR1 (oleada 2). En paralelo, otra sesión lleva el plan §25 (HW1–HW4). Pendientes §24 restantes: ErrorBoundary (ERR1), `uploads` con `find_study` (UP1), reutilizar NVImage (PERF8).
 
 **CP-067 · PERF7 · plan PERF completo · 2026-11-20:** [PR #32](https://github.com/MasamuneL/Cerberus/pull/32), merge `e01ea78`. PERF1–PERF7, VIZ1 y CFG1 integrados. Pendientes anotados: ErrorBoundary para el chunk diferido del visor (CP-062), `uploads._find_study` con `find_study` (CP-064), reutilizar el NVImage decodificado al alternar capas (CP-066) y validar `CERBERUS_UI_PORT` en Vite (CP-065).
 

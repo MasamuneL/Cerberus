@@ -133,6 +133,7 @@ Variables de entorno (prefijo `CERBERUS_`; los valores por defecto son relativos
 | `CERBERUS_API_HOST` / `CERBERUS_API_PORT` | `127.0.0.1` / `8000`; los usa `python -m cerberus_api.serve` y el proxy de Vite (§23) |
 | `CERBERUS_UI_PORT` | `5173`; puerto de Vite y origen derivado de CORS/`CERBERUS_APP_ORIGIN` (§23) |
 | `CERBERUS_CPU_THREADS` | `auto`; entero positivo para fijar los hilos del worker (§16) |
+| `CERBERUS_REGISTRATION` | `full`; `fast` usa el perfil de registro rápido de las áreas de Brodmann (§25 HW3). Compose lo pasa a API y worker |
 
 La configuración de autenticación de A0 figura en §17.2. A2 monta las rutas OIDC y sesiones; la protección de
 los recursos existentes se aplica en A3, incluida la revalidación de archivos y la propiedad de jobs/ingestas.
@@ -1114,7 +1115,7 @@ variables sin definir, todo queda exactamente como hoy (8000 / 5173 / 6379).
 | `CERBERUS_REDIS_URL` | `redis://localhost:6379` | ya existía; para otro puerto: `redis-server --port N` |
 
 Docker sigue con `CERBERUS_HTTP_PORT` y `CERBERUS_KEYCLOAK_HTTP_PORT` (README). Los scripts de `tools/e2e/` usan
-`CERBERUS_UI` o, si falta, `http://localhost:${CERBERUS_UI_PORT:-5173}`. El comando `uvicorn … --port 8000` sigue funcionando.
+`CERBERUS_UI` o, si falta, `http://localhost:${CERBERUS_UI_PORT:-5173}`. El comando `uvicorn … --port 8000` sigue funcionando. Desde CFG2 (§24), Vite rechaza al arrancar un `CERBERUS_UI_PORT` o `CERBERUS_API_PORT` presente que no sea un entero 1–65535.
 
 ## 24. Pendientes post-PERF (tras CP-067)
 
@@ -1142,8 +1143,10 @@ GPU solo NVIDIA. Con la configuración por defecto (CPU, `full`, fp32) los resul
 | Ticket | Qué | Archivos | Depende de | Criterio de aceptación |
 |---|---|---|---|---|
 | HW1 | Variante CUDA de la imagen (`TORCH_VARIANT=cpu\|cu12x`, conflicto de extras en uv) + `compose.gpu.yaml` (reserva NVIDIA para el worker); `segresnet_predictor(..., amp=False)` con autocast fp16 solo en cuda, salida de la ventana deslizante en CPU y vuelta a CPU ante OOM (aviso en `warnings`); `SystemInfo.gpu_name`/`gpu_memory_gb` opcionales | `pyproject.toml`, `uv.lock`, `docker/backend.Dockerfile`, `compose.gpu.yaml`, `segmentation.py`, `runtime.py`, `schemas.py`, `frontend/src/api/types.ts` | — | Imagen CPU y `uv sync` local idénticos; tests con `torch.cuda` mockeado (amp solo en cuda, OOM → cpu, campos de GPU); en PC NVIDIA: `device: cuda` en `/api/system`, Dice fp16 vs fp32 ≥ 0.99 en 001/t0 y tiempo medido |
-| HW3 | `CERBERUS_REGISTRATION=full\|fast`: perfil de registro ANTs; `full` = actual; `fast` = SyN con menos iteraciones / SyNQuick y spacing 2 mm; el perfil entra en `_cache_key` y en `registration` («(rápido)») | `config.py`, `atlas.py`, `worker.py`, tests | — | `full` bit a bit igual (kwargs de `ants.registration` sin cambio); caché distinta por modo; valor inválido falla en settings; benchmark 001/t0 + otro paciente: `fast` ≥ 2× y mismo conjunto de áreas «Afectadas» |
+| HW3 | `CERBERUS_REGISTRATION=full\|fast`: perfil de registro ANTs; `full` = actual; `fast` = SyN con menos iteraciones / SyNQuick y spacing 2 mm; el perfil entra en `_cache_key` y en `registration` («(rápido)») | `config.py`, `atlas.py`, `worker.py`, tests | — | `full` bit a bit igual (kwargs de `ants.registration` sin cambio); caché distinta por modo; valor inválido falla en settings; benchmark 001/t0 + otro paciente: `fast` ≥ 2×; en estudios donde `full` es estable (Dice `full` vs `full` ≥ 0.9) coinciden las «Afectadas» con solape ≥ 0.5 cm³ (±1 área de borde 0.4–0.6 cm³). Enmendado en CP-072: el criterio estricto no es medible porque `full` no es determinista (ver REG1) |
 | HW4 | Modo híbrido macOS Apple Silicon: `compose.hybrid.yaml` (worker de Docker desactivado, Redis solo en `127.0.0.1:${CERBERUS_REDIS_PORT:-6379}`) + worker nativo (`uv run`) con MPS y ANTs arm64 sobre los mismos `Data/`, `storage/`, `models/` | `compose.hybrid.yaml`, `README.md` | — | `/api/system`: `darwin/arm64`, `mps`, `in_container: false`; la API del contenedor sirve los resultados del worker nativo; tiempos vs Docker+Rosetta medidos |
 | HW2 | Lanzador `tools/launch/up.sh` + `up.ps1`: detecta SO/arquitectura, CPU/RAM de Docker y NVIDIA; elige `compose.gpu.yaml`, modo híbrido o normal; fija `CERBERUS_WORKER_MEM_LIMIT = clamp(MemDocker − 2 GB, 5, 12 GB)`; sugiere `fast` con ≤ 4 CPU o emulación; respeta variables ya definidas; `--dry-run`, `--cpu`, `--no-hybrid`, `--fast`, `down`. Tope `MAX_AUTO_THREADS` 8 → 16 solo si el benchmark da > 15 % | `tools/launch/`, `runtime.py` (condicional), `README.md`, §5 | HW1, HW4 | `bash -n` + shellcheck; `--dry-run` correcto en Mac arm, Linux con/sin NVIDIA y Windows WSL2; README con tabla «Qué usa cada SO» |
 
-Orden: oleada 1 = HW1, HW3, HW4 (archivos disjuntos) · oleada 2 = HW2.
+| REG1 | Registro paciente→MNI reproducible y con QC. Hallazgo de HW3: con varios hilos la etapa afín de ANTs cae en mínimos distintos (004/t0: Dice 0.18 `full` vs `full`, ~20° de cabeceo en una corrida); ANTsPy documenta que la reproducibilidad exige `ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1`. (1) Diagnóstico: 5 corridas con 1 y con 8 hilos en 004/t0 y 005/t1, más QC visual; (2) mitigación elegida por benchmark: afín con 1 hilo + SyN multihilo con `initial_transform`, inicialización rígido→afín o muestreo afín mayor; (3) QC automático en `AreasResult.warnings` (determinante del afín fuera de [0.7, 1.4], rotación > 15° o Dice bajo de la máscara de cerebro deformada); (4) versionar la huella de caché | `atlas.py`, tests | HW3 | `full` reproducible (Dice consigo mismo ≥ 0.99) en 001, 004 y 005; tiempo ≤ 1.2× el actual; cambia resultados (no es PERF) |
+
+Orden: oleada 1 = HW1, HW3, HW4 (archivos disjuntos) · oleada 2 = HW2, REG1.

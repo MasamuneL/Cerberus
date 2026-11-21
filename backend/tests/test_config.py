@@ -25,6 +25,7 @@ def _clean_env(monkeypatch: pytest.MonkeyPatch) -> None:
         "API_HOST",
         "API_PORT",
         "UI_PORT",
+        "REGISTRATION",
     ):
         monkeypatch.delenv(f"CERBERUS_{var}", raising=False)
 
@@ -125,3 +126,16 @@ def test_get_settings_is_cached() -> None:
     get_settings.cache_clear()
     assert get_settings() is get_settings()
     get_settings.cache_clear()
+
+
+def test_registration_mode_default_and_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    assert Settings().registration == "full"
+    monkeypatch.setenv("CERBERUS_REGISTRATION", "fast")
+    assert Settings().registration == "fast"
+
+
+@pytest.mark.parametrize("value", ["quick", "FAST", ""])
+def test_registration_mode_invalid(monkeypatch: pytest.MonkeyPatch, value: str) -> None:
+    monkeypatch.setenv("CERBERUS_REGISTRATION", value)
+    with pytest.raises(ValidationError):
+        Settings()

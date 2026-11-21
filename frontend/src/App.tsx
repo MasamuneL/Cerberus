@@ -6,10 +6,25 @@ import UploadPanel from "./components/UploadPanel";
 import ContinuityPanel from "./components/ContinuityPanel";
 import StudyList, { type StudyKey } from "./components/StudyList";
 import LoginPanel from "./components/LoginPanel";
+import ViewerErrorBoundary from "./components/ViewerErrorBoundary";
 import { useAuth, type AuthControl } from "./hooks/useAuth";
 
 // Niivue pesa ~1 MB: el visor se descarga al abrir el primer estudio, no en el login.
-const Viewer = lazy(() => import("./components/Viewer"));
+// Es una factoría porque un `lazy` cachea el import rechazado: reintentar exige crear uno nuevo.
+const loadViewer = () => lazy(() => import("./components/Viewer"));
+
+// En build, el CSS del chunk entra como <link>; si su descarga falló, el <link> queda en el DOM con la
+// hoja inaccesible y el helper de preload de Vite no lo vuelve a pedir (el visor saldría sin estilos).
+// Se sustituye por un clon para que el navegador lo descargue de nuevo al reintentar.
+function reloadFailedStylesheets() {
+  document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]').forEach((link) => {
+    try {
+      void link.sheet?.cssRules;
+    } catch {
+      link.replaceWith(link.cloneNode());
+    }
+  });
+}
 
 const errText = (e: unknown) =>
   e instanceof ApiError ? e.detail : e instanceof Error ? e.message : String(e);
@@ -41,6 +56,8 @@ function Workspace({ auth }: { auth: AuthControl }) {
   // Contador monótono: invalida la caché de monai_seg en el Viewer tras cada segmentación.
   // No se reinicia al cambiar de estudio para que nunca se repita una URL ya cacheada.
   const [segVersion, setSegVersion] = useState(0);
+  // Componente diferido del visor; "Reintentar" tras un fallo de descarga lo reemplaza por uno nuevo.
+  const [Viewer, setViewer] = useState(() => loadViewer());
   const [showUpload, setShowUpload] = useState(false);
   const [resumeUploadId, setResumeUploadId] = useState<string | null>(null);
   // Áreas de Brodmann (§13): resultado del estudio abierto, versión monótona (cache-busting de
@@ -210,16 +227,18 @@ function Workspace({ auth }: { auth: AuthControl }) {
                 Paciente {detail.patient} · {detail.timepoint}
               </h2>
               <div className="study-layout">
-                <Suspense fallback={<div className="viewer-panel"><p className="placeholder">Cargando volúmenes…</p></div>}>
-                  <Viewer
-                    study={detail}
-                    showSegmentation={detail.has_segmentation}
-                    segmentationVersion={segVersion}
-                    areas={areas}
-                    areasVersion={areasVersion}
-                    focusedLabel={focusedLabel}
-                  />
-                </Suspense>
+                <ViewerErrorBoundary key={`${detail.patient}/${detail.timepoint}`} onRetry={() => { reloadFailedStylesheets(); setViewer(() => loadViewer()); }}>
+                  <Suspense fallback={<div className="viewer-panel"><p className="placeholder">Cargando volúmenes…</p></div>}>
+                    <Viewer
+                      study={detail}
+                      showSegmentation={detail.has_segmentation}
+                      segmentationVersion={segVersion}
+                      areas={areas}
+                      areasVersion={areasVersion}
+                      focusedLabel={focusedLabel}
+                    />
+                  </Suspense>
+                </ViewerErrorBoundary>
                 <SidePanel
                   canAnalyze={auth.canAnalyze}
                   study={detail}

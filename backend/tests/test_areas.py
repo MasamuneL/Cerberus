@@ -27,7 +27,7 @@ from cerberus_api.areas import (
     run_area_mapping,
 )
 from cerberus_api.atlas import AtlasMapping
-from cerberus_api.config import REPO_ROOT, Settings
+from cerberus_api.config import REPO_ROOT, RegistrationMode, Settings
 from cerberus_api.deps import get_redis, settings_dep
 from cerberus_api.main import app
 from cerberus_api.schemas import AreaLabel, AreasResult, Hemisphere
@@ -190,7 +190,7 @@ def _fake_study(tmp: Path) -> dict[str, Path]:
 def fake_map_atlas(monkeypatch: pytest.MonkeyPatch) -> list[Path]:
     calls: list[Path] = []
 
-    def fake(study_files: dict[str, Path], out_dir: Path, models_dir: Path) -> AtlasMapping:
+    def fake(study_files: dict[str, Path], out_dir: Path, models_dir: Path, mode: str = "full") -> AtlasMapping:
         calls.append(out_dir)
         label_path = _save(out_dir / "brodmann.nii.gz", _labels())
         return AtlasMapping(
@@ -221,6 +221,24 @@ def test_run_area_mapping_without_wt(tmp_path: Path, fake_map_atlas: list[Path])
     assert res.areas[0].overlap_wt_cm3 is None
     on_disk = AreasResult.model_validate_json((out_dir / AREAS_JSON).read_text(encoding="utf-8"))
     assert on_disk == res
+
+
+def test_run_area_mapping_passes_registration_mode(
+    tmp_path: Path, fake_map_atlas: list[Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    modes: list[str] = []
+    real = atlas.map_atlas
+
+    def spy(
+        study_files: dict[str, Path], out_dir: Path, models_dir: Path, mode: RegistrationMode = "full"
+    ) -> AtlasMapping:
+        modes.append(mode)
+        return real(study_files, out_dir, models_dir, mode)
+
+    monkeypatch.setattr(atlas, "map_atlas", spy)
+    run_area_mapping(_fake_study(tmp_path), tmp_path / "o1", tmp_path / "models")
+    run_area_mapping(_fake_study(tmp_path), tmp_path / "o2", tmp_path / "models", "fast")
+    assert modes == ["full", "fast"]
 
 
 def test_run_area_mapping_with_wt(tmp_path: Path, fake_map_atlas: list[Path]) -> None:
@@ -297,20 +315,27 @@ def _sample_result() -> AreasResult:
 
 def test_worker_map_areas(settings: Settings, make_study: MakeStudy, monkeypatch: pytest.MonkeyPatch) -> None:
     make_study(settings.data_dir, seqs=("t1gd", "gtv", "brain_mask"))
-    calls: list[tuple[dict[str, Path], Path, Path]] = []
+    calls: list[tuple[dict[str, Path], Path, Path, str]] = []
 
-    def fake_run(study_files: dict[str, Path], out_dir: Path, models_dir: Path) -> AreasResult:
-        calls.append((study_files, out_dir, models_dir))
+    def fake_run(study_files: dict[str, Path], out_dir: Path, models_dir: Path, mode: RegistrationMode) -> AreasResult:
+        calls.append((study_files, out_dir, models_dir, mode))
         return _sample_result()
 
     monkeypatch.setattr(worker, "get_settings", lambda: settings)
     monkeypatch.setattr(worker, "run_area_mapping", fake_run)
     out = asyncio.run(worker.map_areas({}, "001", "t0"))
     assert out == _sample_result().model_dump(mode="json")
-    files, out_dir, models_dir = calls[0]
+    files, out_dir, models_dir, mode = calls[0]
     assert sorted(files) == ["brain_mask", "gtv", "t1gd"]
     assert out_dir == settings.results_dir / "001" / "t0"
     assert models_dir == settings.models_dir
+    assert mode == "full"
+
+    # El modo de registro viene de los settings (CERBERUS_REGISTRATION)
+    fast = settings.model_copy(update={"registration": "fast"})
+    monkeypatch.setattr(worker, "get_settings", lambda: fast)
+    asyncio.run(worker.map_areas({}, "001", "t0"))
+    assert calls[1][3] == "fast"
 
 
 @pytest.mark.parametrize(("patient", "timepoint"), [("001", "t9"), ("../x", "t0")])

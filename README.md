@@ -137,6 +137,7 @@ la pantalla indica un fallo al consultar configuración o sesión, no identifica
 |---|---|---|
 | `CERBERUS_HTTP_PORT` | 8080 | puerto local de la app |
 | `CERBERUS_CPU_THREADS` | auto | hilos de MONAI/ANTs; `auto` = máx(1, mín(floor(CPUs) − 1, 8)) según las CPU disponibles; un entero positivo lo fija (ver `GET /api/system`) |
+| `CERBERUS_REGISTRATION` | full | registro ANTs de las áreas de Brodmann: `full` (referencia) o `fast` (más rápido, resolución menor; el reporte lo anota «(rápido)»). También sirve en desarrollo nativo; otro valor impide arrancar la API/el worker |
 | `CERBERUS_WORKER_MEM_LIMIT` / `CERBERUS_API_MEM_LIMIT` | 6g / 2g | límites de memoria |
 | `CERBERUS_DATA_PATH` / `CERBERUS_MODELS_PATH` | `./Data` / `./models` | carpetas del host para datos y modelos |
 | `CERBERUS_STORAGE_PATH` | `./storage` | separar los resultados de Docker de los de desarrollo |
@@ -149,6 +150,64 @@ el registro ANTs puede variar entre ejecuciones con varios hilos. Son mediciones
 no tiempos garantizados para cualquier equipo o estudio.
 
 Smoke test de la versión Docker: `cd tools/e2e && npm ci && CERBERUS_UI=http://localhost:8080 node verify-docker.mjs`.
+
+### Mac Apple Silicon: modo híbrido
+
+Docker Desktop no expone Metal (MPS) a los contenedores y ANTs no publica wheel Linux arm64, así que el worker de
+Docker corre en CPU bajo Rosetta. En el modo híbrido **API, Keycloak, Redis y frontend siguen en Docker**, pero el
+worker corre **nativo** con `uv`: MONAI usa MPS y ANTs usa su wheel `macosx_arm64`. Comparten `Data/`, `storage/` y
+`models/` por bind mount y la cola de Redis, así que la app se usa igual que en el modo normal.
+
+Requisitos: los de la opción rápida, más [uv](https://docs.astral.sh/uv/) y los modelos descargados en `models/`.
+
+```bash
+# Paso 1: stack en Docker sin worker (compose.hybrid.yaml lo desactiva y publica Redis solo en 127.0.0.1)
+docker compose -f compose.yaml -f compose.hybrid.yaml up -d --build
+docker compose -f compose.yaml -f compose.hybrid.yaml ps           # sin servicio «worker»
+
+# Paso 2: worker nativo, en otra terminal y con las mismas rutas que los bind mounts
+uv sync
+CERBERUS_REDIS_URL="redis://127.0.0.1:${CERBERUS_REDIS_PORT:-6379}/0" \
+CERBERUS_DATA_DIR="${CERBERUS_DATA_PATH:-./Data}" \
+CERBERUS_STORAGE_DIR="${CERBERUS_STORAGE_PATH:-./storage}" \
+CERBERUS_MODELS_DIR="${CERBERUS_MODELS_PATH:-./models}" \
+uv run python -m cerberus_api.worker
+```
+
+Comprobación: con la sesión iniciada, `http://localhost:8080/api/system` debe mostrar `"platform": "darwin/arm64"`,
+`"device": "mps"` y `"in_container": false`. Si aparece `linux/x86_64 (emulado…)`, respondió el worker de Docker:
+revisa que `ps` no lo liste y que no lo hayas levantado sin el override.
+
+- **Parar:** `Ctrl+C` en el worker y `docker compose -f compose.yaml -f compose.hybrid.yaml down`. Usa siempre los
+  mismos dos `-f`: sin el override, `docker compose up` vuelve a crear el worker de Docker, y dos workers sobre la misma
+  cola se repartirían los jobs. Si arrancaste el worker de Docker con `--profile docker-worker`, añade también
+  `--profile docker-worker` al `down` para que no quede ese contenedor.
+- **Volver al worker de Docker:** detén el nativo y levanta el perfil con
+  `docker compose -f compose.yaml -f compose.hybrid.yaml --profile docker-worker up -d worker`.
+- **Puerto de Redis:** por defecto 6379. Si ya corre un `redis-server` local (modo desarrollo) o Docker avisa de que el
+  puerto está ocupado, exporta `CERBERUS_REDIS_PORT=6390` **en la misma terminal** antes de ambos pasos.
+- **Variables compartidas:** `CERBERUS_HTTP_PORT`, `CERBERUS_DATA_PATH`, `CERBERUS_STORAGE_PATH`, `CERBERUS_MODELS_PATH` y
+  `CERBERUS_CPU_THREADS` se leen igual en ambos lados. El worker nativo no lee `.env`: las expresiones del paso 2 repiten
+  los defaults de Compose, y si defines esas variables solo en `.env`, expórtalas también en la terminal del worker.
+- **Permisos:** el worker escribe `storage/results/` con tu usuario y la API de Docker lee esos archivos y puede crear
+  otros en las mismas carpetas: Docker Desktop traduce el propietario en los bind mounts, así que no hace falta
+  `CERBERUS_UID` (comprobado con UID 1000 y 501).
+
+> **Aviso de seguridad:** Redis corre **sin contraseña**. `compose.hybrid.yaml` lo publica solo en
+> `127.0.0.1:${CERBERUS_REDIS_PORT:-6379}` (nunca en `0.0.0.0`), pero cualquier proceso de este Mac puede encolar jobs
+> o leer la cola mientras el stack esté arriba. No cambies esa IP ni expongas el puerto en una red compartida.
+
+**Rendimiento** (001/t0; Mac de 14 CPU y 36 GB; Docker con 14 CPU y 8 GB; 8 hilos; 2026-11-20). Se midió con la
+máquina bajo carga (load average 15–30 por otros procesos), así que son cotas superiores y no tiempos garantizados.
+Cada medición se hizo dos veces; el registro «en frío» se obtuvo apartando la caché `results/001/t0/mni/`:
+
+| Paso | Worker nativo (MPS + ANTs arm64) | Worker Docker + Rosetta (CPU) |
+|---|---|---|
+| Segmentación MONAI | 34 s la primera (carga del modelo), 16 s la segunda | 87 s y 90 s |
+| Mapeo de áreas en frío | 38 s y 26 s | 67 s y 70 s |
+| Mapeo de áreas con registro en caché | 9 s | 31 s |
+
+La segmentación coincide con la de Docker (001/t0: Dice TC 0.857).
 
 ### Identidad, sesiones y permisos de la demo (A1–A4)
 
