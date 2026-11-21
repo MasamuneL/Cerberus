@@ -104,7 +104,10 @@ extraPaths = ["backend/tests"]
 
 [tool.pytest.ini_options]
 testpaths = ["backend/tests"]
-markers = ["slow: tests que usan el modelo MONAI real o dcm2niix real"]
+markers = [
+    "slow: tests que usan el modelo MONAI real o dcm2niix real",
+    "launcher: lanzador tools/launch (bash con detección simulada; sin daemon ni red)",
+]
 
 [tool.uv.sources]
 torch = [

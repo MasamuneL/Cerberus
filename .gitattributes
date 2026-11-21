@@ -1,5 +1,7 @@
 # Los heredocs de arranque deben conservar finales Unix también en checkouts de Windows.
 docker/*.Dockerfile text eol=lf
+# El lanzador bash también corre desde un checkout de Windows en WSL2
+tools/launch/*.sh text eol=lf
 
 # Volúmenes médicos e imágenes pesadas -> Git LFS
 *.nii.gz filter=lfs diff=lfs merge=lfs -text
