@@ -45,16 +45,8 @@ INDEX_RE = re.compile(r"^\d{1,5}$", re.ASCII)
 UPLOAD_NOT_FOUND = "Subida no encontrada"
 
 
-def _find_study(settings: Settings, patient: str, timepoint: str) -> Study | None:
-    """El `Study` de (paciente, tiempo) según el catálogo, o `None` si no aparece."""
-    for study in catalog.list_studies(settings.data_dir, settings.results_dir):
-        if study.patient == patient and study.timepoint == timepoint:
-            return study
-    return None
-
-
 def _study_or_500(settings: Settings, patient: str, timepoint: str) -> Study:
-    study = _find_study(settings, patient, timepoint)
+    study = catalog.find_study(settings.data_dir, settings.results_dir, patient, timepoint)
     if study is None:  # pragma: no cover - el archivo recién guardado siempre cumple la convención
         raise HTTPException(status_code=500, detail="El volumen se guardó pero no aparece en el catálogo")
     return study
