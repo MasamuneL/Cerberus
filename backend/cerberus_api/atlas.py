@@ -9,11 +9,12 @@ Flujo:
    `REGISTRATION_PROFILES`). El GTV dilatado `GTV_MARGIN_MM` se excluye del costo (`moving_mask`) para que el
    tumor no deforme el campo. REG1 fija la semilla en las dos etapas y ejecuta la afín con un hilo en otro
    proceso. La etapa no lineal (SyNOnly) parte de esa afín y usa los hilos del worker.
-2. El atlas, separado por hemisferio en MNI, vuelve al grid de la secuencia de referencia del visor (t1gd si
-   existe) con `invtransforms` + `genericLabel`. Las transformaciones viven en el espacio físico, así que sirven
-   para cualquier secuencia del estudio (todas están co-registradas en el dataset).
-3. Se escribe `brodmann.nii.gz` (uint8) con nibabel y el affine/header EXACTO de la referencia: ANTs trabaja en
-   LPS y nibabel en RAS, pero el orden de índices del arreglo es el mismo, por eso solo se copia el arreglo.
+2. El atlas se separa por hemisferio en Talairach. Para cada punto del grid de referencia del visor
+   (t1gd si existe), `invtransforms` lleva el punto a MNI152 y la afín de Lancaster lo lleva a Talairach.
+   Se muestrea el atlas una sola vez con `genericLabel`. Las transformaciones viven en el espacio físico,
+   así que sirven para cualquier secuencia del estudio (todas están co-registradas en el dataset).
+3. Se escribe `brodmann.nii.gz` (uint8) con nibabel, la geometría de la referencia y el nombre de la versión
+   del atlas. ANTs trabaja en LPS y nibabel en RAS, pero el orden de índices del arreglo es el mismo.
 """
 
 import hashlib
@@ -25,7 +26,7 @@ import sys
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import nibabel as nib
 import numpy as np
@@ -36,7 +37,20 @@ from cerberus_api.config import RegistrationMode
 from cerberus_api.nifti import load_nifti
 from cerberus_api.schemas import Hemisphere
 
-ATLAS_NAME = "Talairach-Brodmann (nilearn)"
+ATLAS_NAME = "Talairach-Brodmann (nilearn, Lancaster 2007 icbm_other2tal)"
+ICBM_OTHER2TAL_RAS = np.array(
+    [
+        [0.9357, 0.0029, -0.0072, -1.0423],
+        [-0.0065, 0.9396, -0.0726, -1.3940],
+        [0.0103, 0.0752, 0.8967, 3.6475],
+        [0.0, 0.0, 0.0, 1.0],
+    ],
+    dtype=np.float64,
+)
+"""Afín ICBM/MNI → Talairach en RAS (mm), Lancaster et al. (2007), doi:10.1002/hbm.20345.
+
+Coeficientes de https://www.brainmap.org/icbm2tal/icbm_other2tal.m.
+"""
 RIGHT_OFFSET = 100  # valor = índice del atlas (izquierdo) o índice + 100 (derecho)
 
 REFERENCE_PRIORITY = ("t1gd", "t1eg", "t1tse", "flair")  # grid del visor
@@ -331,6 +345,17 @@ def which_to_invert(invtransforms: list[str]) -> list[bool]:
     return [p.endswith(".mat") for p in invtransforms]
 
 
+def _write_lancaster_transform(path: Path) -> None:
+    """Convierte la afín de RAS a LPS y escribe la transformación de muestreo en formato ANTs."""
+    import ants
+
+    ras_to_lps = np.diag([-1.0, -1.0, 1.0, 1.0])
+    lps = ras_to_lps @ ICBM_OTHER2TAL_RAS @ ras_to_lps
+    transform = cast(ants.ANTsTransform, ants.create_ants_transform(transform_type="AffineTransform", dimension=3))
+    transform.set_parameters(np.concatenate([lps[:3, :3].ravel(), lps[:3, 3]]))
+    ants.write_transform(transform, str(path))
+
+
 def map_atlas(
     study_files: dict[str, Path], out_dir: Path, models_dir: Path, mode: RegistrationMode = "full"
 ) -> AtlasMapping:
@@ -371,11 +396,13 @@ def map_atlas(
             inv = _register(study_files, moving_seq, mni_dir, models_dir, tmp, mode)
 
         nib.save(split_img, tmp / "atlas.nii.gz")
+        icbm2tal = tmp / "icbm_other2tal.mat"
+        _write_lancaster_transform(icbm2tal)
         warped = ants.apply_transforms(
             fixed=ants.image_read(str(study_files[reference_seq])),
             moving=ants.image_read(str(tmp / "atlas.nii.gz")),
-            transformlist=inv,
-            whichtoinvert=which_to_invert(inv),
+            transformlist=[*inv, str(icbm2tal)],
+            whichtoinvert=[*which_to_invert(inv), False],
             interpolator="genericLabel",
         )
         lab = np.rint(warped.numpy()).astype(np.uint8)
@@ -388,16 +415,26 @@ def map_atlas(
     header = ref_img.header.copy()
     header.set_data_dtype(np.uint8)
     header.set_slope_inter(1, 0)
+    header["descrip"] = ATLAS_NAME.encode("ascii")
     label_path = out_dir / "brodmann.nii.gz"
-    nib.save(nib.Nifti1Image(lab, ref_img.affine, header), label_path)
-    if not np.allclose(affine_of(load_nifti(label_path)), affine_of(ref_img), atol=1e-5):
-        raise RuntimeError("El affine de brodmann.nii.gz no coincide con el de la referencia")
+    with tempfile.TemporaryDirectory(prefix=".cerberus_atlas_", dir=out_dir) as publish_dir:
+        pending_label = Path(publish_dir) / label_path.name
+        nib.save(nib.Nifti1Image(lab, ref_img.affine, header), pending_label)
+        if not np.allclose(affine_of(load_nifti(pending_label)), affine_of(ref_img), atol=1e-5):
+            raise RuntimeError("El affine de brodmann.nii.gz no coincide con el de la referencia")
+        # El reporte viejo ya no corresponde al mapa publicado. run_area_mapping genera el nuevo.
+        (out_dir / "brodmann.json").unlink(missing_ok=True)
+        pending_label.replace(label_path)
 
     present = sorted(int(v) for v in np.unique(lab) if v != 0)
     entries: list[tuple[int, str, Hemisphere]] = [(v, *names[v]) for v in present if v in names]
     excluded = " (GTV excluido del costo)" if "gtv" in study_files else ""
     profile = REGISTRATION_PROFILES[mode]
-    registration = f"ANTs {profile.type_of_transform} {moving_seq}→MNI152{excluded}, atlas {ATLAS_NAME}{profile.suffix}"
+    registration = (
+        f"ANTs {profile.type_of_transform} {moving_seq}→MNI152{excluded}, "
+        "atlas Talairach-Brodmann proyectado a MNI152 con Lancaster 2007 "
+        f"(icbm_other2tal, afín global, estimación determinista){profile.suffix}"
+    )
     return AtlasMapping(
         label_path=label_path,
         entries=entries,

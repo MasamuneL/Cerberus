@@ -509,7 +509,7 @@ las etiquetas del atlas sobre la RM. Las áreas y funciones mostradas son estima
 
 | Herramienta | Función |
 |---|---|
-| Nilearn | Obtiene el atlas Talairach-Brodmann, nivel `ba`, y la plantilla MNI152 con su máscara cerebral |
+| Nilearn | Obtiene el atlas Talairach-Brodmann, nivel `ba` en espacio Talairach, y la plantilla MNI152 con su máscara cerebral |
 | ANTsPy (`antspyx`) / ANTs SyN | Calcula alineación afín y deformación local entre paciente y plantilla |
 | NiBabel | Lee, remuestrea y guarda NIfTI conservando coordenadas físicas |
 | NumPy y SciPy | Calculan volúmenes, intersecciones y distancias |
@@ -523,10 +523,13 @@ las etiquetas del atlas sobre la RM. Las áreas y funciones mostradas son estima
    orientación, escala y cizallamiento; una deformación local ajusta diferencias anatómicas.
 3. Excluye el GTV y un margen de **5 mm** de la función de costo en todas las etapas para reducir
    la influencia de la lesión sobre el ajuste. Esto no garantiza reconstruir la anatomía desplazada.
-4. Aplica las transformaciones inversas al atlas previamente separado por hemisferios, con interpolación
-   `genericLabel` para conservar etiquetas discretas. Guarda `brodmann.nii.gz` con el grid y affine de la
-   secuencia de referencia del visor, preferentemente `t1gd`. Las transformaciones se reutilizan
-   cuando las entradas y parámetros no cambian. Se presupone que las series están corregistradas.
+4. Proyecta el atlas Talairach a MNI152 mediante la afín `icbm_other2tal` de Lancaster et al. (2007).
+   Para muestrear las etiquetas, ANTs lleva cada punto del grid del paciente a MNI152 con las
+   transformaciones inversas del registro y luego a Talairach con la afín. El atlas se separa por
+   hemisferios en Talairach y se muestrea una sola vez con `genericLabel`.
+5. Guarda `brodmann.nii.gz` con el grid y la afín de la referencia del visor, preferentemente `t1gd`.
+   Reutiliza el registro MNI cuando coinciden las entradas y los parámetros. Se presupone que las
+   series están corregistradas. Al volver a calcular las áreas, se reemplazan el mapa y el reporte anteriores.
 
 **Cálculos por área:** GTV y etiquetas se llevan al mismo grid; las máscaras se remuestrean con
 vecino más cercano cuando hace falta. Con tamaños de vóxel `sx`, `sy`, `sz` en mm:
@@ -547,12 +550,10 @@ Ese valor no representa un 20 % de pérdida funcional. Las funciones asociadas p
 [`area_functions.json`](backend/cerberus_api/data/area_functions.json), una base bibliográfica
 con diferencias por hemisferio cuando corresponde; no se miden funciones individuales mediante RM estructural.
 
-**Limitación de coordenadas pendiente de resolver:** el código registra al paciente contra **MNI152**,
-pero Nilearn identifica el atlas descargado como espacio **Talairach** (`template="Talairach"`).
-Actualmente se aplica la inversa del registro MNI152 directamente al atlas, sin una conversión explícita
-Talairach–MNI152. La suposición de que ambos espacios coinciden necesita corregirse o verificarse;
-puede introducir errores de localización y debe resolverse antes de atribuir precisión anatómica al mapa.
-Esta sección documenta el hallazgo; no implica que la conversión ya esté implementada.
+La afín de Lancaster ajusta globalmente las coordenadas de un atlas determinista derivado de un único cerebro.
+`icbm_other2tal` carece de validación específica para la plantilla ICBM152 2009a no lineal simétrica de
+Cerberus. El resultado se interpreta con cautela como una estimación anatómica educativa.
+[Método y alcance de la validación de BrainMap](https://www.brainmap.org/icbm2tal/).
 
 La ausencia de `brain_mask`, disponer solo de T1 con contraste y un GTV grande pueden reducir la calidad
 del registro. Un mapa alineado visualmente no demuestra localización funcional individual ni sustituye

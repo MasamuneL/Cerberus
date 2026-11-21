@@ -6,7 +6,7 @@
 
 ## Resumen ejecutivo
 
-El backend registra la T1 del paciente contra la plantilla **MNI152 (`mni_icbm152_t1_tal_nlin_sym_09a`, 1 mm)** mediante ANTs SyN, pero proyecta directamente sobre el paciente las etiquetas de **`fetch_atlas_talairach("ba")`** de Nilearn (`0.14.1`), cuyo espacio declarado es **Talairach** (`template="Talairach"`, `sform_code=3`, `qform_code=3`), **sin conversión entre espacios**.
+En ATLAS0, el backend registraba la T1 del paciente contra la plantilla **MNI152 (`mni_icbm152_t1_tal_nlin_sym_09a`, 1 mm)** mediante ANTs SyN, y proyectaba directamente sobre el paciente las etiquetas de **`fetch_atlas_talairach("ba")`** de Nilearn (`0.14.1`), cuyo espacio declarado es **Talairach** (`template="Talairach"`, `sform_code=3`, `qform_code=3`), **sin conversión entre espacios**.
 
 Al aplicar la transformación afín de **Lancaster et al. (2007)** (`icbm_other2tal`) sobre el mismo registro por estudio (8/8 estudios de `Data/`):
 
@@ -14,7 +14,7 @@ Al aplicar la transformación afín de **Lancaster et al. (2007)** (`icbm_other2
 - Los picos corticales superan el margen completo en varios estudios (hasta **13.40 mm** en BA11 en `005/t1` y **11.90 mm** en BA25 en `002/t0`).
 - **8 de 8 estudios** cambian las áreas reportadas o su clasificación (`Afectada` ↔ `Cercana`): en total **6** áreas aparecen, **29** desaparecen y **20** cambian de categoría. En **7 de 8 estudios** estos cambios involucran **áreas elocuentes** (BA1, BA2, BA3, BA6, BA17, BA22, BA40, BA41, núcleos talámicos y troncoencefálicos).
 
-**Recomendación:** **Opción A** (aplicar la transformación afín de Lancaster `icbm_other2tal` / `tal2icbm_other`). Corrige el sesgo sistemático de ~5 mm con coste de implementación mínimo, conserva intactas las 71 etiquetas (42 BA + 29 subcorticales) de `area_functions.json` y mantiene estables los contratos §6/§7.
+**Recomendación:** **Opción A** (aplicar la transformación afín de Lancaster `icbm_other2tal` / `tal2icbm_other`). Introduce la conversión explícita entre espacios con un desplazamiento medido de ~5 mm, conserva intactas las 71 etiquetas (42 BA + 29 subcorticales) de `area_functions.json` y mantiene estables los contratos §6/§7.
 
 ---
 
@@ -29,7 +29,7 @@ Al aplicar la transformación afín de **Lancaster et al. (2007)** (`icbm_other2
   - `fetch_atlas_talairach` está definida en `.venv/lib/python3.11/site-packages/nilearn/datasets/atlas.py:2203-2278`.
   - Si no está en caché, `_download_talairach` (`.venv/lib/python3.11/site-packages/nilearn/datasets/atlas.py:2171-2199`) descarga `https://www.talairach.org/talairach.nii` (línea `2175`, con respaldo en OSF `https://osf.io/x4b2w/download` ante `SSLError`, línea `2183`).
   - `_separate_talairach_levels` (`.venv/lib/python3.11/site-packages/nilearn/datasets/atlas.py:2132-2169`) separa los 5 niveles jerárquicos (`hemisphere`, `lobe`, `gyrus`, `tissue`, `ba`) leyendo la extensión de cabecera del NIfTI y guarda `ba.nii.gz` (`uint8`) y `ba-labels.json` en `models/atlas/talairach_atlas/`.
-- **Versión y procedencia:** `talairach.nii` no lleva número de versión semántica en el archivo; proviene del atlas digitalizado del **Talairach Daemon / Talairach Labels** (Lancaster et al., 1997, 2000) derivado del atlas estereotáxico de **Talairach y Tournoux (1988)** (`.venv/lib/python3.11/site-packages/nilearn/datasets/description/talairach_atlas.rst:13-36`). La descripción de Nilearn deja la licencia como `unknown` (`talairach_atlas.rst:55`); en el sitio oficial (`https://www.talairach.org`), los términos del Research Imaging Institute permiten uso académico, educativo y científico gratuito citando Lancaster et al. (2000), prohibiendo la extracción/redistribución comercial en otras bases de datos sin permiso.
+- **Versión y procedencia:** `talairach.nii` no lleva número de versión semántica en el archivo; proviene del atlas digitalizado del **Talairach Daemon / Talairach Labels** (Lancaster et al., 1997, 2000) derivado del atlas estereotáxico de **Talairach y Tournoux (1988)** (`.venv/lib/python3.11/site-packages/nilearn/datasets/description/talairach_atlas.rst:13-36`). La descripción de Nilearn deja la licencia como `unknown` (`talairach_atlas.rst:55`); el sitio oficial publica el archivo de etiquetas, pide citar Lancaster et al. (1997, 2000) para el software usado en investigación y reserva los derechos del Research Imaging Institute. La ficha del proyecto en NITRC publica los términos del Talairach Daemon, con restricciones de uso y redistribución. [Talairach Software, sección «Talairach References»](https://www.talairach.org/), [Talairach Daemon en NITRC, sección «License»](https://www.nitrc.org/projects/tal-daemon/) (consultadas el 2026-11-21).
 - **Espacio declarado y geometría verificada en disco:**
   - `fetch_atlas_talairach` devuelve explícitamente `template="Talairach"` y `atlas_type="deterministic"` (`.venv/lib/python3.11/site-packages/nilearn/datasets/atlas.py:2255, 2271-2278`).
   - Inspección directa del archivo en caché (`models/atlas/talairach_atlas/ba.nii.gz`) con NiBabel:
@@ -40,7 +40,7 @@ Al aplicar la transformación afín de **Lancaster et al. (2007)** (`icbm_other2
 
 ---
 
-## 2. Plantilla a la que registra el backend y dónde se produce la discrepancia
+## 2. Plantilla MNI152 y discrepancia observada en ATLAS0
 
 Búsqueda en `backend/cerberus_api` (`grep -rn "MNI\|mni" backend/cerberus_api`): las referencias activas del registro viven en `backend/cerberus_api/atlas.py` (además de mensajes/comentarios en `config.py:22`, `areas.py:3`, `display.py:33`, `routers/studies.py:259` y `worker.py:114`).
 
@@ -54,7 +54,7 @@ Búsqueda en `backend/cerberus_api` (`grep -rn "MNI\|mni" backend/cerberus_api`)
     `MNI152_FILE_PATH = PACKAGE_DIRECTORY / "data" / "mni_icbm152_t1_tal_nlin_sym_09a_converted.nii.gz"`.
   - `load_mni152_template(resolution=1)` (`.venv/lib/python3.11/site-packages/nilearn/datasets/struct.py:196-251`) carga ese archivo empaquetado (línea `235`) y normaliza intensidades a `[0, 1]` (línea `241`); `load_mni152_brain_mask(resolution=1)` (`struct.py:368-411`) lo umbraliza a `> 0.2` (líneas `407-408`).
   - Inspección directa del NIfTI empaquetado: forma `(197, 233, 189)`, resolución `1.0 × 1.0 × 1.0 mm`, `sform_code = 2` (`NIFTI_XFORM_ALIGNED_ANAT`), `qform_code = 0`, afín `diag(1, 1, 1, 1)` con traslación `(-98, -134, -72)` mm y **simetría exacta izquierda-derecha** (`d == d[::-1, :, :]`, diferencia máxima `0.0`). Corresponde a la plantilla **ICBM 152 2009a no lineal simétrica** (`mni_icbm152_nlin_sym_09a`, Fonov et al., 2009, 2011; nota: `.venv/lib/python3.11/site-packages/nilearn/datasets/description/icbm152_2009.rst:9` escribe erróneamente «asymmetrical», aunque la URL fuente de la línea `61` y el archivo en `struct.py:49` son `sym_09a`).
-- **Flujo de registro y proyección en `backend/cerberus_api/atlas.py`:**
+- **Flujo de registro y proyección en `backend/cerberus_api/atlas.py` al evaluar ATLAS0:**
   1. `_register()` (`atlas.py:221-293`) selecciona la T1 móvil (`t1eg → t1tse → t1gd`, línea `39`), la enmascara con `brain_mask`, excluye el GTV dilatado `GTV_MARGIN_MM = 5.0 mm` del costo (`moving_mask`, líneas `44`, `259-266`, `278-279`) y registra hacia la plantilla MNI152 enmascarada (`fixed`, líneas `238-249`) con `ants.registration(..., type_of_transform="SyN", ...)` (`atlas.py:272-282`). En modo `full`, la T1 móvil se remuestrea a `1.5 mm` y la plantilla queda a `1.0 mm`; en modo `fast`, ambas usan `2.0 mm` (`atlas.py:68-73`, `239-245`).
   2. `map_atlas()` (`atlas.py:301-374`) separa primero el atlas Talairach por hemisferios según su coordenada `x >= 0` (`split_hemispheres` en líneas `125-157` y `328`), y luego llama a `ants.apply_transforms` (`atlas.py:341-347`) con `transformlist=inv` (las inversas paciente → MNI152 guardadas en `mni/`) e `interpolator="genericLabel"`.
   3. **Dónde ocurre la discrepancia:** `inv` lleva coordenadas físicas del paciente al espacio **MNI152 (ICBM152 2009a)**, pero `ants.apply_transforms` lee los vóxeles de `split_img` usando directamente su cabecera **Talairach** (`sform_code=3`). Asume tácitamente $\mathbf{p}_{\text{Tal}} = \mathbf{p}_{\text{MNI152}}$ (identidad). Esta suposición ya figuraba como hallazgo pendiente en `README.md:526-531` y `docs/PROGRESS.md:788-789` (`CP-047`), mientras `docs/PLAN_MVP.md:604` describe erróneamente el atlas como «espacio MNI».
@@ -93,26 +93,19 @@ $$
 
 > **Nota técnica de implementación (ANTs/ITK):** `ba.nii.gz` no puede guardarse simplemente con afín $M_{\text{tal2icbm}} A_{\text{tal}}$ para pasarlo a `ants.image_read`, porque ITK rechaza cabeceras con cizallamiento (`ITK only supports orthonormal direction cosines`). En la medición se convirtió $M_{\text{icbm\_other2tal}}$ a coordenadas LPS (`ras2lps @ M @ ras2lps`, donde `ras2lps = diag(-1, -1, 1, 1)`) en un `AffineTransform` de ANTs y se compuso directamente en `ants.apply_transforms(..., transformlist=[*inv, icbm_other2tal.mat], whichtoinvert=[*which_to_invert(inv), False], interpolator="genericLabel")`. Esto conserva una **única interpolación** `genericLabel` y preserva el corte hemisférico en la línea media original de Talairach (`split_hemispheres` previo).
 >
-> **Verificación previa en plantilla MNI152 (`verify_lancaster.py`):** comparando `resample_from_to(..., order=0)` contra el `AffineTransform` LPS con `nearestNeighbor` en el grid MNI152 de 1 mm, los centroides coinciden a **0.00 mm** (p. ej. BA11: `[1.34, 44.68, -28.66]` mm en ambos, con solo 0.27 % de vóxeles de empate en bordes discretos). En el espacio MNI152 (71 regiones), la corrección desplaza los centroides en promedio **4.47 mm** (mediana **4.41 mm**, rango **[0.85, 10.27] mm**).
+> **Verificación en la plantilla MNI152 de 1 mm:** el revisor comparó NiBabel (`resample_from_to(..., order=0)` con `tal2icbm` en la cabecera) y ANTs (afín LPS con `nearestNeighbor`). Los centroides se separaron **0.031 mm** de media (máximo **0.374 mm**) y difirió el **0.28 %** de la unión de vóxeles etiquetados. Con `genericLabel` en ANTs las cifras fueron **0.39 mm**, **2.71 mm** y **6.70 %**, respectivamente. En la medición original de ATLAS0 en MNI152 (71 regiones), la aplicación de Lancaster desplazó los centroides en promedio **4.47 mm** (mediana **4.41 mm**, rango **[0.85, 10.27] mm**).
+
+`icbm_other2tal` se ajustó agrupando datos de SPM2 y FSL. BrainMap documenta validación para las rutas SPM2 y FSL y pide interpretar con cautela las demás. La afín agrupada carece de validación específica para ICBM152 2009a no lineal simétrica. [Método y nota de validación de BrainMap](https://www.brainmap.org/icbm2tal/).
 
 ### 3.2 Control de no determinismo (`REG1`) y reproducibilidad
 
-El registro ANTs `full` con múltiples hilos no es bit-a-bit determinista entre corridas (`REG1`, en curso). Para **aislar exclusivamente el efecto de la transformación de Lancaster** sin mezclar variabilidad entre registros distintos:
+En ATLAS0, el registro ANTs `full` con múltiples hilos variaba entre corridas. REG1 estaba en curso. Para **aislar exclusivamente el efecto de la transformación de Lancaster** sin mezclar variabilidad entre registros distintos:
 
-1. En **7 de los 8 estudios** (`001/t0`, `002/t0`, `003/t0`, `003/t1`, `005/t0`, `005/t1`, `005/t2`) se reutilizaron **en solo lectura** las transformaciones `mni/pat2mni_0GenericAffine.mat` y `mni/pat2mni_1InverseWarp.nii.gz` ya almacenadas en `/Users/vikingo/Documents/UDG2/5toSem/BigData/Cerberus/storage/results/<paciente>/<tiempo>/mni/`. Se verificó además que reproyectar sin Lancaster sobre esas transformaciones da **0 vóxeles de diferencia** frente a `brodmann.nii.gz` y áreas idénticas a `brodmann.json` en los 7 casos.
+1. En **7 de los 8 estudios** (`001/t0`, `002/t0`, `003/t0`, `003/t1`, `005/t0`, `005/t1`, `005/t2`) se reutilizaron **en solo lectura** las transformaciones `mni/pat2mni_0GenericAffine.mat` y `mni/pat2mni_1InverseWarp.nii.gz` ya almacenadas en `storage/results/<paciente>/<tiempo>/mni/`. Se verificó además que reproyectar sin Lancaster sobre esas transformaciones da **0 vóxeles de diferencia** frente a `brodmann.nii.gz` y áreas idénticas a `brodmann.json` en los 7 casos.
 2. En **`004/t0`** (que no tenía carpeta `mni/` ni `brodmann.*` en `storage/`), se ejecutó `atlas.map_atlas(..., mode="full")` **una sola vez** en almacenamiento temporal y se aplicó Lancaster sobre ese mismo registro.
 
-- **Script de medición:** `/private/tmp/claude-501/-Users-vikingo-Documents-UDG2-5toSem-BigData-Cerberus/fcdbb5e9-6fb2-44cc-a45c-e5aae8f5d8cc/scratchpad/bench/ATLAS0/measure_lancaster.py`
-- **Salida JSON completa:** `/private/tmp/claude-501/-Users-vikingo-Documents-UDG2-5toSem-BigData-Cerberus/fcdbb5e9-6fb2-44cc-a45c-e5aae8f5d8cc/scratchpad/bench/ATLAS0/lancaster_results.json`
-- **Carga del sistema durante la tanda (`uptime`):** inicio `load averages: 11.67 13.85 11.26`; fin `load averages: 3.71 5.48 7.15`.
-- **Comando exacto para reproducir:**
-  ```bash
-  MPLCONFIGDIR=/private/tmp/claude-501/-Users-vikingo-Documents-UDG2-5toSem-BigData-Cerberus/fcdbb5e9-6fb2-44cc-a45c-e5aae8f5d8cc/scratchpad/bench/ATLAS0/.mplconfig \
-  CERBERUS_DATA_DIR=/Users/vikingo/Documents/UDG2/5toSem/BigData/Cerberus/Data \
-  CERBERUS_MODELS_DIR=/Users/vikingo/Documents/UDG2/5toSem/BigData/Cerberus/models \
-  CERBERUS_STORAGE_DIR=/private/tmp/claude-501/-Users-vikingo-Documents-UDG2-5toSem-BigData-Cerberus/fcdbb5e9-6fb2-44cc-a45c-e5aae8f5d8cc/scratchpad/bench/ATLAS0/storage \
-  .venv/bin/python /private/tmp/claude-501/-Users-vikingo-Documents-UDG2-5toSem-BigData-Cerberus/fcdbb5e9-6fb2-44cc-a45c-e5aae8f5d8cc/scratchpad/bench/ATLAS0/measure_lancaster.py
-  ```
+- **Medición reproducible:** [`tools/eval/atlas_lancaster.py`](../tools/eval/atlas_lancaster.py) aplica el mismo control con los registros de REG1 y los mapas de ATLAS1. La tabla histórica de ATLAS0 corresponde a los registros enumerados arriba. El comando con los resultados de REG1 está en §6.
+- **Carga del sistema durante la tanda de ATLAS0 (`uptime`):** inicio `load averages: 11.67 13.85 11.26`, fin `load averages: 3.71 5.48 7.15`.
 
 ### 3.3 Resultados por estudio (`MARGIN_MM = 10.0 mm`, `backend/cerberus_api/areas.py:30`)
 
@@ -167,7 +160,7 @@ Se marcan con **`[E]`** las regiones etiquetadas como `eloquent: true` en `backe
   - **Desaparecen (2):** `Brodmann area 17` der. **`[E]`** (`9.6 mm`), `Brodmann area 7` der. (`9.7 mm`).
   - **Cambian de categoría (2):** `Mammillary Body` der. **`[E]`** (`cercana` `1.1 mm` → `afectada` `0.01 cm³`); `Ventral Lateral Nucleus` der. **`[E]`** (`cercana` `4.7 mm` → `afectada` `0.0003 cm³`).
 
-**Observación física:** sin la corrección de Lancaster, el cerebro del atlas Talairach es ~6–11 % más pequeño por eje y está rotado/desplazado respecto a MNI152; al expandirlo hacia MNI152 (`tal2icbm`), varias regiones corticales periféricas que antes caían artificialmente dentro del margen de 10 mm se desplazan hacia la periferia cortical real (explicando las 29 salidas frente a 6 entradas), mientras que en el lóbulo temporal/frontal basal y regiones profundas cambia qué borde toca el GTV.
+**Observación física:** sin la corrección de Lancaster, el cerebro del atlas Talairach es ~6–11 % más pequeño por eje y está rotado/desplazado respecto a MNI152; al expandirlo hacia MNI152 (`tal2icbm`), varias regiones corticales periféricas se desplazan fuera del margen de 10 mm (explicando las 29 salidas frente a 6 entradas), mientras que en el lóbulo temporal/frontal basal y regiones profundas cambia qué borde toca el GTV.
 
 ---
 
@@ -176,15 +169,15 @@ Se marcan con **`[E]`** las regiones etiquetadas como `eloquent: true` en `backe
 ### Opción A · Aplicar la transformación afín de Lancaster (`icbm_other2tal`)
 
 - **Pros:**
-  - Elimina el sesgo sistemático documentado entre Talairach y MNI152 (Lancaster et al., 2007) en los 8 estudios, corrigiendo un error medio de **4.99 mm** (hasta **13.40 mm**).
+  - Introduce la conversión de coordenadas de Lancaster et al. (2007). En los ocho estudios de ATLAS0, el desplazamiento medio medido es de **4.99 mm** (hasta **13.40 mm**).
   - Conserva **exactamente las 71 etiquetas** (42 BA + 29 subcorticales), por lo que `backend/cerberus_api/data/area_functions.json` (1,384 líneas), `area_kb.py`, `test_area_kb.py` y los contratos §6 y §7 permanecen intactos.
   - No requiere descargas nuevas, dependencias nuevas ni redistribuir archivos de terceros dentro del repositorio.
   - Sobrecoste en tiempo de ejecución prácticamente nulo (~0 s adicionales frente a `ants.registration`).
 - **Contras:**
-  - Es una transformación afín global (12 parámetros): corrige el sesgo sistemático promedio entre espacios (reduciendo el error medio de 5–13 mm a ~1–2 mm según Lancaster et al., 2007), pero mantiene la limitación inherente de un atlas determinista derivado de un único cerebro post-mortem (Talairach & Tournoux, 1988), sin variabilidad citoarquitectónica interindividual.
+  - Es una afín global de 12 parámetros aplicada a un atlas determinista derivado de un único cerebro post mortem (Talairach y Tournoux, 1988). El atlas carece de variabilidad citoarquitectónica interindividual. La aplicación de `icbm_other2tal` a ICBM152 2009a no lineal simétrica requiere cautela según el alcance de la validación descrito en §3.1.
   - Invalida el `brodmann.nii.gz` / `brodmann.json` precalculado en `storage/results/` (pero **no** necesariamente la caché `mni/` del registro ANTs si el `AffineTransform` de Lancaster se aplica después de `inv` en `map_atlas`, ahorrando volver a registrar).
 - **Coste:** **Muy bajo** (~20–40 líneas en `backend/cerberus_api/atlas.py`, tests unitarios, actualización de texto en `README.md` y `docs/PLAN_MVP.md` §13; sin cambios de frontend salvo opcionalmente indicar «Talairach-Brodmann → MNI152 (Lancaster 2007)» en el texto `registration`).
-- **Licencia:** La matriz `icbm_other2tal` es una constante matemática publicada en Lancaster et al. (2007). El atlas subyacente sigue descargándose en tiempo de ejecución vía `nilearn.datasets.fetch_atlas_talairach` desde `talairach.org` / BrainMap OSF bajo los mismos términos actuales: gratuito para uso educativo, académico y científico no comercial citando Lancaster et al. (2000, 2007), sin redistribución en el repositorio ni extracción para bases de datos comerciales.
+- **Licencia:** BrainMap publica `icbm_other2tal`. Nilearn descarga el atlas al preparar su caché. Los términos y la atribución del Talairach Daemon se documentan en §1. [Archivo oficial de BrainMap](https://www.brainmap.org/icbm2tal/icbm_other2tal.m).
 
 ### Opción B · Usar un atlas de Brodmann nativo en MNI152
 
@@ -213,10 +206,10 @@ Se revisaron los cuatro candidatos principales en espacio MNI:
   - Cero riesgo de regresión en el pipeline de registro ni cambios en resultados numéricos previos.
   - Coste de código muy bajo (solo textos en `frontend/src/components/AreasPanel.tsx`, `README.md` y reporte/warnings).
 - **Contras:**
-  - **No corrige un sesgo sistemático conocido y cuantificado:** mantiene un error promedio de **4.99 mm** (picos de **13.40 mm**) en los 8 estudios, alterando el reporte en **8/8 estudios** y la condición de áreas **elocuentes** en **7/8 estudios**.
-  - Un rótulo de «aproximado» no compensa ante el usuario clínico o académico el hecho de reportar como afectada (o dejar fuera del margen de 10 mm) una corteza elocuente cuando existe una transformación lineal estándar publicada (Lancaster et al., 2007) que corrige ese desplazamiento.
+  - La comparación con Lancaster muestra un desplazamiento promedio de **4.99 mm** (picos de **13.40 mm**), con cambios de reporte en **8/8 estudios** y áreas **elocuentes** implicadas en **7/8 estudios**.
+  - Un rótulo de «aproximado» no compensa ante el usuario clínico o académico el hecho de reportar como afectada (o dejar fuera del margen de 10 mm) una corteza elocuente cuando existe una transformación afín publicada para convertir entre los espacios (Lancaster et al., 2007).
 - **Coste:** **Bajo** (solo cambios de texto en UI, README y reportes).
-- **Licencia:** Sin cambios respecto al estado actual (`talairach.org` / BrainMap OSF, uso académico/científico no comercial).
+- **Licencia:** Se aplican los términos del Talairach Daemon documentados en §1.
 
 ---
 
@@ -226,10 +219,69 @@ Se recomienda **elegir la Opción A: aplicar la transformación afín de Lancast
 
 **Justificación cuantitativa y técnica (con base en la §3):**
 
-1. **Magnitud del error actual frente al margen clínico de Cerberus:** El reporte usa `MARGIN_MM = 10.0 mm` (`areas.py:30`). El sesgo por omitir la conversión Talairach → MNI152 introduce un desplazamiento medio de **4.76–5.22 mm** (media global **4.99 mm**, ~50 % del margen completo) y picos de hasta **13.40 mm** (`005/t1`, BA11), superando incluso los `10.0 mm` en `002/t0`, `005/t0`, `005/t1` y `005/t2`. Esto descarta la **Opción C**: dejar visible un error sistemático de esta magnitud debilita la validez científica del panel «Funciones en riesgo».
+1. **Desplazamiento de los mapas frente al margen de proximidad de Cerberus.** El reporte usa `MARGIN_MM = 10.0 mm` (`areas.py:30`). El sesgo por omitir la conversión Talairach → MNI152 introduce un desplazamiento medio de **4.76–5.22 mm** (media global **4.99 mm**, ~50 % del margen completo) y picos de hasta **13.40 mm** (`005/t1`, BA11), superando incluso los `10.0 mm` en `002/t0`, `005/t0`, `005/t1` y `005/t2`. La magnitud favorece la opción A frente a un cambio de texto en el panel «Funciones en riesgo».
 2. **Impacto real en áreas elocuentes:** En **8 de 8 estudios** cambia el conjunto de áreas reportadas o su estado (`Afectada` ↔ `Cercana`), y en **7 de 8** (`001/t0`, `002/t0`, `003/t0`, `003/t1`, `005/t0`, `005/t1`, `005/t2`) se ven implicadas **áreas elocuentes** (incluyendo BA1, BA2, BA3, BA6, BA17, BA22, BA40, BA41, núcleo rojo, núcleo subtalámico y núcleos talámicos).
 3. **Relación coste-beneficio frente a la Opción B:** Ningún atlas Brodmann nativo en MNI152 ofrece cobertura 1-a-1 de las **71 regiones** (42 BA + 29 subcorticales) curadas en `area_functions.json` ni mejora las restricciones de licencia respecto a `talairach.org`. La **Opción A** resuelve el sesgo de espacios en ~20–40 líneas dentro de `backend/cerberus_api/atlas.py`, sin tocar contratos de API (§6/§7) ni `area_functions.json`, y puede reutilizar los campos de deformación `mni/` ya calculados.
-4. **Complemento documental en `ATLAS1`:** Al aplicar la **Opción A**, conviene mantener además el aviso educativo en la UI y actualizar `README.md` y `docs/PLAN_MVP.md:604` para declarar explícitamente: *atlas Talairach-Brodmann proyectado a MNI152 mediante la transformación afín de Lancaster et al. (2007, `icbm_other2tal`)*, señalando que sigue siendo una estimación determinista basada en atlas.
+4. **Comunicación en ATLAS1.** La aplicación de la opción A declara en el reporte y el README la proyección a MNI152, la afín de Lancaster (2007, `icbm_other2tal`) y el carácter determinista de la estimación.
+
+---
+
+## 6. ATLAS1 · antes/después
+
+Se ejecutó el mapeo de producción en modo `full` sobre los ocho estudios, de uno en uno. Para cada estudio, el script de evaluación volvió a proyectar el atlas omitiendo Lancaster sobre el mismo `mni/` de REG1. El reporte histórico proviene de `storage/results` y usa el registro previo a REG1. `004/t0` carece de reporte histórico.
+
+Cada recuento muestra el total de áreas reportadas por hemisferio y el desglose (afectadas/cercanas, margen de 10 mm). Las columnas de cambios indican apariciones, desapariciones y cambios entre «Afectada» y «Cercana», en ese orden. El efecto de REG1 compara el histórico con el nuevo registro sin Lancaster. El efecto de Lancaster compara ambas proyecciones sobre el mismo registro REG1. Los centroides se miden en milímetros en el espacio del paciente para las etiquetas presentes en ambos mapas REG1. La primera media incluye solo áreas de Brodmann y la segunda incluye también las estructuras subcorticales.
+
+| Estudio | Histórico pre-REG1 | REG1 sin Lancaster | REG1 con Lancaster | Cambios de REG1 | Cambios de Lancaster | Media centroides de Brodmann / todas (mm) | Mapeo `full` (s) |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| `001/t0` | 23 (8/15) | 23 (8/15) | 22 (7/15) | +0 / −0 / 0 | +0 / −1 / 1 | 4.76 / 3.92 | 87.26 |
+| `002/t0` | 48 (16/32) | 48 (16/32) | 41 (16/25) | +0 / −0 / 0 | +0 / −7 / 2 | 5.24 / 4.58 | 33.90 |
+| `003/t0` | 79 (45/34) | 79 (45/34) | 73 (42/31) | +0 / −0 / 0 | +1 / −7 / 5 | 4.89 / 4.14 | 33.53 |
+| `003/t1` | 76 (40/36) | 76 (40/36) | 67 (38/29) | +0 / −0 / 0 | +0 / −9 / 2 | 4.99 / 4.18 | 37.67 |
+| `004/t0` | — | 40 (20/20) | 41 (18/23) | — | +2 / −1 / 2 | 5.05 / 4.24 | 40.06 |
+| `005/t0` | 58 (34/24) | 59 (32/27) | 60 (34/26) | +1 / −0 / 2 | +2 / −1 / 4 | 5.08 / 4.33 | 45.90 |
+| `005/t1` | 61 (35/26) | 61 (35/26) | 59 (36/23) | +0 / −0 / 0 | +1 / −3 / 3 | 5.06 / 4.45 | 47.06 |
+| `005/t2` | 56 (33/23) | 55 (34/21) | 54 (34/20) | +1 / −2 / 1 | +0 / −1 / 2 | 4.79 / 4.34 | 41.62 |
+
+REG1 cambió 2 de los 7 reportes con histórico (+2 / −2 / 3). Lancaster cambió los 8 reportes (+6 / −30 / 21). La media de las ocho medias por estudio fue de **4.98 mm** para Brodmann y **4.27 mm** para todas las etiquetas. El desplazamiento máximo fue de **14.18 mm**.
+
+Los ocho mapeos sumaron 367.00 s (mediana de 40.84 s). Cada tiempo incluye el registro `full` y el cálculo del reporte. Carga media de `uptime` (1, 5 y 15 minutos) durante el mapeo: inicio 15:48 (`5.52 7.41 7.24`), fin 15:54 (`21.68 15.23 10.76`). Durante la comparación: inicio 15:55 (`21.23 15.24 10.79`), fin 15:56 (`15.71 14.71 10.91`).
+
+### Reproducción
+
+Desde la raíz del repositorio, indica las rutas de los datos, los modelos y un almacenamiento de evaluación separado. El ejemplo lee los reportes históricos de `storage/results`.
+
+```bash
+export CERBERUS_DATA_DIR="$PWD/Data"
+export CERBERUS_MODELS_DIR="$PWD/models"
+export CERBERUS_STORAGE_DIR="$(mktemp -d)"
+export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=6
+
+uptime
+uv run python - <<'PY'
+from time import perf_counter
+
+from cerberus_api import areas, catalog
+from cerberus_api.config import Settings
+
+s = Settings()
+for (patient, timepoint), files in sorted(catalog._scan(s.data_dir, "*/t*/*.nii.gz").items()):
+    if "gtv" in files:
+        started = perf_counter()
+        result = areas.run_area_mapping(files, s.results_dir / patient / timepoint, s.models_dir, "full")
+        print(f"{patient}/{timepoint} {perf_counter() - started:.2f}s {len(result.areas)} áreas")
+PY
+uptime
+
+uv run python tools/eval/atlas_lancaster.py \
+  --data-dir "$CERBERUS_DATA_DIR" \
+  --results-dir "$CERBERUS_STORAGE_DIR/results" \
+  --before-results-dir storage/results \
+  --out "$CERBERUS_STORAGE_DIR/atlas_lancaster.json"
+uptime
+```
+
+El JSON incluye áreas por hemisferio, entradas, salidas, cambios de categoría y desplazamientos de centroides. `--before-results-dir` es opcional para medir solo el efecto de Lancaster. El mapa y el reporte se reemplazan en el próximo mapeo de cada estudio, con el nombre de atlas que identifica Lancaster. La API puede seguir mostrando el reporte histórico hasta que se vuelva a mapear el estudio. Las transformaciones REG1 se reutilizan cuando su huella coincide.
 
 ---
 
