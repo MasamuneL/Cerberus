@@ -9,7 +9,7 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 |---|---|---|---|---|---|---|
 | ATLAS0 · informe de espacios del atlas (§26) | 🟡 | feat/ATLAS0-atlas-spaces | | | Claude Code (orquestador Opus + hc) | oleada 1; Antigravity |
 | EVAL1 · evaluación MONAI en todos los estudios (§26) | 🟡 | feat/EVAL1-monai-evaluation | | | Claude Code (orquestador Opus + hc) | oleada 1; Codex |
-| D3R · rescate del diagnóstico de #17 (§26) | 🟡 | feat/D3R-diagnostics | | | Claude Code (orquestador Opus + hc) | oleada 1; Codex |
+| D3R · rescate del diagnóstico de #17 (§26) | ✅ | feat/D3R-diagnostics | fd45b08 | 2026-11-21 | Codex (impl.) + Antigravity (rev.), orquestador Claude Opus + hc | PR #40; 1327 tests; privacidad con test; CP-076 |
 | FT-DOC · fine-tuning: estado y pasos futuros (§26) | 🟡 | feat/FTDOC-future-steps | | | Claude Code (orquestador Opus + hc) | oleada 1; Antigravity |
 | ATLAS1 · aplicar la opción elegida (§26) | ⬜ | feat/ATLAS1-<a\|b\|c> | | | Claude Code (orquestador Opus + hc) | oleada 2; tras gate A/B/C |
 | UI1 · botón «Reintentar» del visor (§26) | ⬜ | feat/UI1-retry-button | | | Claude Code (orquestador Opus + hc) | oleada 2 |
@@ -1312,3 +1312,26 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
   - Validar en la PC NVIDIA (CP-074) y probar cu130 en una Blackwell.
 - **Plan §25:** HW1–HW4 ✅. Queda REG1.
 
+
+### CP-076 · 2026-11-21 · D3R: diagnóstico de un 502 rescatado del PR #17 (§26)
+
+- **Integración:** [PR #40](https://github.com/MasamuneL/Cerberus/pull/40), merge `fd45b08`. Implementó Codex
+  (gpt-6.2-sol), revisó Antigravity (gemini-4-hydrogen-high): APROBADO a la primera.
+- `backend/cerberus_api/diagnostics.py` (324 líneas, solo stdlib + `cerberus_api.sequences`) y
+  `backend/tests/test_diagnostics.py` (17 tests) tomados de #17. README: «Diagnóstico de un 502» (local y contenedor;
+  se envía `cerberus-diagnostico.json`, modo 0600, sin sobrescribir).
+- **Desviaciones:** no se portaron `release_state`, `sample`, `container_setup` ni `tools/setup/diagnose.sh`; se quitó
+  la lectura de `tools/release/sample-manifest.json` y los metadatos de release del reporte (privacidad). Nuevo
+  `--compose-stdin` (lee `docker compose ps --format json`). Test de privacidad con DICOM, manifest y `.env.auth`
+  sintéticos: ningún centinela aparece en stdout, stderr ni en el JSON.
+- **Recomendados no aplicados:** `CERBERUS_DATA_DIR=""` cae en la raíz del repo; `docker compose ps` no trae
+  `OOMKilled`, así que un OOM vía `--compose-stdin` sale como `SERVICE_FAILED`.
+- **Checks:** Ruff/formato/Pyright, 1327 tests rápidos. Smoke en contenedor del implementador: `SERVICE_FAILED` con
+  salida 1 y JSON 0600.
+- **Fase 0 de §26 (antes de la oleada 1):** e2e de main con carga ~5 al empezar (sube a 10–15 por SwiftShader):
+  `verify` 33/33, `verify-viewer-3d` 7/7, `verify-mask-surface` 3/3, `verify-overlay-toggle` 4/4,
+  `verify-viewer-chunk-error` 5/5, 0 errores. Calibración: Codex y Antigravity (neon/argon/hydrogen) 3/3;
+  `AGY_MODEL = gemini-4-hydrogen-high` (39 s). Revisores Antigravity en `--mode auto` (en `plan` headless deniega
+  todo comando; decisión del usuario).
+- **Pendiente:** decidir si se cierra #17 (comentado con el enlace a #40).
+- **Siguiente:** oleada 1 de §26 en revisión: REG1 (#41), EVAL1 (#42), ATLAS0 (#43), FT-DOC (#44).
