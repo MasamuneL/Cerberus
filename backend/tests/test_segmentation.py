@@ -105,7 +105,7 @@ def test_monai_predictor_is_cached_until_weights_change(tmp_path: Path, monkeypa
     weights.write_bytes(b"pesos")
     built: list[Path] = []
 
-    def fake_build(path: Path) -> tuple[segmentation.Predictor, str]:
+    def fake_build(path: Path, device: str | None = None) -> tuple[segmentation.Predictor, str]:
         built.append(path)
         return _cube_predictor, "fake"
 
@@ -124,6 +124,163 @@ def test_monai_predictor_is_cached_until_weights_change(tmp_path: Path, monkeypa
     segmentation._monai_predictor(models)
     assert built == [weights, weights]
     assert len(segmentation._PREDICTORS) == 1
+
+
+# --- HW1: amp solo en CUDA, salida en CPU y vuelta a CPU ante OOM (torch.cuda mockeado, sin GPU) ---------------
+
+
+@pytest.mark.parametrize(("device", "amp"), [("cpu", True), ("mps", True), ("cuda", False), ("cpu", False)])
+def test_inference_context_without_autocast(device: str, amp: bool) -> None:
+    import contextlib
+
+    assert isinstance(segmentation._inference_context(device, amp), contextlib.nullcontext)
+
+
+def test_inference_context_autocast_fp16_on_cuda(monkeypatch: pytest.MonkeyPatch) -> None:
+    import torch
+
+    monkeypatch.setattr(torch.cuda, "is_available", lambda: True)
+    ctx = segmentation._inference_context("cuda", True)
+    assert isinstance(ctx, torch.autocast)
+    assert ctx.device == "cuda" and ctx.fast_dtype == torch.float16
+
+
+class _FakeNet:
+    """Red falsa: `eval()`/`to()` no tocan ningún dispositivo real; devuelve 3 canales a partir de la entrada."""
+
+    def __init__(self) -> None:
+        self.moved_to: str | None = None
+
+    def eval(self) -> "_FakeNet":
+        return self
+
+    def to(self, device: str) -> "_FakeNet":
+        self.moved_to = device
+        return self
+
+
+@pytest.mark.parametrize(("device", "amp"), [("cpu", False), ("cuda", True)])
+def test_segresnet_predictor_windows_on_device_output_on_cpu(
+    monkeypatch: pytest.MonkeyPatch, device: str, amp: bool
+) -> None:
+    import contextlib
+
+    import monai.inferers.utils as monai_utils
+    import torch
+
+    calls: list[dict[str, object]] = []
+    contexts: list[tuple[str, bool]] = []
+
+    def fake_swi(inputs: torch.Tensor, roi_size: object, sw_batch_size: int, predictor: object, **kwargs: object):
+        calls.append({"input_device": inputs.device.type, "roi": roi_size, "batch": sw_batch_size, **kwargs})
+        return torch.zeros((1, 3, *inputs.shape[2:]))
+
+    def fake_context(dev: str, use_amp: bool) -> contextlib.AbstractContextManager[object]:
+        contexts.append((dev, use_amp))
+        return contextlib.nullcontext()
+
+    monkeypatch.setattr(monai_utils, "sliding_window_inference", fake_swi)
+    monkeypatch.setattr(segmentation, "_inference_context", fake_context)
+    net = _FakeNet()
+    predict = segmentation.segresnet_predictor(net, device, amp=amp)  # type: ignore[arg-type]
+    out = predict(np.zeros((4, 5, 6, 7), np.float32))
+
+    assert net.moved_to == device
+    assert contexts == [(device, amp)]
+    assert calls == [
+        {
+            "input_device": "cpu",
+            "roi": segmentation.ROI_SIZE,
+            "batch": 1,
+            "overlap": 0.5,
+            "sw_device": device,
+            "device": "cpu",
+        }
+    ]
+    assert out.shape == (3, 5, 6, 7) and np.allclose(out, 0.5)  # sigmoid(0)
+
+
+def test_segresnet_predictor_default_is_fp32() -> None:
+    """FT4 llama `segresnet_predictor(net, device)` sin `amp`: el valor por defecto debe ser fp32."""
+    import inspect
+
+    assert inspect.signature(segmentation.segresnet_predictor).parameters["amp"].default is False
+
+
+@pytest.mark.parametrize(
+    ("cuda", "mps", "expected"), [(True, True, "cuda"), (False, True, "mps"), (False, False, "cpu")]
+)
+def test_pick_device_order(monkeypatch: pytest.MonkeyPatch, cuda: bool, mps: bool, expected: str) -> None:
+    import torch
+
+    monkeypatch.setattr(torch.cuda, "is_available", lambda: cuda)
+    monkeypatch.setattr(torch.backends.mps, "is_available", lambda: mps)
+    assert segmentation._pick_device() == expected
+
+
+@pytest.mark.parametrize(("device", "amp"), [("cuda", True), ("mps", False), ("cpu", False)])
+def test_build_predictor_amp_only_on_cuda(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, device: str, amp: bool
+) -> None:
+    import torch
+    from monai.networks.nets.segresnet import SegResNet
+
+    net = SegResNet(
+        blocks_down=(1, 2, 2, 4), blocks_up=(1, 1, 1), init_filters=16, in_channels=4, out_channels=3, dropout_prob=0.2
+    )
+    weights = tmp_path / "model.pt"
+    torch.save(net.state_dict(), weights)
+    seen: list[tuple[str, bool]] = []
+
+    def spy(net: object, dev: str, amp: bool = False) -> segmentation.Predictor:
+        seen.append((dev, amp))
+        return _cube_predictor
+
+    monkeypatch.setattr(segmentation, "segresnet_predictor", spy)
+    monkeypatch.setattr(segmentation, "_pick_device", lambda: device)
+    assert segmentation._build_predictor(weights) == (_cube_predictor, device)
+    # Un device explícito manda sobre el detectado (vuelta a CPU tras OOM).
+    assert segmentation._build_predictor(weights, "cpu") == (_cube_predictor, "cpu")
+    assert seen == [(device, amp), ("cpu", False)]
+
+
+def test_cuda_oom_falls_back_to_cpu(tmp_path: Path, make_study: MakeStudy, monkeypatch: pytest.MonkeyPatch) -> None:
+    import torch
+
+    def oom_predictor(x: np.ndarray) -> np.ndarray:
+        raise torch.cuda.OutOfMemoryError("CUDA out of memory. Tried to allocate 2.00 GiB")
+
+    built: list[tuple[Path, str | None]] = []
+
+    def fake_build(path: Path, device: str | None = None) -> tuple[segmentation.Predictor, str]:
+        built.append((path, device))
+        return _cube_predictor, "cpu"
+
+    emptied: list[bool] = []
+    monkeypatch.setattr(segmentation, "_monai_predictor", lambda models_dir: (oom_predictor, "cuda"))
+    monkeypatch.setattr(segmentation, "_build_predictor", fake_build)
+    monkeypatch.setattr(torch.cuda, "empty_cache", lambda: emptied.append(True))
+
+    study = make_study(tmp_path / "Data", seqs=("t1gd", "flair", "gtv"))
+    models = tmp_path / "models"
+    res = run_segmentation(_files(study), tmp_path / "out", models)
+
+    assert res.device == "cpu"
+    assert segmentation.CUDA_OOM_WARNING in res.warnings
+    assert res.volumes_cm3.wt == 1.0 and res.volumes_cm3.et == 0.03
+    assert built == [(models / segmentation.BUNDLE_NAME / "models" / "model.pt", "cpu")]
+    assert emptied == [True]
+
+
+def test_cuda_other_errors_propagate(tmp_path: Path, make_study: MakeStudy, monkeypatch: pytest.MonkeyPatch) -> None:
+    def broken(x: np.ndarray) -> np.ndarray:
+        raise RuntimeError("CUDA error: device-side assert triggered")
+
+    monkeypatch.setattr(segmentation, "_monai_predictor", lambda models_dir: (broken, "cuda"))
+    monkeypatch.setattr(segmentation, "_build_predictor", lambda *a, **k: pytest.fail("no debe reconstruir en CPU"))
+    study = make_study(tmp_path / "Data", seqs=("t1gd",))
+    with pytest.raises(RuntimeError, match="device-side assert"):
+        run_segmentation(_files(study), tmp_path / "out", tmp_path / "models")
 
 
 @pytest.mark.slow

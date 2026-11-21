@@ -18,9 +18,14 @@ RUN sed -i 's|http://deb.debian.org|https://deb.debian.org|g' /etc/apt/sources.l
     && apt-get install -y --no-install-recommends libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
+# Variante de torch (HW1): `cpu` (por defecto, imagen de siempre) o `cu126` (GPU NVIDIA, ver compose.gpu.yaml).
+# Las ruedas `nvidia-*` traen CUDA y cuDNN; del host solo hace falta el driver y NVIDIA Container Toolkit.
+ARG TORCH_VARIANT=cpu
+RUN case "$TORCH_VARIANT" in cpu|cu126) ;; *) echo "TORCH_VARIANT inválido: $TORCH_VARIANT (cpu|cu126)" >&2; exit 1;; esac
+
 COPY pyproject.toml uv.lock ./
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --locked --only-group runtime --no-install-project --no-build
+    uv sync --locked --only-group runtime --only-group "torch-${TORCH_VARIANT}" --no-install-project --no-build
 
 COPY backend/cerberus_api ./backend/cerberus_api
 COPY tools/auth ./tools/auth

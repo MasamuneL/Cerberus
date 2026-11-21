@@ -33,6 +33,8 @@ THREAD_ENV_VARS = ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS",
 MAX_AUTO_THREADS = 8
 # Pico medido del worker con 001/t0: ~4.2 GiB (MONAI en CPU + registro ANTs SyN)
 LOW_MEMORY_GB = 5.0
+# Por debajo de esta VRAM la ventana deslizante en fp16 puede quedarse sin memoria y volver a CPU (HW1)
+LOW_GPU_MEMORY_GB = 4.0
 
 CGROUP_ROOT = Path("/sys/fs/cgroup")
 MEMINFO = Path("/proc/meminfo")
@@ -166,6 +168,27 @@ def detect_device(allow_import: bool = True) -> Device:
     return "cpu"
 
 
+def detect_gpu(allow_import: bool = True) -> tuple[str | None, float | None]:
+    """Nombre y VRAM total (GB, 1 decimal) de la GPU CUDA 0; `(None, None)` sin CUDA (HW1).
+
+    Mismo criterio de import que `detect_device`. Cualquier error del driver al leer las propiedades se trata como
+    "sin datos": el reporte de recursos nunca debe tumbar el arranque del worker.
+    """
+    if not allow_import and "torch" not in sys.modules:
+        return None, None
+    try:
+        import torch
+    except ImportError:
+        return None, None
+    try:
+        if not torch.cuda.is_available():
+            return None, None
+        props = torch.cuda.get_device_properties(0)
+        return str(props.name), round(props.total_memory / _GIB, 1)
+    except (RuntimeError, AssertionError, AttributeError):
+        return None, None
+
+
 def in_container(root: Path = Path("/")) -> bool:
     """`True` dentro de Docker/Podman/Kubernetes (marcas `/.dockerenv`, `/run/.containerenv` o cgroup de PID 1)."""
     if (root / ".dockerenv").exists() or (root / "run" / ".containerenv").exists():
@@ -256,7 +279,8 @@ def build_system_info(
     container_root: Path = Path("/"),
     device: Device | None = None,
 ) -> SystemInfo:
-    """`SystemInfo` del proceso actual con warnings en español (memoria baja, plataforma emulada, env inválido).
+    """`SystemInfo` del proceso actual con warnings en español (memoria baja, plataforma emulada, env inválido,
+    VRAM < 4 GB). `gpu_name`/`gpu_memory_gb` solo se leen con `device="cuda"`.
 
     No aplica hilos (usa `configure_threads` para eso). `device=None` lo detecta: el worker importa torch, la API
     no (ver `detect_device`).
@@ -268,6 +292,7 @@ def build_system_info(
     plat = platform_str(cpuinfo)
     if device is None:
         device = detect_device(allow_import=source == "worker")
+    gpu_name, gpu_memory_gb = detect_gpu(allow_import=source == "worker") if device == "cuda" else (None, None)
 
     warnings: list[str] = []
     if _is_invalid_env(env_value):
@@ -278,6 +303,10 @@ def build_system_info(
         )
     if "(emulado" in plat:
         warnings.append("Plataforma emulada: el cálculo será más lento")
+    if gpu_memory_gb is not None and gpu_memory_gb < LOW_GPU_MEMORY_GB:
+        warnings.append(
+            f"GPU con poca memoria ({gpu_memory_gb:g} GB): la segmentación puede quedarse sin VRAM y volver a CPU"
+        )
 
     return SystemInfo(
         source=source,
@@ -290,4 +319,6 @@ def build_system_info(
         memory_gb=memory_gb,
         device=device,
         warnings=warnings,
+        gpu_name=gpu_name,
+        gpu_memory_gb=gpu_memory_gb,
     )

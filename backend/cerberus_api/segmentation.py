@@ -4,6 +4,8 @@ Portado de `cerberus_eda.py:728-775`, generalizando el `stride=2` del notebook a
 todo se remuestrea a un grid de 1 mm isotrópico tomado del primer canal disponible (prioridad t1gd).
 """
 
+import contextlib
+import logging
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -27,6 +29,8 @@ from cerberus_api.schemas import (
 
 if TYPE_CHECKING:
     import torch
+
+logger = logging.getLogger(__name__)
 
 # Canal del modelo → secuencias candidatas en orden de preferencia (cerberus_eda.py:755)
 CHANNEL_MAP: dict[str, tuple[str, ...]] = {
@@ -105,11 +109,25 @@ def normalize_nonzero(x: np.ndarray) -> np.ndarray:
     return out
 
 
-def segresnet_predictor(net: "torch.nn.Module", device: str) -> Predictor:
+def _inference_context(device: str, amp: bool) -> contextlib.AbstractContextManager[object]:
+    """Autocast fp16 solo si `amp` y el dispositivo es CUDA (HW1); en CPU/MPS o sin `amp`, contexto vacío.
+
+    En CPU y MPS la inferencia queda en fp32 bit a bit igual que antes de HW1.
+    """
+    import torch
+
+    if amp and torch.device(device).type == "cuda":
+        return torch.autocast("cuda", dtype=torch.float16)
+    return contextlib.nullcontext()
+
+
+def segresnet_predictor(net: "torch.nn.Module", device: str, amp: bool = False) -> Predictor:
     """Predictor de inferencia del modelo original: ventana deslizante `ROI_SIZE`, solapamiento 0.5 y sigmoide.
 
     Separado de `_monai_predictor` para que la evaluación del baseline (FT4) use exactamente la misma inferencia
-    con pesos ya verificados, sin descargar nada.
+    con pesos ya verificados, sin descargar nada; FT4 no pasa `amp`, así que sigue en fp32.
+    `amp=True` activa autocast fp16 solo en CUDA. Las ventanas corren en `device` (`sw_device`) y la salida
+    cosida queda en CPU (`device="cpu"` de MONAI), así el volumen completo no ocupa VRAM.
     """
     import torch
     from monai.inferers.utils import sliding_window_inference
@@ -117,11 +135,11 @@ def segresnet_predictor(net: "torch.nn.Module", device: str) -> Predictor:
     net.eval().to(device)
 
     def predict(x: np.ndarray) -> np.ndarray:
-        with torch.no_grad():
-            t = torch.from_numpy(np.ascontiguousarray(x, dtype=np.float32))[None].to(device)
-            y = sliding_window_inference(t, ROI_SIZE, 1, net, overlap=0.5)
+        with torch.no_grad(), _inference_context(device, amp):
+            t = torch.from_numpy(np.ascontiguousarray(x, dtype=np.float32))[None]
+            y = sliding_window_inference(t, ROI_SIZE, 1, net, overlap=0.5, sw_device=device, device="cpu")
             assert isinstance(y, torch.Tensor)
-            return torch.sigmoid(y)[0].cpu().numpy()
+            return torch.sigmoid(y.float())[0].cpu().numpy()
 
     return predict
 
@@ -132,17 +150,31 @@ def segresnet_predictor(net: "torch.nn.Module", device: str) -> Predictor:
 _PREDICTORS: dict[tuple[str, int, int], tuple[Predictor, str]] = {}
 
 
-def _build_predictor(weights: Path) -> tuple[Predictor, str]:
-    """Construye el predictor SegResNet desde `weights` y elige el dispositivo. Devuelve (predictor, device)."""
+def _pick_device() -> str:
+    """Dispositivo de inferencia: cuda → mps → cpu (mismo orden que `runtime.detect_device`)."""
+    import torch
+
+    return "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
+
+
+def _build_predictor(weights: Path, device: str | None = None) -> tuple[Predictor, str]:
+    """Construye el predictor SegResNet desde `weights` en `device` (o el mejor disponible): (predictor, device).
+
+    En CUDA activa autocast fp16 (`amp`); en MPS y CPU queda en fp32.
+    """
     import torch
     from monai.networks.nets.segresnet import SegResNet
 
-    device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
+    device = device or _pick_device()
     net = SegResNet(
         blocks_down=(1, 2, 2, 4), blocks_up=(1, 1, 1), init_filters=16, in_channels=4, out_channels=3, dropout_prob=0.2
     )
     net.load_state_dict(torch.load(weights, map_location="cpu"))
-    return segresnet_predictor(net, device), device
+    return segresnet_predictor(net, device, amp=device == "cuda"), device
+
+
+def _weights_path(models_dir: Path) -> Path:
+    return models_dir / BUNDLE_NAME / "models" / "model.pt"
 
 
 def _monai_predictor(models_dir: Path) -> tuple[Predictor, str]:
@@ -150,7 +182,7 @@ def _monai_predictor(models_dir: Path) -> tuple[Predictor, str]:
 
     Se reutiliza entre llamadas mientras los pesos no cambien (ruta, mtime y tamaño); si cambian, se reconstruye.
     """
-    weights = models_dir / BUNDLE_NAME / "models" / "model.pt"
+    weights = _weights_path(models_dir)
     if not weights.exists():
         from monai.bundle.scripts import download
 
@@ -164,6 +196,30 @@ def _monai_predictor(models_dir: Path) -> tuple[Predictor, str]:
         _PREDICTORS.clear()
         cached = _PREDICTORS[key] = _build_predictor(weights)
     return cached
+
+
+CUDA_OOM_WARNING = "La GPU se quedó sin memoria: la segmentación se repitió en CPU"
+
+
+def _predict_monai(x: np.ndarray, models_dir: Path, warnings: list[str]) -> tuple[np.ndarray, str]:
+    """Inferencia con el modelo real; ante `torch.cuda.OutOfMemoryError` repite en CPU y lo avisa (HW1).
+
+    La caché conserva el predictor CUDA: el siguiente job vuelve a intentarlo en GPU (la VRAM pudo liberarse).
+    Devuelve (probabilidades, device que realmente corrió).
+    """
+    import torch
+
+    predictor, device = _monai_predictor(models_dir)
+    if device != "cuda":
+        return np.asarray(predictor(x)), device
+    try:
+        return np.asarray(predictor(x)), device
+    except torch.cuda.OutOfMemoryError:
+        logger.warning("CUDA sin memoria en la segmentación; se repite en CPU", exc_info=True)
+    torch.cuda.empty_cache()
+    cpu_predictor, cpu_device = _build_predictor(_weights_path(models_dir), "cpu")
+    warnings.append(CUDA_OOM_WARNING)
+    return np.asarray(cpu_predictor(x)), cpu_device
 
 
 def _to_grid(img: nib.Nifti1Image, ref: nib.Nifti1Image, order: int) -> np.ndarray:
@@ -231,10 +287,9 @@ def segment_regions(
     x = normalize_nonzero(np.stack(chans))
 
     if predictor is None:
-        predictor, device = _monai_predictor(models_dir)
+        prob, device = _predict_monai(x, models_dir, warnings)
     else:
-        device = "custom"
-    prob = np.asarray(predictor(x))
+        prob, device = np.asarray(predictor(x)), "custom"
     tc, wt, et = (prob[i] > 0.5 for i in range(3))
     if brain is not None:
         tc, wt, et = tc & brain, wt & brain, et & brain

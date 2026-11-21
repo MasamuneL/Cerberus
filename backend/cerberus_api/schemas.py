@@ -222,3 +222,6 @@ class SystemInfo(BaseModel):
     memory_gb: float | None  # límite cgroup o RAM del host
     device: Literal["cuda", "mps", "cpu"]
     warnings: list[str]
+    # Solo con `device="cuda"` (HW1); `None` en CPU/MPS y en reportes anteriores
+    gpu_name: str | None = None  # ej. "NVIDIA GeForce RTX 3060"
+    gpu_memory_gb: float | None = None  # VRAM total de la GPU 0

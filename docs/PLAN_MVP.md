@@ -159,6 +159,13 @@ Las dependencias específicas del notebook están en el grupo opcional `notebook
 por defecto. Para ejecutar la referencia archivada, usar `uv run --group notebook` y las rutas de
 [`ARCHIVO.md`](ARCHIVO.md). La app web y el grupo `runtime` de Docker no dependen de esos archivos.
 
+torch va en dos grupos excluyentes (HW1, §25; `[tool.uv] conflicts`): `torch-cpu` (por defecto en `uv sync`: rueda
+CPU en Linux, PyPI en macOS/Windows) y `torch-cu126` (índice `pytorch-cu126`, Linux/Windows). La imagen elige con
+`--build-arg TORCH_VARIANT=cpu|cu126` (`uv sync --only-group runtime --only-group torch-<variante>`). GPU NVIDIA en
+Docker (Linux o Windows con WSL2; driver ≥ 525 y NVIDIA Container Toolkit):
+`docker compose -f compose.yaml -f compose.gpu.yaml up -d --build` (solo el worker usa la GPU, imagen
+`cerberus-backend:cuda`). En local, la variante CUDA es `uv sync --no-group torch-cpu --group torch-cu126`.
+
 Configuración que agrega B0 en `pyproject.toml`:
 - `[build-system]` hatchling; `[tool.hatch.build.targets.wheel] packages = ["backend/cerberus_api"]`.
 - `[tool.ruff]` line-length 120, target-version py311; lint select `E,F,I,UP,B`.
@@ -217,6 +224,11 @@ actualizas: `schemas.py`, `types.ts` y esta sección.
   "metrics_vs_gtv": null, // ampliación B13: objeto {tc: MaskMetrics, wt: MaskMetrics}; null sin GTV o resultado antiguo
   "dice_vs_gtv": { "tc": 0.71, "wt": 0.55 },          // null si no hay gtv
   "warnings": ["Canal T2 faltante: se usaron ceros", "Sin brain_mask: no hay skull-strip"] }
+
+// SystemInfo (GET /api/system, §16); gpu_name y gpu_memory_gb (HW1) solo con device "cuda", null en otro caso
+{ "source": "worker", "reported_at": "2026-11-20T18:00:00Z", "in_container": true, "platform": "linux/x86_64",
+  "cpus_available": 8.0, "threads": 7, "threads_source": "auto", "memory_gb": 6.0, "device": "cuda",
+  "warnings": [], "gpu_name": "NVIDIA GeForce RTX 3060", "gpu_memory_gb": 11.7 }
 
 // JobStatus
 { "job_id": "…", "status": "queued|in_progress|complete|failed|not_found", "result": {…}|null, "error": "…"|null }
@@ -729,7 +741,8 @@ computadora?
 
 `GET /api/system` devuelve `source` (`worker` o `api`), `reported_at`, `in_container`, `platform`,
 `cpus_available`, `threads`, `threads_source` (`auto` o `env`), `memory_gb` (puede ser `null`),
-`device` (`cuda`, `mps` o `cpu`) y `warnings`. Es información detectada al publicar el reporte, no un
+`device` (`cuda`, `mps` o `cpu`), `warnings` y, desde HW1 (§25), `gpu_name` y `gpu_memory_gb` (nombre y VRAM total de
+la GPU 0; `null` salvo con `cuda`; aviso si la VRAM es < 4 GB). Es información detectada al publicar el reporte, no un
 monitor de utilización en tiempo real; el QA registra la ausencia de TTL del reporte del worker (B12).
 
 Las peticiones condicionales a archivos de estudios admiten `If-None-Match` y, en su ausencia,

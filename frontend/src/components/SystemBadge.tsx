@@ -9,6 +9,11 @@ const DEVICE_LABEL: Record<SystemInfo["device"], string> = {
 
 export function systemSummary(s: SystemInfo): string {
   const parts = [DEVICE_LABEL[s.device] ?? s.device];
+  // HW1: con CUDA, modelo y VRAM de la GPU (null en CPU/MPS)
+  if (s.gpu_name) {
+    const vram = s.gpu_memory_gb !== null ? `, ${s.gpu_memory_gb} GB` : "";
+    parts[0] = `${parts[0]} (${s.gpu_name}${vram})`;
+  }
   parts.push(`${s.threads} ${s.threads === 1 ? "hilo" : "hilos"} (${s.threads_source === "env" ? "fijado" : "auto"})`);
   if (s.memory_gb !== null) parts.push(`${Math.round(s.memory_gb)} GB`);
   if (s.in_container) parts.push("Docker");

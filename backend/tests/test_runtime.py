@@ -233,3 +233,71 @@ def test_build_system_info_env_and_invalid(tmp_path: Path, monkeypatch: pytest.M
     info = runtime.build_system_info("api", cgroup_root=root, meminfo=meminfo, container_root=tmp_path, device="mps")
     assert (info.threads, info.threads_source) == (8, "auto")
     assert info.warnings == ["CERBERUS_CPU_THREADS='abc' no es válido: se usa auto (8 hilos)"]
+
+
+# --- GPU (HW1): torch.cuda falso en sys.modules, sin GPU ------------------------------------------
+
+
+def _fake_torch(available: bool, props: object | Exception | None = None) -> types.SimpleNamespace:
+    def get_device_properties(index: int) -> object:
+        assert index == 0
+        if isinstance(props, Exception):
+            raise props
+        return props
+
+    cuda = types.SimpleNamespace(is_available=lambda: available, get_device_properties=get_device_properties)
+    return types.SimpleNamespace(cuda=cuda)
+
+
+def test_detect_gpu_reads_name_and_vram(monkeypatch: pytest.MonkeyPatch) -> None:
+    props = types.SimpleNamespace(name="NVIDIA GeForce RTX 3060", total_memory=12 * 1024**3 - 300 * 1024**2)
+    monkeypatch.setitem(sys.modules, "torch", _fake_torch(True, props))
+    assert runtime.detect_gpu() == ("NVIDIA GeForce RTX 3060", 11.7)
+
+
+def test_detect_gpu_without_cuda_or_driver_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setitem(sys.modules, "torch", _fake_torch(False))
+    assert runtime.detect_gpu() == (None, None)
+    monkeypatch.setitem(sys.modules, "torch", _fake_torch(True, RuntimeError("CUDA driver initialization failed")))
+    assert runtime.detect_gpu() == (None, None)
+    monkeypatch.delitem(sys.modules, "torch")
+    assert runtime.detect_gpu(allow_import=False) == (None, None)
+    assert "torch" not in sys.modules
+
+
+def test_build_system_info_gpu_fields(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("CERBERUS_CPU_THREADS", "auto")
+    monkeypatch.setattr(runtime, "_affinity_cpus", lambda: 14)
+    monkeypatch.setattr(runtime, "platform_str", lambda cpuinfo: "linux/x86_64")
+    root = _cgroup(tmp_path, cpu_max="max 100000", memory_max="max")
+    meminfo = _meminfo(tmp_path, 16 * 1024**2)
+
+    monkeypatch.setattr(runtime, "detect_gpu", lambda allow_import=True: ("NVIDIA RTX A4000", 16.0))
+    info = runtime.build_system_info(
+        "worker", cgroup_root=root, meminfo=meminfo, container_root=tmp_path, device="cuda"
+    )
+    assert (info.device, info.gpu_name, info.gpu_memory_gb, info.warnings) == ("cuda", "NVIDIA RTX A4000", 16.0, [])
+
+    monkeypatch.setattr(runtime, "detect_gpu", lambda allow_import=True: ("NVIDIA GeForce GTX 1050", 2.0))
+    info = runtime.build_system_info(
+        "worker", cgroup_root=root, meminfo=meminfo, container_root=tmp_path, device="cuda"
+    )
+    assert info.warnings == [
+        "GPU con poca memoria (2 GB): la segmentación puede quedarse sin VRAM y volver a CPU",
+    ]
+
+    # Sin CUDA no se consulta la GPU y los campos quedan en null (también en el JSON).
+    monkeypatch.setattr(runtime, "detect_gpu", lambda allow_import=True: pytest.fail("no debe leer la GPU"))
+    info = runtime.build_system_info("worker", cgroup_root=root, meminfo=meminfo, container_root=tmp_path, device="cpu")
+    assert (info.gpu_name, info.gpu_memory_gb) == (None, None)
+    assert '"gpu_name":null' in info.model_dump_json()
+
+
+def test_system_info_accepts_reports_without_gpu_fields() -> None:
+    """Un worker anterior a HW1 publica el JSON sin los campos de GPU: la API lo sigue validando."""
+    raw = (
+        '{"source":"worker","reported_at":"2026-11-20T10:00:00Z","in_container":true,"platform":"linux/x86_64",'
+        '"cpus_available":4.0,"threads":3,"threads_source":"auto","memory_gb":6.0,"device":"cpu","warnings":[]}'
+    )
+    info = runtime.SystemInfo.model_validate_json(raw)
+    assert (info.gpu_name, info.gpu_memory_gb) == (None, None)
