@@ -7,9 +7,16 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 
 | Ticket | Estado | Rama | Commit | Fecha | Responsable / herramienta | Notas |
 |---|---|---|---|---|---|---|
+| ATLAS0 · informe de espacios del atlas (§26) | 🟡 | feat/ATLAS0-atlas-spaces | | | Claude Code (orquestador Opus + hc) | oleada 1; Antigravity |
+| EVAL1 · evaluación MONAI en todos los estudios (§26) | 🟡 | feat/EVAL1-monai-evaluation | | | Claude Code (orquestador Opus + hc) | oleada 1; Codex |
+| D3R · rescate del diagnóstico de #17 (§26) | 🟡 | feat/D3R-diagnostics | | | Claude Code (orquestador Opus + hc) | oleada 1; Codex |
+| FT-DOC · fine-tuning: estado y pasos futuros (§26) | 🟡 | feat/FTDOC-future-steps | | | Claude Code (orquestador Opus + hc) | oleada 1; Antigravity |
+| ATLAS1 · aplicar la opción elegida (§26) | ⬜ | feat/ATLAS1-<a\|b\|c> | | | Claude Code (orquestador Opus + hc) | oleada 2; tras gate A/B/C |
+| UI1 · botón «Reintentar» del visor (§26) | ⬜ | feat/UI1-retry-button | | | Claude Code (orquestador Opus + hc) | oleada 2 |
+| DOC1 · compactar el HANDOFF (§26) | ⬜ | feat/DOC1-handoff-compact | | | Claude Code (orquestador Opus + hc) | oleada 3 |
 | HW1 · imagen CUDA + perfil GPU (§25) | ✅ | feat/HW1-cuda-gpu-profile | 9ee6bc3 | 2026-11-21 | Claude Code (orquestador Opus + hc) | PR #38; 1272 tests; cu126; validación NVIDIA pendiente; CP-074 |
 | HW3 · registro ANTs fast/full (§25) | ✅ | feat/HW3-registration-mode | f1f432a | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #36; 1237 tests; fast 2.6–3.0×; CP-072 |
-| REG1 · registro MNI reproducible + QC (§25) | 🟡 | feat/REG1-reproducible-registration | | | Claude Code (orquestador Opus + hc) | hallazgo de HW3; oleada 2 |
+| REG1 · registro MNI reproducible + QC (§25) | 🟡 | feat/REG1-reproducible-registration | | | Claude Code (orquestador Opus + hc) | hallazgo de HW3; también §26 oleada 1; continúa WIP (`wip/REG1`); Codex |
 | HW4 · modo híbrido macOS (§25) | ✅ | feat/HW4-macos-hybrid | b3512c1 | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #35; 1228 tests; MPS 16–34 s vs Rosetta 87–90 s; CP-071 |
 | HW2 · lanzador con detección de hardware (§25) | ✅ | feat/HW2-hardware-launcher | f68173b | 2026-11-21 | Claude Code (orquestador Opus + hc) | PR #39; 1310 tests; up.ps1 sin ejecutar en Windows; CP-075 |
 | UP1 · subida con find_study (§24) | ✅ | feat/UP1-upload-find-study | 8f02a18 | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #34; 1224 tests; 0.64 → 0.08 ms (marginal); CP-069 |

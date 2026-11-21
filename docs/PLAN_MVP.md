@@ -1171,3 +1171,22 @@ GPU solo NVIDIA. Con la configuración por defecto (CPU, `full`, fp32) los resul
 | REG1 | Registro paciente→MNI reproducible y con QC. Hallazgo de HW3: con varios hilos la etapa afín de ANTs cae en mínimos distintos (004/t0: Dice 0.18 `full` vs `full`, ~20° de cabeceo en una corrida); ANTsPy documenta que la reproducibilidad exige `ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1`. (1) Diagnóstico: 5 corridas con 1 y con 8 hilos en 004/t0 y 005/t1, más QC visual; (2) mitigación elegida por benchmark: afín con 1 hilo + SyN multihilo con `initial_transform`, inicialización rígido→afín o muestreo afín mayor; (3) QC automático en `AreasResult.warnings` (determinante del afín fuera de [0.7, 1.4], rotación > 15° o Dice bajo de la máscara de cerebro deformada); (4) versionar la huella de caché | `atlas.py`, tests | HW3 | `full` reproducible (Dice consigo mismo ≥ 0.99) en 001, 004 y 005; tiempo ≤ 1.2× el actual; cambia resultados (no es PERF) |
 
 Orden: oleada 1 = HW1, HW3, HW4 (archivos disjuntos) · oleada 2 = HW2, REG1.
+
+## 26. Validez científica y demo
+
+Ronda del 2026-11-21 (tras CP-075): validar lo que se enseña antes de la demo. Detalle completo (agentes, prompts,
+ciclo y cierre) en [`PLAN_VALIDEZ.md`](PLAN_VALIDEZ.md). **Congelado:** no se abren tickets nuevos de rendimiento ni de
+infraestructura (Docker, Keycloak, CUDA, lanzadores); lo que aparezca va a «Pendientes» del handoff.
+
+| Ticket | Qué | Archivos | Depende de | Criterio de aceptación |
+|---|---|---|---|---|
+| ATLAS0 | Informe de espacios del atlas: Brodmann de nilearn (Talairach) frente al registro a MNI152; medición con la transformación de Lancaster en los 8 estudios; opciones A/B/C | `docs/ATLAS_ESPACIOS.md` | — | Tabla por estudio (áreas que aparecen/desaparecen, desplazamiento de centroides en mm); cada afirmación con fuente. Gate: el usuario elige A, B o C |
+| REG1 | Registro determinista (semilla e hilos de ANTs fijados); continúa el ticket de §25 | módulo de registro, sus tests, `config.py` si hace falta | HW3 | 3/3 hashes SHA-256 idénticos para `full` y `fast` en 004/t0; tiempos antes/después honestos |
+| EVAL1 | Evaluación de MONAI en todos los estudios con GTV (Dice, HD95, recall, precisión, volúmenes) | `tools/eval/monai_all.py`, `docs/EVAL_MONAI.md` | — | El revisor reejecuta el script y obtiene la misma tabla (±1e-6) |
+| D3R | Rescate de `diagnostics.py` del PR #17 (sin sus módulos dependientes) + sección «Diagnóstico de un 502» del README | `diagnostics.py`, `test_diagnostics.py`, `README.md` | — | `uv run python -m cerberus_api.diagnostics` funciona local y en contenedor; test de privacidad (sin datos DICOM identificables ni secretos) |
+| FT-DOC | Fine-tuning: estado real y pasos futuros (inventario, almacenamiento, comandos) | `docs/TRAINING.md` (sección nueva) | — | Cada número con su comando o fuente |
+| ATLAS1 | Aplicar la opción elegida en ATLAS0 | según la opción | ATLAS0 | Tabla antes/después; tests en verde; la UI declara espacio y limitación |
+| UI1 | Botón «Reintentar» del visor con estilo secundario y foco tras reintento fallido | `ViewerErrorBoundary.tsx`, `viewer.css` | — | `verify-viewer-chunk-error` 5/5, `verify` 33/33, axe sin violaciones |
+| DOC1 | Compactar `HANDOFF.md` §2 (≤ 40 líneas) y regla de numeración de CP en §12 | `HANDOFF.md`, `PROGRESS.md`, `PLAN_MVP.md` §12 | resto de §26 | Cada párrafo borrado tiene su contenido en una entrada CP |
+
+Orden: oleada 1 = ATLAS0, REG1, EVAL1, D3R, FT-DOC (archivos disjuntos) · oleada 2 = ATLAS1, UI1 · oleada 3 = DOC1.
