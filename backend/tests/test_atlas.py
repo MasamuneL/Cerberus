@@ -11,6 +11,7 @@ import sys
 import time
 from pathlib import Path
 from typing import Any
+from unittest.mock import Mock
 
 import ants
 import nibabel as nib
@@ -18,7 +19,7 @@ import numpy as np
 import pytest
 from scipy.ndimage import distance_transform_edt
 
-from cerberus_api import atlas, linear_reg
+from cerberus_api import areas, atlas, linear_reg
 from cerberus_api.atlas import (
     WARN_LARGE_GTV,
     WARN_NO_BRAIN,
@@ -154,7 +155,8 @@ def fake_register(monkeypatch: pytest.MonkeyPatch) -> list[int]:
     return calls
 
 
-def test_map_atlas_identity(tmp_path: Path, fake_register: list[int]) -> None:
+def test_map_atlas_identity(tmp_path: Path, fake_register: list[int], monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(atlas, "ICBM_OTHER2TAL_RAS", np.eye(4))
     files = _study(tmp_path / "s", ("t1gd", "t1eg", "brain_mask", "gtv"))
     res = map_atlas(files, tmp_path / "out", tmp_path / "models")
 
@@ -184,6 +186,81 @@ def test_map_atlas_identity(tmp_path: Path, fake_register: list[int]) -> None:
     _write(files["t1eg"], np.zeros((10, 4, 4), np.float32))
     map_atlas(files, tmp_path / "out", tmp_path / "models")
     assert len(fake_register) == 2
+
+
+def test_lancaster_ras_and_lps(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    create_transform = Mock()
+    write_transform = Mock()
+    monkeypatch.setattr(ants, "create_ants_transform", create_transform)
+    monkeypatch.setattr(ants, "write_transform", write_transform)
+    np.testing.assert_array_equal(
+        atlas.ICBM_OTHER2TAL_RAS,
+        [
+            [0.9357, 0.0029, -0.0072, -1.0423],
+            [-0.0065, 0.9396, -0.0726, -1.3940],
+            [0.0103, 0.0752, 0.8967, 3.6475],
+            [0.0, 0.0, 0.0, 1.0],
+        ],
+    )
+
+    path = tmp_path / "icbm_other2tal.mat"
+    atlas._write_lancaster_transform(path)
+    create_transform.assert_called_once_with(transform_type="AffineTransform", dimension=3)
+    transform = create_transform.return_value
+    transform.set_parameters.assert_called_once()
+    np.testing.assert_array_equal(
+        transform.set_parameters.call_args.args[0],
+        [0.9357, 0.0029, 0.0072, -0.0065, 0.9396, 0.0726, -0.0103, -0.0752, 0.8967, 1.0423, 1.3940, 3.6475],
+    )
+    write_transform.assert_called_once_with(transform, str(path))
+
+
+def test_map_atlas_lancaster_reuses_reg1_and_replaces_outputs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    files = _study(tmp_path / "s", ("t1eg", "brain_mask", "gtv"))
+    out = tmp_path / "out"
+    mni = out / "mni"
+    mni.mkdir(parents=True)
+    inverse = [mni / "pat2mni_0GenericAffine.mat", mni / "pat2mni_1InverseWarp.nii.gz"]
+    for path in inverse:
+        path.touch()
+    metadata = mni / atlas.CACHE_FILE
+    cached = json.dumps({"key": atlas._cache_key(files, "t1eg"), "invtransforms": [p.name for p in inverse]})
+    metadata.write_text(cached, encoding="utf-8")
+    old_map = _write(out / "brodmann.nii.gz", np.zeros((10, 4, 4), np.uint8))
+    old_report = out / areas.AREAS_JSON
+    old_report.write_text('{"atlas":"Talairach-Brodmann (nilearn)"}', encoding="utf-8")
+
+    register = Mock(side_effect=AssertionError("REG1 debe reutilizarse"))
+    write_transform = Mock()
+    projected = np.zeros((10, 4, 4), np.uint8)
+    projected[4:6, 1:3, 1:3] = 1
+    apply = Mock(return_value=Mock(numpy=Mock(return_value=projected)))
+    monkeypatch.setattr(atlas, "_register", register)
+    monkeypatch.setattr(atlas, "_write_lancaster_transform", write_transform)
+    monkeypatch.setattr(atlas, "fetch_atlas", lambda models_dir: (_synthetic_atlas(), LABELS))
+    monkeypatch.setattr(ants, "image_read", Mock())
+    monkeypatch.setattr(ants, "apply_transforms", apply)
+
+    mapping = map_atlas(files, out, tmp_path / "models")
+    assert not old_report.exists()
+    register.assert_not_called()
+    assert metadata.read_text(encoding="utf-8") == cached
+    write_transform.assert_called_once()
+    apply.assert_called_once()
+    lancaster = write_transform.call_args.args[0]
+    assert lancaster.name == "icbm_other2tal.mat"
+    assert apply.call_args.kwargs["transformlist"] == [str(p) for p in (*inverse, lancaster)]
+    assert apply.call_args.kwargs["whichtoinvert"] == [True, False, False]
+    assert apply.call_args.kwargs["interpolator"] == "genericLabel"
+    assert "proyectado a MNI152 con Lancaster 2007" in mapping.registration
+    assert "afín global, estimación determinista" in mapping.registration
+    img = load_nifti(old_map)
+    np.testing.assert_array_equal(np.asarray(img.dataobj), projected)
+    assert img.header["descrip"].item() == atlas.ATLAS_NAME.encode("ascii")
+
+    result = areas.run_area_mapping(files, out, tmp_path / "models")
+    assert result.atlas == atlas.ATLAS_NAME
+    assert json.loads(old_report.read_text(encoding="utf-8"))["registration"] == mapping.registration
 
 
 def test_map_atlas_registration_mode(tmp_path: Path, fake_register: list[int]) -> None:

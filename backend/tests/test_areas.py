@@ -385,15 +385,32 @@ def test_post_areas_422(
     assert fake_redis.calls == []
 
 
-def test_get_areas(client: TestClient, settings: Settings) -> None:
+@pytest.mark.parametrize(
+    ("atlas_name", "extra_warnings"),
+    [
+        (ATLAS_NAME, []),
+        (
+            "Talairach-Brodmann (nilearn)",
+            [
+                "Reporte anterior a la proyección Talairach→MNI152 (Lancaster 2007): las áreas pueden estar "
+                "desplazadas ~5 mm. Vuelve a mapear el estudio."
+            ],
+        ),
+    ],
+    ids=["actual", "historico"],
+)
+def test_get_areas(client: TestClient, settings: Settings, atlas_name: str, extra_warnings: list[str]) -> None:
     url = "/api/studies/001/t0/areas"
     assert client.get(url).status_code == 404
     out = settings.results_dir / "001" / "t0" / AREAS_JSON
     out.parent.mkdir(parents=True)
-    out.write_text(_sample_result().model_dump_json(), encoding="utf-8")
+    sample = _sample_result().model_copy(update={"atlas": atlas_name})
+    saved_report = sample.model_dump_json()
+    out.write_text(saved_report, encoding="utf-8")
     r = client.get(url)
     assert r.status_code == 200
-    assert AreasResult.model_validate(r.json()) == _sample_result()
+    assert AreasResult.model_validate(r.json()) == sample.model_copy(update={"warnings": [WARN_NO_WT, *extra_warnings]})
+    assert out.read_text(encoding="utf-8") == saved_report
     out.write_text("{}", encoding="utf-8")
     assert client.get(url).status_code == 500
     assert client.get("/api/studies/..%2F/t0/areas").status_code == 404
