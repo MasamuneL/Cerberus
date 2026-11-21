@@ -137,6 +137,7 @@ la pantalla indica un fallo al consultar configuración o sesión, no identifica
 |---|---|---|
 | `CERBERUS_HTTP_PORT` | 8080 | puerto local de la app |
 | `CERBERUS_CPU_THREADS` | auto | hilos de MONAI/ANTs; `auto` = máx(1, mín(floor(CPUs) − 1, 8)) según las CPU disponibles; un entero positivo lo fija (ver `GET /api/system`) |
+| `CERBERUS_REGISTRATION` | full | registro ANTs de las áreas de Brodmann: `full` (referencia) o `fast` (más rápido, resolución menor; el reporte lo anota «(rápido)»). También sirve en desarrollo nativo; otro valor impide arrancar la API/el worker |
 | `CERBERUS_WORKER_MEM_LIMIT` / `CERBERUS_API_MEM_LIMIT` | 6g / 2g | límites de memoria |
 | `CERBERUS_DATA_PATH` / `CERBERUS_MODELS_PATH` | `./Data` / `./models` | carpetas del host para datos y modelos |
 | `CERBERUS_STORAGE_PATH` | `./storage` | separar los resultados de Docker de los de desarrollo |

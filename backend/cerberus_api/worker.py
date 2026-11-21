@@ -128,7 +128,9 @@ async def map_areas(ctx: dict[str, Any], patient: str, timepoint: str) -> dict[s
             study_files[seq] = path
 
     out_dir = settings.results_dir / patient / timepoint
-    result = await _run_blocking(ctx, run_area_mapping, study_files, out_dir, settings.models_dir)
+    result = await _run_blocking(
+        ctx, run_area_mapping, study_files, out_dir, settings.models_dir, settings.registration
+    )
     return result.model_dump(mode="json")
 
 

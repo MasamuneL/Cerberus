@@ -28,6 +28,8 @@ x-backend: &backend
     # El worker fija OMP/MKL/OpenBLAS/ITK al arrancar (cerberus_api/runtime.py). Con 8 hilos 001/t0 tarda ~1.5 min en
     # segmentar y ~1 min en mapear áreas (Rosetta); la memoria pico no cambia (~4.2 GB).
     CERBERUS_CPU_THREADS: "${CERBERUS_CPU_THREADS:-auto}"
+    # Registro ANTs de las áreas de Brodmann: "full" (referencia) o "fast" (más rápido, menos preciso; §25 HW3).
+    CERBERUS_REGISTRATION: "${CERBERUS_REGISTRATION:-full}"
     # MONAI llama a getpass.getuser() al importarse; con un UID sin entrada en /etc/passwd falla si USER no existe.
     USER: cerberus
     HOME: /tmp

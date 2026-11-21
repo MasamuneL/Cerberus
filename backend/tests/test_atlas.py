@@ -4,10 +4,13 @@ Los rápidos no usan red ni corren el registro ANTs (se reemplaza `_register` po
 registra de verdad Data/001/t0.
 """
 
+import hashlib
 import json
 import time
 from pathlib import Path
+from typing import Any
 
+import ants
 import nibabel as nib
 import numpy as np
 import pytest
@@ -24,7 +27,7 @@ from cerberus_api.atlas import (
     split_hemispheres,
     which_to_invert,
 )
-from cerberus_api.config import REPO_ROOT
+from cerberus_api.config import REPO_ROOT, RegistrationMode
 from cerberus_api.nifti import load_nifti
 
 LABELS = ["Background", "Brodmann area 4", "Putamen"]
@@ -129,13 +132,18 @@ def fake_register(monkeypatch: pytest.MonkeyPatch) -> list[int]:
     calls: list[int] = []
 
     def register(
-        study_files: dict[str, Path], moving_seq: str, mni_dir: Path, models_dir: Path, tmp: Path
+        study_files: dict[str, Path],
+        moving_seq: str,
+        mni_dir: Path,
+        models_dir: Path,
+        tmp: Path,
+        mode: RegistrationMode = "full",
     ) -> list[str]:
         calls.append(1)
         mni_dir.mkdir(parents=True, exist_ok=True)
         tx = mni_dir / "pat2mni_0GenericAffine.mat"
         ants.write_transform(ants.create_ants_transform(transform_type="AffineTransform", dimension=3), str(tx))
-        meta = {"key": atlas._cache_key(study_files, moving_seq), "invtransforms": [tx.name]}
+        meta = {"key": atlas._cache_key(study_files, moving_seq, mode), "invtransforms": [tx.name]}
         (mni_dir / atlas.CACHE_FILE).write_text(json.dumps(meta), encoding="utf-8")
         return [str(tx)]
 
@@ -174,6 +182,96 @@ def test_map_atlas_identity(tmp_path: Path, fake_register: list[int]) -> None:
     _write(files["t1eg"], np.zeros((10, 4, 4), np.float32))
     map_atlas(files, tmp_path / "out", tmp_path / "models")
     assert len(fake_register) == 2
+
+
+def test_map_atlas_registration_mode(tmp_path: Path, fake_register: list[int]) -> None:
+    """El modo `fast` se anota en el texto, no reutiliza las transformaciones de `full` y viceversa."""
+    files = _study(tmp_path / "s", ("t1gd", "t1eg", "brain_mask", "gtv"))
+    out = tmp_path / "out"
+    full = map_atlas(files, out, tmp_path / "m")
+    assert "(rápido)" not in full.registration and full.registration.startswith("ANTs SyN t1eg→MNI152")
+
+    fast = map_atlas(files, out, tmp_path / "m", "fast")
+    assert fast.registration == full.registration + " (rápido)"
+    assert len(fake_register) == 2  # la caché de `full` no sirve para `fast`
+
+    map_atlas(files, out, tmp_path / "m", "fast")
+    assert len(fake_register) == 2  # misma huella: se reutiliza
+    map_atlas(files, out, tmp_path / "m", "full")
+    assert len(fake_register) == 2  # cada modo tiene su directorio: `full` reutiliza mni/
+    assert (out / "mni").is_dir() and (out / "mni_fast").is_dir()
+
+
+def test_cache_key_depends_on_mode_and_full_key_is_unchanged(tmp_path: Path) -> None:
+    files = _study(tmp_path / "s", ("t1eg", "brain_mask", "gtv"))
+    assert atlas._cache_key(files, "t1eg", "full") != atlas._cache_key(files, "t1eg", "fast")
+    assert atlas._cache_key(files, "t1eg") == atlas._cache_key(files, "t1eg", "full")
+
+    # La huella de `full` es la de antes de HW3: las cachés existentes siguen válidas
+    h = hashlib.sha256()
+    for seq in ("t1eg", "brain_mask", "gtv"):
+        st = files[seq].stat()
+        h.update(f"{seq}:{files[seq].resolve()}:{st.st_size}:{st.st_mtime_ns};".encode())
+    h.update(b"SyN:1.5:5.0:42")
+    assert atlas._cache_key(files, "t1eg", "full") == h.hexdigest()
+
+
+def _capture_registration(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, mode: RegistrationMode
+) -> tuple[dict[str, object], tuple[float, ...]]:
+    """Corre `_register` con `ants.registration` falso: devuelve sus kwargs y el spacing de la imagen móvil."""
+    seen: dict[str, object] = {}
+    spacing: list[tuple[float, ...]] = []
+
+    def fake_registration(**kwargs: object) -> dict[str, list[str]]:
+        seen.update(kwargs)
+        moving: Any = kwargs["moving"]
+        spacing.append(tuple(float(z) for z in moving.spacing))
+        out = Path(str(kwargs["outprefix"]))
+        affine = out.parent / (out.name + "0GenericAffine.mat")
+        affine.write_bytes(b"")
+        return {"fwdtransforms": [str(affine)], "invtransforms": [str(affine)]}
+
+    template = nib.Nifti1Image(np.ones((6, 6, 6), np.float32), np.eye(4))
+    mask = nib.Nifti1Image(np.ones((6, 6, 6), np.uint8), np.eye(4))
+    monkeypatch.setattr(atlas, "fetch_template", lambda models_dir: (template, mask))
+    monkeypatch.setattr(ants, "registration", fake_registration)
+
+    study = tmp_path / "study"
+    files = _study(study, ("t1eg", "brain_mask", "gtv"))
+    work = tmp_path / "work"
+    work.mkdir()
+    atlas._register(files, "t1eg", tmp_path / "mni", tmp_path / "models", work, mode)
+    return seen, spacing[0]
+
+
+def test_register_full_keeps_ants_kwargs(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """`full`: los kwargs de `ants.registration` y el spacing son exactamente los de antes de HW3."""
+    kwargs, spacing = _capture_registration(monkeypatch, tmp_path, "full")
+    assert set(kwargs) == {
+        "fixed",
+        "moving",
+        "type_of_transform",
+        "outprefix",
+        "mask",
+        "moving_mask",
+        "mask_all_stages",
+        "random_seed",
+    }
+    assert kwargs["type_of_transform"] == "SyN" and kwargs["mask_all_stages"] is True
+    assert kwargs["random_seed"] == 42
+    assert np.allclose(spacing, (1.5, 1.5, 1.5))
+    meta = json.loads((tmp_path / "mni" / atlas.CACHE_FILE).read_text(encoding="utf-8"))
+    assert meta["registration_mode"] == "full" and meta["type_of_transform"] == "SyN"
+
+
+def test_register_fast_changes_profile(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    profile = atlas.REGISTRATION_PROFILES["fast"]
+    kwargs, spacing = _capture_registration(monkeypatch, tmp_path, "fast")
+    assert kwargs["type_of_transform"] == profile.type_of_transform
+    assert all(kwargs[k] == v for k, v in profile.extra_kwargs.items())
+    assert kwargs["mask_all_stages"] is True and kwargs["random_seed"] == 42
+    assert np.allclose(spacing, (profile.spacing_mm,) * 3) and profile.spacing_mm > atlas.MOVING_SPACING_MM
 
 
 def test_map_atlas_warnings(tmp_path: Path, fake_register: list[int]) -> None:

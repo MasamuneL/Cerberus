@@ -5,8 +5,9 @@ Idea de `cerberus_eda.py:1048` ("Registro a MNI + atlas … para reportar áreas
 Flujo:
 1. La T1 sin contraste del paciente (t1eg → t1tse → t1gd), enmascarada con `brain_mask`, se remuestrea a
    `MOVING_SPACING_MM` isotrópico (solo para acelerar el registro) y se registra a la plantilla MNI152 de 1 mm
-   (enmascarada con su máscara de cerebro) con ANTs SyN. El GTV dilatado `GTV_MARGIN_MM` se excluye del costo
-   (`moving_mask`) para que el tumor no deforme el campo.
+   (enmascarada con su máscara de cerebro) con ANTs SyN (perfil `full`; `fast` usa 2 mm en ambas, ver
+   `REGISTRATION_PROFILES`). El GTV dilatado `GTV_MARGIN_MM` se excluye del costo (`moving_mask`) para que el
+   tumor no deforme el campo.
 2. El atlas, separado por hemisferio en MNI, vuelve al grid de la secuencia de referencia del visor (t1gd si
    existe) con `invtransforms` + `genericLabel`. Las transformaciones viven en el espacio físico, así que sirven
    para cualquier secuencia del estudio (todas están co-registradas en el dataset).
@@ -20,12 +21,14 @@ import shutil
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 import nibabel as nib
 import numpy as np
 from nibabel.processing import resample_from_to, resample_to_output
 from scipy.ndimage import distance_transform_edt
 
+from cerberus_api.config import RegistrationMode
 from cerberus_api.nifti import load_nifti
 from cerberus_api.schemas import Hemisphere
 
@@ -44,6 +47,30 @@ LARGE_GTV_FRACTION = 0.10
 # "SyN" de ANTsPy: afín + SyN con reg_iterations=(40, 20, 0).
 TYPE_OF_TRANSFORM = "SyN"
 RANDOM_SEED = 42
+
+
+@dataclass(frozen=True)
+class RegistrationProfile:
+    """Parámetros del registro paciente → MNI que cambian entre `CERBERUS_REGISTRATION=full|fast` (§25 HW3)."""
+
+    type_of_transform: str
+    spacing_mm: float  # remuestreo isotrópico de la imagen móvil
+    extra_kwargs: dict[str, Any] = field(default_factory=dict[str, Any])  # kwargs extra de `ants.registration`
+    suffix: str = ""  # se añade al texto `registration` del reporte
+    fixed_spacing_mm: float | None = None  # remuestreo de la plantilla MNI (None = su 1 mm original)
+
+
+# `full` es el registro de referencia (bit a bit el de antes de HW3): no cambiar sus valores sin revalidar.
+# `fast` (benchmark de HW3 en 001/t0, 004/t0 y 005/t1): SyN con reg_iterations=(20, 10, 0), imagen móvil y plantilla
+# MNI a 2 mm. Bajar solo las iteraciones o la resolución de la móvil rinde ~1.3x porque el costo lo domina la
+# plantilla de 1 mm; bajar también la plantilla da ~3x con las mismas áreas «Afectadas». `antsRegistrationSyNQuick[s]`
+# (rígido + afín + SyN 100x70x50) resultó 1.6x MÁS LENTO que `full` y se descartó.
+REGISTRATION_PROFILES: dict[RegistrationMode, RegistrationProfile] = {
+    "full": RegistrationProfile(TYPE_OF_TRANSFORM, MOVING_SPACING_MM),
+    "fast": RegistrationProfile(
+        TYPE_OF_TRANSFORM, 2.0, {"reg_iterations": (20, 10, 0)}, suffix=" (rápido)", fixed_spacing_mm=2.0
+    ),
+}
 TX_PREFIX = "pat2mni_"
 CACHE_FILE = "transforms.json"
 
@@ -155,8 +182,13 @@ def _mask_on(img: nib.Nifti1Image, ref: nib.Nifti1Image) -> np.ndarray:
     return _to_grid(img, ref, 0) > 0.5
 
 
-def _cache_key(study_files: dict[str, Path], moving_seq: str) -> str:
-    """Huella del registro: archivos de entrada (ruta, tamaño, mtime) + parámetros."""
+def _cache_key(study_files: dict[str, Path], moving_seq: str, mode: RegistrationMode = "full") -> str:
+    """Huella del registro: archivos de entrada (ruta, tamaño, mtime) + perfil y parámetros.
+
+    La huella de `full` es idéntica a la de antes de HW3 (no invalida cachés existentes); `fast` añade su
+    modo y sus kwargs para no mezclar transformaciones de ambos perfiles.
+    """
+    profile = REGISTRATION_PROFILES[mode]
     h = hashlib.sha256()
     for seq in (moving_seq, "brain_mask", "gtv"):
         p = study_files.get(seq)
@@ -165,7 +197,9 @@ def _cache_key(study_files: dict[str, Path], moving_seq: str) -> str:
             continue
         st = p.stat()
         h.update(f"{seq}:{p.resolve()}:{st.st_size}:{st.st_mtime_ns};".encode())
-    h.update(f"{TYPE_OF_TRANSFORM}:{MOVING_SPACING_MM}:{GTV_MARGIN_MM}:{RANDOM_SEED}".encode())
+    h.update(f"{profile.type_of_transform}:{profile.spacing_mm}:{GTV_MARGIN_MM}:{RANDOM_SEED}".encode())
+    if mode != "full":
+        h.update(f":{mode}:{profile.fixed_spacing_mm}:{sorted(profile.extra_kwargs.items())}".encode())
     return h.hexdigest()
 
 
@@ -184,17 +218,37 @@ def _load_cached(mni_dir: Path, key: str) -> list[str] | None:
     return inv if inv and all(Path(p).is_file() for p in inv) else None
 
 
-def _register(study_files: dict[str, Path], moving_seq: str, mni_dir: Path, models_dir: Path, tmp: Path) -> list[str]:
-    """Registra paciente → MNI con ANTs y guarda las transformaciones en `mni_dir`. Devuelve `invtransforms`."""
+def _register(
+    study_files: dict[str, Path],
+    moving_seq: str,
+    mni_dir: Path,
+    models_dir: Path,
+    tmp: Path,
+    mode: RegistrationMode = "full",
+) -> list[str]:
+    """Registra paciente → MNI con ANTs y guarda las transformaciones en `mni_dir`. Devuelve `invtransforms`.
+
+    `mode` elige el perfil de `REGISTRATION_PROFILES`: `full` usa SyN y 1.5 mm; `fast`, ver su definición.
+    """
     import ants
 
+    profile = REGISTRATION_PROFILES[mode]
+    spacing = profile.spacing_mm
+
     template, template_mask = fetch_template(models_dir)
+    if profile.fixed_spacing_mm is not None:
+        # Plantilla y máscara a menor resolución: las transformaciones viven en el espacio físico, así que el
+        # atlas de 1 mm sigue pudiendo llevarse al paciente con ellas.
+        voxel_sizes = (profile.fixed_spacing_mm,) * 3
+        template = resample_to_output(template, voxel_sizes=voxel_sizes, order=1)
+        template_mask = resample_to_output(template_mask, voxel_sizes=voxel_sizes, order=0)
+        assert isinstance(template, nib.Nifti1Image) and isinstance(template_mask, nib.Nifti1Image)
     mni_brain = np.asarray(template_mask.dataobj) > 0
     fixed_np = np.asarray(template.dataobj, dtype=np.float32) * mni_brain
     nib.save(nib.Nifti1Image(fixed_np, template.affine), tmp / "fixed.nii.gz")
     nib.save(nib.Nifti1Image(mni_brain.astype(np.uint8), template.affine), tmp / "fixed_mask.nii.gz")
 
-    moving_img = resample_to_output(load_nifti(study_files[moving_seq]), voxel_sizes=(MOVING_SPACING_MM,) * 3, order=1)
+    moving_img = resample_to_output(load_nifti(study_files[moving_seq]), voxel_sizes=(spacing,) * 3, order=1)
     assert isinstance(moving_img, nib.Nifti1Image)
     moving_np = np.nan_to_num(np.asarray(moving_img.dataobj, dtype=np.float32))
     cost = np.ones(moving_np.shape, bool)
@@ -206,7 +260,7 @@ def _register(study_files: dict[str, Path], moving_seq: str, mni_dir: Path, mode
         gtv = _mask_on(load_nifti(study_files["gtv"]), moving_img)
         if gtv.any():
             # GTV dilatado GTV_MARGIN_MM: todo vóxel a <= 5 mm del GTV queda fuera del costo
-            dist = np.asarray(distance_transform_edt(~gtv, sampling=(MOVING_SPACING_MM,) * 3))
+            dist = np.asarray(distance_transform_edt(~gtv, sampling=(spacing,) * 3))
             cost &= dist > GTV_MARGIN_MM
     nib.save(nib.Nifti1Image(moving_np, moving_img.affine), tmp / "moving.nii.gz")
     nib.save(nib.Nifti1Image(cost.astype(np.uint8), moving_img.affine), tmp / "moving_mask.nii.gz")
@@ -218,18 +272,20 @@ def _register(study_files: dict[str, Path], moving_seq: str, mni_dir: Path, mode
     reg = ants.registration(
         fixed=ants.image_read(str(tmp / "fixed.nii.gz")),
         moving=ants.image_read(str(tmp / "moving.nii.gz")),
-        type_of_transform=TYPE_OF_TRANSFORM,
+        type_of_transform=profile.type_of_transform,
         outprefix=str(mni_dir / TX_PREFIX),
         mask=ants.image_read(str(tmp / "fixed_mask.nii.gz")),
         moving_mask=ants.image_read(str(tmp / "moving_mask.nii.gz")),
         mask_all_stages=True,  # el GTV queda fuera del costo también en la etapa afín
         random_seed=RANDOM_SEED,
+        **profile.extra_kwargs,
     )
     inv = [str(p) for p in reg["invtransforms"]]
     meta = {
-        "key": _cache_key(study_files, moving_seq),
+        "key": _cache_key(study_files, moving_seq, mode),
         "moving_sequence": moving_seq,
-        "type_of_transform": TYPE_OF_TRANSFORM,
+        "registration_mode": mode,
+        "type_of_transform": profile.type_of_transform,
         "fwdtransforms": [Path(p).name for p in reg["fwdtransforms"]],
         "invtransforms": [Path(p).name for p in inv],
     }
@@ -242,11 +298,13 @@ def which_to_invert(invtransforms: list[str]) -> list[bool]:
     return [p.endswith(".mat") for p in invtransforms]
 
 
-def map_atlas(study_files: dict[str, Path], out_dir: Path, models_dir: Path) -> AtlasMapping:
+def map_atlas(
+    study_files: dict[str, Path], out_dir: Path, models_dir: Path, mode: RegistrationMode = "full"
+) -> AtlasMapping:
     """Registra el estudio a MNI y escribe `out_dir/brodmann.nii.gz` en el grid de la referencia.
 
-    `study_files`: secuencia → ruta NIfTI. Las transformaciones se guardan en `out_dir/mni/` y se reutilizan
-    si las entradas no cambiaron. Lanza `ValueError` si no hay T1 para registrar.
+    `study_files`: secuencia → ruta NIfTI. Las transformaciones se guardan en `out_dir/mni/` (`mni_fast/` en `fast`)
+    y se reutilizan si las entradas y el perfil `mode` no cambiaron. Lanza `ValueError` si no hay T1 para registrar.
     """
     import ants
 
@@ -270,13 +328,14 @@ def map_atlas(study_files: dict[str, Path], out_dir: Path, models_dir: Path) -> 
     split_img, split_entries = split_hemispheres(atlas_img, labels)
     names: dict[int, tuple[str, Hemisphere]] = {v: (name, hemi) for v, name, hemi in split_entries}
 
-    mni_dir = out_dir / "mni"
+    # Un directorio por modo: `full` conserva `mni/` (y su caché) y alternar modos no se pisa
+    mni_dir = out_dir / ("mni" if mode == "full" else f"mni_{mode}")
     out_dir.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="cerberus_atlas_") as tmp_str:
         tmp = Path(tmp_str)
-        inv = _load_cached(mni_dir, _cache_key(study_files, moving_seq))
+        inv = _load_cached(mni_dir, _cache_key(study_files, moving_seq, mode))
         if inv is None:
-            inv = _register(study_files, moving_seq, mni_dir, models_dir, tmp)
+            inv = _register(study_files, moving_seq, mni_dir, models_dir, tmp, mode)
 
         nib.save(split_img, tmp / "atlas.nii.gz")
         warped = ants.apply_transforms(
@@ -304,7 +363,8 @@ def map_atlas(study_files: dict[str, Path], out_dir: Path, models_dir: Path) -> 
     present = sorted(int(v) for v in np.unique(lab) if v != 0)
     entries: list[tuple[int, str, Hemisphere]] = [(v, *names[v]) for v in present if v in names]
     excluded = " (GTV excluido del costo)" if "gtv" in study_files else ""
-    registration = f"ANTs {TYPE_OF_TRANSFORM} {moving_seq}→MNI152{excluded}, atlas {ATLAS_NAME}"
+    profile = REGISTRATION_PROFILES[mode]
+    registration = f"ANTs {profile.type_of_transform} {moving_seq}→MNI152{excluded}, atlas {ATLAS_NAME}{profile.suffix}"
     return AtlasMapping(
         label_path=label_path,
         entries=entries,
