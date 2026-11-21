@@ -32,6 +32,7 @@ def _launch(
     runtimes: str = "runc",
     env_file: str = "",
     extra_env: dict[str, str] | None = None,
+    shell: str = "bash",
 ) -> subprocess.CompletedProcess[str]:
     """Ejecuta up.sh con un entorno limpio de `CERBERUS_*` y un `.env` propio en `tmp_path`."""
     dotenv = tmp_path / ".env"
@@ -49,7 +50,7 @@ def _launch(
         environment["CERBERUS_LAUNCH_FAKE_DOCKER_INFO"] = docker_info
     environment |= extra_env or {}
     return subprocess.run(
-        ["bash", str(UP_SH), *args],
+        [shell, str(UP_SH), *args],
         cwd=tmp_path,
         env=environment,
         capture_output=True,
@@ -262,3 +263,152 @@ def test_help_and_unknown_option(tmp_path: Path) -> None:
     bad = _launch(tmp_path, "--turbo", os_name="linux")
     assert bad.returncode == 1
     assert "opción desconocida: --turbo" in bad.stderr
+
+
+# --- correcciones tras la revisión del PR #39 -----------------------------------------------------------------------
+UP_PS1 = REPO_ROOT / "tools" / "launch" / "up.ps1"
+GB10 = "NVIDIA GB10, 12.1, 580.95.05, [N/A]"
+# bash 3.2 de macOS en locale UTF-8 toma el primer byte de «»» como parte de `$VAR»`; con bash 5 no pasa
+BASH_32 = Path("/bin/bash")
+UTF8 = {"LC_ALL": "en_US.UTF-8"}
+
+
+@pytest.mark.parametrize("shell", ["bash", str(BASH_32)])
+def test_gpu_without_compute_capability_warns_in_utf8_locale(tmp_path: Path, shell: str) -> None:
+    if not Path(shell).exists() and shutil.which(shell) is None:
+        pytest.skip(f"{shell} no existe")
+    result = _launch(
+        tmp_path,
+        "--dry-run",
+        os_name="linux",
+        nvidia="NVIDIA-SMI has failed",
+        runtimes="nvidia",
+        extra_env=UTF8,
+        shell=shell,
+    )
+    assert result.returncode == 0, result.stderr
+    assert "nvidia-smi no informó la compute capability («»): driver demasiado viejo. Se usa CPU." in result.stdout
+    assert _line(result.stdout, "Modo:") == "Modo:     cpu"
+
+
+@pytest.mark.parametrize("shell", ["bash", str(BASH_32)])
+def test_non_numeric_docker_info_is_a_clear_error_in_utf8_locale(tmp_path: Path, shell: str) -> None:
+    if not Path(shell).exists() and shutil.which(shell) is None:
+        pytest.skip(f"{shell} no existe")
+    result = _launch(tmp_path, "--dry-run", os_name="linux", docker_info="abc 123", extra_env=UTF8, shell=shell)
+    assert result.returncode == 1
+    assert "docker info devolvió CPUs no numéricas: «abc 123»" in result.stderr
+
+
+def test_failing_nvidia_smi_is_treated_as_no_gpu(tmp_path: Path) -> None:
+    # nvidia-smi escribe «NVIDIA-SMI has failed…» en stdout con código ≠ 0: no es el nombre de una GPU
+    out = _dry_run(
+        tmp_path,
+        os_name="linux",
+        nvidia="NVIDIA-SMI has failed because it couldn't communicate with the NVIDIA driver.",
+        runtimes="nvidia",
+        extra_env={"CERBERUS_LAUNCH_FAKE_NVIDIA_SMI_EXIT": "9"},
+    )
+    assert _line(out, "GPU:") == "GPU:      no detectada"
+    assert "driver demasiado viejo" not in out
+    assert _line(out, "Modo:") == "Modo:     cpu"
+
+
+@pytest.mark.parametrize("os_name", ["linux", "wsl", "windows"])
+def test_arm64_with_nvidia_ignores_gpu(tmp_path: Path, os_name: str) -> None:
+    # GB10/DGX Spark: la imagen linux/amd64 corre emulada y CUDA no funciona bajo qemu
+    out = _dry_run(tmp_path, os_name=os_name, arch="arm64", nvidia=GB10, runtimes="nvidia")
+    assert _line(out, "Modo:") == "Modo:     cpu (backend linux/amd64 emulado en arm64)"
+    assert _line(out, "Compose:") == "Compose:  -f compose.yaml"
+    assert "ignorada en arm64" in _line(out, "GPU:")
+    assert "CUDA no funciona" in out
+    assert "CERBERUS_TORCH_VARIANT" not in out
+    assert "CERBERUS_WORKER_MEM_LIMIT=5g" in out  # sin el +1 GB de GPU
+
+
+def test_hybrid_worker_gets_upload_limits_from_dotenv(tmp_path: Path) -> None:
+    dotenv = "CERBERUS_MAX_UPLOAD_MB=512\nCERBERUS_MAX_ZIP_UNCOMPRESSED_MB='1024'\n"
+    out = _dry_run(tmp_path, os_name="darwin", arch="arm64", env_file=dotenv)
+    worker = _line(out, "env CERBERUS_REDIS_URL=")
+    assert "CERBERUS_MAX_UPLOAD_MB=512" in worker
+    assert "CERBERUS_MAX_ZIP_UNCOMPRESSED_MB=1024" in worker
+
+
+def test_hybrid_dry_run_syncs_with_locked(tmp_path: Path) -> None:
+    out = _dry_run(tmp_path, os_name="darwin", arch="arm64")
+    assert "  uv sync --locked" in out
+
+
+def _fake_tools(tmp_path: Path, uv_exit: int) -> dict[str, str]:
+    """`docker` que siempre responde 0 y `uv` con el código pedido; storage propio en `tmp_path`."""
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    for name, code in (("docker", 0), ("uv", uv_exit)):
+        tool = fake_bin / name
+        tool.write_text(f"#!/bin/sh\nexit {code}\n", encoding="utf-8")
+        tool.chmod(0o755)
+    return {
+        "PATH": f"{fake_bin}{os.pathsep}{os.environ['PATH']}",
+        "CERBERUS_UV": str(fake_bin / "uv"),
+        "CERBERUS_STORAGE_PATH": str(tmp_path / "st"),
+        "CERBERUS_REDIS_PORT": "6",  # puerto privilegiado: nada escucha ahí
+    }
+
+
+def test_hybrid_locked_sync_failure_is_a_clear_error(tmp_path: Path) -> None:
+    result = _launch(tmp_path, os_name="darwin", arch="arm64", extra_env=_fake_tools(tmp_path, uv_exit=2))
+    assert result.returncode == 1
+    assert "uv sync --locked falló: uv.lock no coincide con pyproject.toml" in result.stderr
+
+
+def test_hybrid_running_worker_suggests_down_and_up(tmp_path: Path) -> None:
+    extra = _fake_tools(tmp_path, uv_exit=0)
+    # Proceso vivo cuya línea de comandos contiene cerberus_api.worker, como el worker real
+    worker = subprocess.Popen(["python3", "-c", "import time; time.sleep(30)", "cerberus_api.worker"])
+    try:
+        launch_dir = tmp_path / "st" / "launch"
+        launch_dir.mkdir(parents=True)
+        (launch_dir / "worker.pid").write_text(f"{worker.pid}\n", encoding="utf-8")
+        result = _launch(tmp_path, os_name="darwin", arch="arm64", extra_env=extra)
+    finally:
+        worker.kill()
+        worker.wait()
+    assert result.returncode == 0, result.stderr
+    assert f"El worker nativo ya corre (PID {worker.pid}" in result.stdout
+    assert "tools/launch/up.sh down y luego tools/launch/up.sh" in result.stdout
+
+
+def test_up_ps1_keeps_parity_with_up_sh() -> None:
+    # Sin pwsh en el equipo de desarrollo: comprobación estática de las correcciones R2–R10 en up.ps1
+    text = UP_PS1.read_text(encoding="utf-8-sig")
+    assert "«${Info}»" in text and "«${GpuCC}»" in text
+    assert "[int]::TryParse($text, [ref]$id)" in text
+    assert "-notmatch 'cerberus_api\\.worker'" in text
+    assert "& (Get-NativeTool 'kill') -TERM $workerPid" in text
+    assert "ignorada en arm64" in text
+    assert "'CERBERUS_MAX_UPLOAD_MB', 'CERBERUS_MAX_ZIP_UNCOMPRESSED_MB'" in text
+    assert "@($UvBin, 'sync', '--locked')" in text
+    assert "tools/launch/up.ps1 down y luego tools/launch/up.ps1" in text
+
+
+@pytest.mark.skipif(shutil.which("pwsh") is None, reason="pwsh no está instalado")
+def test_up_ps1_arm64_with_nvidia_ignores_gpu(tmp_path: Path) -> None:
+    environment = {name: value for name, value in os.environ.items() if not name.startswith("CERBERUS_")}
+    environment |= {
+        "CERBERUS_LAUNCH_ENV_FILE": str(tmp_path / ".env"),
+        "CERBERUS_LAUNCH_FAKE_OS": "linux",
+        "CERBERUS_LAUNCH_FAKE_ARCH": "arm64",
+        "CERBERUS_LAUNCH_FAKE_NVIDIA_SMI": GB10,
+        "CERBERUS_LAUNCH_FAKE_DOCKER_RUNTIMES": "nvidia",
+        "CERBERUS_LAUNCH_FAKE_DOCKER_INFO": DOCKER_8GB,
+    }
+    result = subprocess.run(
+        ["pwsh", "-NoProfile", "-File", str(UP_PS1), "--dry-run"],
+        env=environment,
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    assert result.returncode == 0, result.stderr
+    assert "ignorada en arm64" in result.stdout
+    assert "Modo:     cpu (backend linux/amd64 emulado en arm64)" in result.stdout

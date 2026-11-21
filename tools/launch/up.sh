@@ -13,6 +13,7 @@
 #   CERBERUS_LAUNCH_FAKE_OS               darwin | linux | wsl | windows
 #   CERBERUS_LAUNCH_FAKE_ARCH             arm64 | x86_64 (acepta aarch64/amd64)
 #   CERBERUS_LAUNCH_FAKE_NVIDIA_SMI       salida CSV de nvidia-smi («nombre, cc, driver, memoria») o «none»
+#   CERBERUS_LAUNCH_FAKE_NVIDIA_SMI_EXIT  código de salida simulado de nvidia-smi (por defecto 0)
 #   CERBERUS_LAUNCH_FAKE_DOCKER_INFO      «NCPU MemTotal» (bytes), como `docker info --format '{{.NCPU}} {{.MemTotal}}'`
 #   CERBERUS_LAUNCH_FAKE_DOCKER_RUNTIMES  runtimes de Docker separados por espacios (Linux: «runc nvidia»)
 #   CERBERUS_LAUNCH_ENV_FILE              `.env` a considerar (por defecto <raíz>/.env)
@@ -207,14 +208,21 @@ docker_runtimes() {
 }
 
 # Primera GPU: «nombre, compute_cap, driver, memoria»; vacío si no hay nvidia-smi o no responde.
+# Si nvidia-smi falla (driver caído) escribe «NVIDIA-SMI has failed…» en stdout con código ≠ 0: se descarta, igual que
+# en up.ps1. CERBERUS_LAUNCH_FAKE_NVIDIA_SMI_EXIT simula ese código.
 nvidia_query() {
+  local out status=0
   if [ -n "${CERBERUS_LAUNCH_FAKE_NVIDIA_SMI:-}" ]; then
-    [ "$CERBERUS_LAUNCH_FAKE_NVIDIA_SMI" = "none" ] || printf '%s\n' "$CERBERUS_LAUNCH_FAKE_NVIDIA_SMI" | head -n 1
-    return 0
+    [ "$CERBERUS_LAUNCH_FAKE_NVIDIA_SMI" = "none" ] && return 0
+    out="$CERBERUS_LAUNCH_FAKE_NVIDIA_SMI"
+    status="${CERBERUS_LAUNCH_FAKE_NVIDIA_SMI_EXIT:-0}"
+  else
+    command -v nvidia-smi >/dev/null 2>&1 || return 0
+    out="$(nvidia-smi --query-gpu=name,compute_cap,driver_version,memory.total --format=csv,noheader 2>/dev/null)" ||
+      status=$?
   fi
-  command -v nvidia-smi >/dev/null 2>&1 || return 0
-  nvidia-smi --query-gpu=name,compute_cap,driver_version,memory.total --format=csv,noheader 2>/dev/null |
-    head -n 1 || true
+  [ "$status" = "0" ] || return 0
+  printf '%s\n' "$out" | head -n 1
 }
 
 trim() {
@@ -299,8 +307,8 @@ fi
 # --- up: decisión ---------------------------------------------------------------------------------------------------
 INFO="$(docker_info)"
 read -r NCPU MEM_BYTES _ <<<"$INFO"
-case "${NCPU:-}" in '' | *[!0-9]*) die "docker info devolvió CPUs no numéricas: «$INFO»" ;; esac
-case "${MEM_BYTES:-}" in '' | *[!0-9]*) die "docker info devolvió memoria no numérica: «$INFO»" ;; esac
+case "${NCPU:-}" in '' | *[!0-9]*) die "docker info devolvió CPUs no numéricas: «${INFO}»" ;; esac
+case "${MEM_BYTES:-}" in '' | *[!0-9]*) die "docker info devolvió memoria no numérica: «${INFO}»" ;; esac
 MEM_GB="$(awk -v b="$MEM_BYTES" 'BEGIN { printf "%.1f", b / 1073741824 }')"
 
 GPU_LINE=""
@@ -323,8 +331,12 @@ if [ -n "$GPU_LINE" ]; then
   case "$DRIVER_MAJOR" in '' | *[!0-9]*) DRIVER_MAJOR=0 ;; esac
   if [ "$FORCE_CPU" -eq 1 ]; then
     GPU_DESC="$GPU_DESC · ignorada por --cpu"
+  elif [ "$ARCH" = "arm64" ]; then
+    # La imagen del backend es linux/amd64 y CUDA no funciona bajo emulación (qemu): la GPU no serviría de nada
+    GPU_DESC="$GPU_DESC · ignorada en arm64"
+    warn "hay GPU NVIDIA en arm64 (GB10/DGX Spark, Grace, Jetson), pero la imagen del backend es linux/amd64 y corre emulada, donde CUDA no funciona. Se usa CPU."
   elif [ -z "$CC10" ]; then
-    warn "nvidia-smi no informó la compute capability («$GPU_CC»): driver demasiado viejo. Se usa CPU."
+    warn "nvidia-smi no informó la compute capability («${GPU_CC}»): driver demasiado viejo. Se usa CPU."
   elif [ "$CC10" -lt "$MIN_CC" ]; then
     warn "la GPU tiene cc $GPU_CC y PyTorch exige ≥ 5.0. Se usa CPU."
   elif [ "$OS" = "linux" ] && ! docker_runtimes | grep -qw nvidia; then
@@ -433,7 +445,7 @@ if [ "$HYBRID" -eq 1 ]; then
     fi
   done
   # El worker nativo no lee .env: se le pasan los mismos valores efectivos que ve Compose
-  for name in CERBERUS_CPU_THREADS CERBERUS_REGISTRATION; do
+  for name in CERBERUS_CPU_THREADS CERBERUS_REGISTRATION CERBERUS_MAX_UPLOAD_MB CERBERUS_MAX_ZIP_UNCOMPRESSED_MB; do
     value="$(effective "$name")"
     if [ -n "$value" ]; then WORKER_ENV+=("$name=$value"); fi
   done
@@ -455,7 +467,7 @@ if [ "$DRY_RUN" -eq 1 ]; then
   printf 'Comandos (--dry-run, no se ejecuta nada):\n'
   printf '  %s\n' "${UP_CMD[*]}"
   if [ "$HYBRID" -eq 1 ]; then
-    printf '  %s sync\n' "${UV_BIN:-uv}"
+    printf '  %s sync --locked\n' "${UV_BIN:-uv}"
     if [ "$FOREGROUND" -eq 1 ]; then
       printf '  %s\n' "${WORKER_CMD[*]}"
     else
@@ -483,9 +495,10 @@ printf '%s\n' "${FILES[*]}" >"$STATE_FILE"
 HTTP_PORT="$(effective CERBERUS_HTTP_PORT 8080)"
 if [ "$HYBRID" -eq 1 ]; then
   if pid="$(native_worker_pid)"; then
-    printf 'El worker nativo ya corre (PID %s; log en %s).\n' "$pid" "$LOG_FILE"
+    printf 'El worker nativo ya corre (PID %s; log en %s). Para que cargue código o variables nuevas: tools/launch/up.sh down y luego tools/launch/up.sh.\n' "$pid" "$LOG_FILE"
   else
-    run "$UV_BIN" sync
+    run "$UV_BIN" sync --locked ||
+      die "uv sync --locked falló: uv.lock no coincide con pyproject.toml (o falta red). Ejecuta «uv lock» y revisa el diff, o corrige pyproject.toml, y reintenta."
     if [ "$FOREGROUND" -eq 1 ]; then
       printf 'App: http://localhost:%s · worker nativo en primer plano (Ctrl+C lo detiene; después tools/launch/up.sh down).\n' "$HTTP_PORT"
       exec "${WORKER_CMD[@]}"

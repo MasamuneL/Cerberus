@@ -10,7 +10,8 @@
 #
 # Detección simulable (pruebas): CERBERUS_LAUNCH_FAKE_OS (darwin|linux|wsl|windows), CERBERUS_LAUNCH_FAKE_ARCH,
 # CERBERUS_LAUNCH_FAKE_NVIDIA_SMI (CSV de nvidia-smi o «none»), CERBERUS_LAUNCH_FAKE_DOCKER_INFO («NCPU MemTotal»),
-# CERBERUS_LAUNCH_FAKE_DOCKER_RUNTIMES, CERBERUS_LAUNCH_ENV_FILE y CERBERUS_UV, como en up.sh.
+# CERBERUS_LAUNCH_FAKE_NVIDIA_SMI_EXIT, CERBERUS_LAUNCH_FAKE_DOCKER_RUNTIMES, CERBERUS_LAUNCH_ENV_FILE y CERBERUS_UV,
+# como en up.sh.
 #
 # Compatible con Windows PowerShell 5.1: sin `??`, sin operador ternario y sin `&&`. Se guarda en UTF-8 con BOM
 # para que 5.1 lea bien los acentos.
@@ -136,6 +137,11 @@ function Set-Proposed([string]$Name, [string]$Value, [string]$Why) {
 # --- detección ----------------------------------------------------------------------------------------------------
 function Get-HostOS {
     if ($env:CERBERUS_LAUNCH_FAKE_OS) { return $env:CERBERUS_LAUNCH_FAKE_OS }
+    return Get-HostOSReal
+}
+
+# SO real, sin simulación: decide cómo leer y detener procesos.
+function Get-HostOSReal {
     # Windows PowerShell 5.1 solo existe en Windows y no define $IsWindows/$IsMacOS
     if ($PSVersionTable.PSEdition -ne 'Core') { return 'windows' }
     if ($IsWindows) { return 'windows' }
@@ -162,6 +168,13 @@ function Get-HostArch {
 
 function Test-Command([string]$Name) { return $null -ne (Get-Command $Name -ErrorAction SilentlyContinue) }
 
+# Ejecutable externo (no alias ni cmdlet): en PowerShell `kill` y `ps` pueden ser alias de Stop-Process/Get-Process.
+function Get-NativeTool([string]$Name) {
+    $cmd = Get-Command $Name -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($cmd) { return $cmd.Source }
+    return $Name
+}
+
 function Get-DockerInfo {
     $ErrorActionPreference = 'Continue'
     if ($env:CERBERUS_LAUNCH_FAKE_DOCKER_INFO) { return $env:CERBERUS_LAUNCH_FAKE_DOCKER_INFO }
@@ -187,6 +200,7 @@ function Get-NvidiaQuery {
     $ErrorActionPreference = 'Continue'
     if ($env:CERBERUS_LAUNCH_FAKE_NVIDIA_SMI) {
         if ($env:CERBERUS_LAUNCH_FAKE_NVIDIA_SMI -eq 'none') { return '' }
+        if ($env:CERBERUS_LAUNCH_FAKE_NVIDIA_SMI_EXIT -and ($env:CERBERUS_LAUNCH_FAKE_NVIDIA_SMI_EXIT -ne '0')) { return '' }
         return ($env:CERBERUS_LAUNCH_FAKE_NVIDIA_SMI -split "`n")[0]
     }
     if (-not (Test-Command 'nvidia-smi')) { return '' }
@@ -214,17 +228,33 @@ $StateFile = Join-Path $LaunchDir 'compose-files'
 # PID del worker nativo si sigue vivo y es nuestro (evita matar un proceso ajeno que heredó el número).
 function Get-NativeWorkerPid {
     if (-not (Test-Path -LiteralPath $PidFile)) { return $null }
-    $text = (Get-Content -LiteralPath $PidFile -Raw) -replace '\D', ''
-    if (-not $text) { return $null }
-    $proc = Get-Process -Id ([int]$text) -ErrorAction SilentlyContinue
+    $text = "$(Get-Content -LiteralPath $PidFile -Raw)" -replace '\D', ''
+    $id = 0
+    # TryParse: un número que desborda Int32 no debe abortar el script (con EAP=Stop, [int] lanzaría)
+    if (-not [int]::TryParse($text, [ref]$id) -or $id -le 0) { return $null }
+    $proc = Get-Process -Id $id -ErrorAction SilentlyContinue
     if (-not $proc) { return $null }
-    if ($proc.ProcessName -notmatch '^(uv|python[0-9.]*)$') { return $null }
-    return [int]$text
+    # Como up.sh: la línea de comandos debe ser la del worker (un PID reciclado puede ser otro python)
+    if ((Get-ProcessCommandLine $id) -notmatch 'cerberus_api\.worker') { return $null }
+    return $id
+}
+
+# Línea de comandos de un proceso: CIM en Windows, ps en macOS/Linux; '' si no se puede leer.
+function Get-ProcessCommandLine([int]$Id) {
+    $ErrorActionPreference = 'Continue'
+    if ((Get-HostOSReal) -eq 'windows') {
+        try {
+            $cim = Get-CimInstance Win32_Process -Filter "ProcessId = $Id" -ErrorAction Stop
+            return "$($cim.CommandLine)"
+        } catch { return '' }
+    }
+    $out = & (Get-NativeTool 'ps') -p $Id -o command= 2>$null
+    return "$out"
 }
 
 function Format-Command([string[]]$Command) { return ($Command -join ' ') }
 
-function Invoke-Step([string[]]$Command) {
+function Invoke-Step([string[]]$Command, [string]$FailMessage = '') {
     $ErrorActionPreference = 'Continue'
     if ($DryRun) { Write-Output "  $(Format-Command $Command)"; return }
     Write-Output "+ $(Format-Command $Command)"
@@ -232,7 +262,10 @@ function Invoke-Step([string[]]$Command) {
     $rest = @()
     if ($Command.Count -gt 1) { $rest = $Command[1..($Command.Count - 1)] }
     & $exe @rest
-    if ($LASTEXITCODE -ne 0) { Fail "falló: $(Format-Command $Command)" }
+    if ($LASTEXITCODE -ne 0) {
+        if ($FailMessage) { Fail $FailMessage }
+        Fail "falló: $(Format-Command $Command)"
+    }
 }
 
 # --- down -----------------------------------------------------------------------------------------------------------
@@ -248,11 +281,25 @@ if ($Action -eq 'down') {
     $workerPid = Get-NativeWorkerPid
     if ($workerPid) {
         if ($DryRun) {
-            Write-Output "  Stop-Process -Id $workerPid   # worker nativo"
+            if ((Get-HostOSReal) -eq 'windows') {
+                Write-Output "  Stop-Process -Id $workerPid   # worker nativo"
+            } else {
+                Write-Output "  kill -TERM $workerPid   # worker nativo"
+            }
         } else {
             Write-Output "Deteniendo el worker nativo (PID $workerPid)…"
-            Stop-Process -Id $workerPid -ErrorAction SilentlyContinue
-            Wait-Process -Id $workerPid -Timeout 30 -ErrorAction SilentlyContinue
+            if ((Get-HostOSReal) -eq 'windows') {
+                Stop-Process -Id $workerPid -ErrorAction SilentlyContinue
+                Wait-Process -Id $workerPid -Timeout 30 -ErrorAction SilentlyContinue
+            } else {
+                # Stop-Process en Unix es SIGKILL: uv no reenviaría la señal y el python hijo seguiría consumiendo la
+                # cola. Como up.sh: TERM, mismo margen que stop_grace_period del worker de Docker (30 s) y luego KILL.
+                $ErrorActionPreference = 'Continue'
+                & (Get-NativeTool 'kill') -TERM $workerPid 2>$null
+                Wait-Process -Id $workerPid -Timeout 30 -ErrorAction SilentlyContinue
+                if (Get-Process -Id $workerPid -ErrorAction SilentlyContinue) { & (Get-NativeTool 'kill') -KILL $workerPid 2>$null }
+                $ErrorActionPreference = 'Stop'
+            }
             Remove-Item -LiteralPath $PidFile -Force -ErrorAction SilentlyContinue
         }
     } elseif (-not $DryRun) {
@@ -269,8 +316,8 @@ if ($Action -eq 'down') {
 # --- up: decisión ---------------------------------------------------------------------------------------------------
 $Info = Get-DockerInfo
 $parts = @("$Info".Trim() -split '\s+')
-if ($parts.Count -lt 2 -or $parts[0] -notmatch '^\d+$') { Fail "docker info devolvió CPUs no numéricas: «$Info»" }
-if ($parts[1] -notmatch '^\d+$') { Fail "docker info devolvió memoria no numérica: «$Info»" }
+if ($parts.Count -lt 2 -or $parts[0] -notmatch '^\d+$') { Fail "docker info devolvió CPUs no numéricas: «${Info}»" }
+if ($parts[1] -notmatch '^\d+$') { Fail "docker info devolvió memoria no numérica: «${Info}»" }
 $NCpu = [int]$parts[0]
 $MemBytes = [double]$parts[1]
 $MemGBValue = $MemBytes / $GiB
@@ -295,8 +342,12 @@ if ($GpuLine) {
     if ($majorText -match '^\d+$') { $driverMajor = [int]$majorText }
     if ($ForceCpu) {
         $GpuDesc = "$GpuDesc · ignorada por --cpu"
+    } elseif ($Arch -eq 'arm64') {
+        # La imagen del backend es linux/amd64 y CUDA no funciona bajo emulación (qemu): la GPU no serviría de nada
+        $GpuDesc = "$GpuDesc · ignorada en arm64"
+        Add-Warning 'hay GPU NVIDIA en arm64 (GB10/DGX Spark, Grace, Jetson), pero la imagen del backend es linux/amd64 y corre emulada, donde CUDA no funciona. Se usa CPU.'
     } elseif ($null -eq $cc10) {
-        Add-Warning "nvidia-smi no informó la compute capability («$GpuCC»): driver demasiado viejo. Se usa CPU."
+        Add-Warning "nvidia-smi no informó la compute capability («${GpuCC}»): driver demasiado viejo. Se usa CPU."
     } elseif ($cc10 -lt $MinCC) {
         Add-Warning "la GPU tiene cc $GpuCC y PyTorch exige ≥ 5.0. Se usa CPU."
     } elseif (($HostOS -eq 'linux') -and ((Get-DockerRuntimes) -notmatch '(^|\s)nvidia(\s|$)')) {
@@ -408,7 +459,7 @@ if ($Hybrid) {
         }
     }
     # El worker nativo no lee .env: se le pasan los mismos valores efectivos que ve Compose
-    foreach ($name in @('CERBERUS_CPU_THREADS', 'CERBERUS_REGISTRATION')) {
+    foreach ($name in @('CERBERUS_CPU_THREADS', 'CERBERUS_REGISTRATION', 'CERBERUS_MAX_UPLOAD_MB', 'CERBERUS_MAX_ZIP_UNCOMPRESSED_MB')) {
         $value = Get-Effective $name
         if ($value) { $WorkerEnv[$name] = $value }
     }
@@ -434,7 +485,7 @@ if ($DryRun) {
     Write-Output 'Comandos (--dry-run, no se ejecuta nada):'
     Write-Output "  $(Format-Command $UpCmd)"
     if ($Hybrid) {
-        Write-Output "  $uvShown sync"
+        Write-Output "  $uvShown sync --locked"
         if ($Foreground) {
             Write-Output "  $WorkerShown"
         } else {
@@ -471,9 +522,9 @@ $HttpPort = Get-Effective 'CERBERUS_HTTP_PORT' '8080'
 if ($Hybrid) {
     $existing = Get-NativeWorkerPid
     if ($existing) {
-        Write-Output "El worker nativo ya corre (PID $existing; log en $LogFile)."
+        Write-Output "El worker nativo ya corre (PID $existing; log en $LogFile). Para que cargue código o variables nuevas: tools/launch/up.ps1 down y luego tools/launch/up.ps1."
     } else {
-        Invoke-Step @($UvBin, 'sync')
+        Invoke-Step @($UvBin, 'sync', '--locked') 'uv sync --locked falló: uv.lock no coincide con pyproject.toml (o falta red). Ejecuta «uv lock» y revisa el diff, o corrige pyproject.toml, y reintenta.'
         foreach ($key in $WorkerEnv.Keys) { [Environment]::SetEnvironmentVariable($key, $WorkerEnv[$key], 'Process') }
         if ($Foreground) {
             Write-Output "App: http://localhost:$HttpPort · worker nativo en primer plano (Ctrl+C lo detiene; después tools/launch/up.ps1 down)."
