@@ -32,6 +32,10 @@ Abre las PNG y revísalas: **no te fíes solo de los ✅**. Leer píxeles del ca
 
 ## 2. Estado actual
 
+**CP-082 · UI1 · botón «Reintentar» · 2026-11-21:** [PR #45](https://github.com/MasamuneL/Cerberus/pull/45), merge `e1848c9`. Botón secundario compacto y foco tras reintento fallido.
+
+**CP-081 · ATLAS1 · Lancaster · 2026-11-21:** [PR #46](https://github.com/MasamuneL/Cerberus/pull/46), merge `32f9242`. Áreas de Brodmann ahora proyectadas Talairach→MNI152 con `icbm_other2tal`; reportes viejos muestran aviso para remapear. `storage/` local ya remapeado (7 estudios). Siguiente: DOC1 (compactar HANDOFF) y cierre de §26.
+
 **CP-080 · FT-DOC · pasos futuros del fine-tuning · 2026-11-21:** [PR #44](https://github.com/MasamuneL/Cerberus/pull/44), merge `2bd4edd`. Fine-tuning sin ejecutar nunca; pasos y comandos en `TRAINING.md` «Estado y pasos futuros». Bloqueo real: solo 1/8 estudios locales elegibles y el dataset completo (208 GB) no cabe hoy. En curso: ATLAS1 (opción A, Lancaster) y UI1.
 
 **CP-079 · ATLAS0 · espacios del atlas · 2026-11-21:** [PR #43](https://github.com/MasamuneL/Cerberus/pull/43), merge `7ccb6e5`. **Las áreas de Brodmann actuales no son válidas en sentido estricto:** atlas en Talairach sobre registro MNI sin conversión; Lancaster desplaza 4.99 mm de media y cambia el reporte en 8/8 estudios. Decisión A/B/C → ATLAS1.

@@ -11,8 +11,8 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 | EVAL1 · evaluación MONAI en todos los estudios (§26) | ✅ | feat/EVAL1-monai-evaluation | 606277e | 2026-11-21 | Codex (impl.) + Claude Opus (rev.), orquestador Claude Opus + hc | PR #42; Dice 0.824 ± 0.159 (n=8), 0.888 ± 0.026 con 4 canales (n=6); CP-078 |
 | D3R · rescate del diagnóstico de #17 (§26) | ✅ | feat/D3R-diagnostics | fd45b08 | 2026-11-21 | Codex (impl.) + Antigravity (rev.), orquestador Claude Opus + hc | PR #40; 1327 tests; privacidad con test; CP-076 |
 | FT-DOC · fine-tuning: estado y pasos futuros (§26) | ✅ | feat/FTDOC-future-steps | 2bd4edd | 2026-11-21 | Antigravity (impl.) + Codex (rev.), orquestador Claude Opus + hc | PR #44; 3 rondas + corrección final del orquestador; 1/8 elegible; CP-080 |
-| ATLAS1 · aplicar la opción elegida (§26) | 🟡 | feat/ATLAS1-a | | | Claude Code (orquestador Opus + hc) | oleada 2; opción A (usuario); Codex |
-| UI1 · botón «Reintentar» del visor (§26) | 🟡 | feat/UI1-retry-button | | | Claude Code (orquestador Opus + hc) | oleada 2; Antigravity |
+| ATLAS1 · aplicar la opción elegida (§26) | ✅ | feat/ATLAS1-a | 32f9242 | 2026-11-21 | Codex (impl.) + Claude Opus (rev.), orquestador Claude Opus + hc | PR #46; opción A (Lancaster); 8/8 reportes cambian; storage remapeado; CP-081 |
+| UI1 · botón «Reintentar» del visor (§26) | ✅ | feat/UI1-retry-button | e1848c9 | 2026-11-21 | Antigravity (impl.) + Claude Sonnet (rev.), orquestador Claude Opus + hc | PR #45; chunk-error 5/5, verify 33/33, axe 0; CP-082 |
 | DOC1 · compactar el HANDOFF (§26) | ⬜ | feat/DOC1-handoff-compact | | | Claude Code (orquestador Opus + hc) | oleada 3 |
 | HW1 · imagen CUDA + perfil GPU (§25) | ✅ | feat/HW1-cuda-gpu-profile | 9ee6bc3 | 2026-11-21 | Claude Code (orquestador Opus + hc) | PR #38; 1272 tests; cu126; validación NVIDIA pendiente; CP-074 |
 | HW3 · registro ANTs fast/full (§25) | ✅ | feat/HW3-registration-mode | f1f432a | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #36; 1237 tests; fast 2.6–3.0×; CP-072 |
@@ -1414,3 +1414,36 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
   entrenamiento, evaluación frente a EVAL1 y exportación. CP-058 precisado por partición (val → `train` sale con 4;
   test → falla al evaluar).
 - **Sin ejecutar:** piloto CUDA, descarga Faspex, entrenamiento real.
+
+### CP-081 · 2026-11-21 · ATLAS1: atlas de Brodmann proyectado a MNI152 con Lancaster (opción A, §26)
+
+- **Integración:** [PR #46](https://github.com/MasamuneL/Cerberus/pull/46), merge `32f9242`. Opción **A** elegida por el
+  usuario en el gate de ATLAS0. Implementó Codex (gpt-6.2-sol; la primera sesión se cortó por límite de uso y se
+  relanzó para la tabla); revisó Claude Opus: CAMBIOS → APROBADO tras la ronda 2.
+- **Cambio:** `map_atlas` compone `icbm_other2tal` (Lancaster et al. 2007, matriz de BrainMap, RAS→LPS) tras las
+  inversas del registro: `transformlist=[*inv, icbm2tal]`, una sola interpolación `genericLabel`. Reutiliza `mni/` de
+  REG1; `ATLAS_NAME` nuevo («Talairach-Brodmann (nilearn, Lancaster 2007 icbm_other2tal)»). Texto `registration`
+  con espacio y limitación (afín global, estimación determinista). `/areas` no cambia de forma.
+- **Ampliación autorizada (ronda 2):** `routers/studies.py` añade a `warnings` un aviso si el `brodmann.json` es de un
+  atlas anterior («…pueden estar desplazadas ~5 mm. Vuelve a mapear el estudio.»).
+- **Medición** (`tools/eval/atlas_lancaster.py`, `docs/ATLAS_ESPACIOS.md` §6): sobre el mismo registro REG1, Lancaster
+  cambia **8/8** reportes (+6 / −30 / 21 cambios de categoría); desplazamiento medio de centroides 4.98 mm (BA),
+  máx. 14.18 mm. REG1 por sí solo cambió 2/7 (005/t0, 005/t2). El revisor reprodujo 2 estudios y obtuvo mapas
+  idénticos al código y al script de ATLAS0 (8/8, 0 vóxeles distintos).
+- **storage/ remapeado** por el orquestador tras el merge (7 estudios, 25–29 s cada uno, carga 7–13): recuentos
+  22/41/73/67/60/59/54, iguales a §6. 004/t0 sigue sin mapear.
+- **Checks:** Ruff/formato/Pyright, 1331 tests rápidos.
+- **Sin validar / pendiente:** `icbm_other2tal` no está validada específicamente para la ICBM152 2009a sym; atlas de
+  un único cerebro. `PLAN_MVP.md` §13 aún describe el atlas como MNI.
+
+### CP-082 · 2026-11-21 · UI1: botón «Reintentar» del visor (§26)
+
+- **Integración:** [PR #45](https://github.com/MasamuneL/Cerberus/pull/45), merge `e1848c9`. Implementó Antigravity
+  (gemini-4-hydrogen-high); revisó Claude Sonnet: APROBADO.
+- `.vw-btn-secondary` en `viewer.css` (reglas de `.upload-panel .btn-secondary`, ancho automático); foco al botón
+  tras un reintento fallido, sin robarlo en el primer fallo. axe: 0 violaciones en el fallback.
+- **Coste:** `ViewerErrorBoundary` importa `viewer.css` (si no, el fallback sale sin estilo cuando falla el chunk):
+  CSS inicial +8.15 kB (+1.46 kB gzip); `Viewer.js` sigue diferido (PERF5 intacto).
+- **e2e:** `verify-viewer-chunk-error` 5/5 (implementador y revisor); `verify` 33/33 del implementador y del
+  orquestador (carga 8–16, `CERBERUS_TIMEOUT=300000`); el revisor no lo reprodujo con carga 10–22 y main fallaba igual.
+- **Recomendado no aplicado:** `pendingRetryFocus` puede quedar en `true` tras un reintento correcto (caso improbable).
