@@ -4,7 +4,7 @@
 > checkpoint. El historial completo está en [`PROGRESS.md`](PROGRESS.md) y el alcance y los contratos en
 > [`PLAN_MVP.md`](PLAN_MVP.md). Las reglas de trabajo están en [`../AGENTS.md`](../AGENTS.md).
 
-**Última actualización:** 2026-11-20 · último checkpoint: CP-066 · rama base: `main`
+**Última actualización:** 2026-11-20 · último checkpoint: CP-067 · rama base: `main`
 
 ## 1. Arranque rápido
 
@@ -31,6 +31,8 @@ Abre las PNG y revísalas: **no te fíes solo de los ✅**. Leer píxeles del ca
 (`preserveDrawingBuffer=false`), así que esos chequeos de píxeles no son confiables.
 
 ## 2. Estado actual
+
+**CP-067 · PERF7 · plan PERF completo · 2026-11-20:** [PR #32](https://github.com/MasamuneL/Cerberus/pull/32), merge `e01ea78`. PERF1–PERF7, VIZ1 y CFG1 integrados. Pendientes anotados: ErrorBoundary para el chunk diferido del visor (CP-062), `uploads._find_study` con `find_study` (CP-064), reutilizar el NVImage decodificado al alternar capas (CP-066) y validar `CERBERUS_UI_PORT` en Vite (CP-065).
 
 **CP-066 · PERF6 · caché de buffers del visor · 2026-11-20:** [PR #31](https://github.com/MasamuneL/Cerberus/pull/31), merge `80dc618`. Alternar capas ya no vuelve a pedir la base; el tiempo lo domina la decodificación (posible mejora futura: reutilizar NVImage). En curso: PERF7.
 

@@ -15,7 +15,7 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 | PERF4 · encolar sin leer headers (§21) | ✅ | feat/PERF4-study-lookup | c9222d6 | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #29; 1213 tests; 13 → 0.5 ms; CP-064 |
 | PERF5 · visor diferido (§21) | ✅ | feat/PERF5-lazy-viewer | d05c119 | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #27; e2e 33/33; entrada 1183→279 kB; CP-062 |
 | PERF6 · caché de buffers del visor (§21) | ✅ | feat/PERF6-viewer-buffer-cache | 80dc618 | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #31; e2e 33/33 + toggle 4/4; base 4 → 0 GET; CP-066 |
-| PERF7 · centroide GTV (§21) | 🟡 | feat/PERF7-gtv-centroid | | 2026-11-20 | Claude Code (orquestador Opus + hc) | oleada 4 |
+| PERF7 · centroide GTV (§21) | ✅ | feat/PERF7-gtv-centroid | e01ea78 | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #32; 2009 casos bit-idénticos; −19 %; CP-067 |
 | FT5 · smoke y manual | ✅ | feat/FT5-smoke-manual | c891208 | 2026-11-19 | Claude Code (orquestador + subagentes) | PR #24; 1180 tests; smoke 13/13 sintético; e2e 33/33; CP-058 |
 | FT4 · evaluación y exportación | ✅ | feat/FT4-evaluate-export | 1f85245 | 2026-11-19 | Claude Code (orquestador + subagentes) | PR #23; 1173 tests; métricas por paciente, baseline TC, export recargable; CP-057 |
 | FT3 · transferencia y trainer | ✅ | feat/FT3-transfer-trainer | 548cd16 | 2026-11-19 | Claude Code (orquestador + subagentes) | PR #21; 1147 tests; carga estricta, head 1 logit, reanudación determinista; CP-056 |
@@ -1144,3 +1144,13 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
 - **Checks:** Ruff/formato/Pyright, 1210 tests, `npm run build`, e2e `verify` 33/33, `viewer-3d` 7/7, `mask-surface` 3/3,
   `overlay-toggle` 4/4. Capturas revisadas. Revisión independiente (Opus) aprobada.
 - Siguiente: PERF7 (centroide del GTV).
+
+### CP-067 · 2026-11-20 · PERF7: centroide del GTV sin división por vóxel
+
+- **Integración:** [PR #32](https://github.com/MasamuneL/Cerberus/pull/32), merge `e01ea78`.
+- `computeGtvCentroidMM`: tres bucles anidados z→y→x con un índice lineal; sin `%` ni `Math.floor` por vóxel.
+- **Equivalencia:** bit a bit en 2009 casos (8 bordes, 2000 máscaras aleatorias y el GTV real 001/t0, 0 fallos);
+  `crosshairPos` idéntica en el navegador.
+- **Benchmark** (navegador, 001/t0, 54.5 M vóxeles): ~39 → 31 ms (−19 %). El coste dominante es recorrer el volumen.
+- **Checks:** Ruff/formato/Pyright, 1222 tests, `npm run build`, `verify.mjs` 33/33. Revisión independiente (Opus) aprobada.
+- **Plan PERF completo:** PERF1–PERF7 ✅ (CP-059–067), con VIZ1 (CP-063) y CFG1 (CP-065) integrados en la misma sesión.
