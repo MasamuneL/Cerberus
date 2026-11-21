@@ -16,7 +16,7 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 | DOC1 · compactar el HANDOFF (§26) | ⬜ | feat/DOC1-handoff-compact | | | Claude Code (orquestador Opus + hc) | oleada 3 |
 | HW1 · imagen CUDA + perfil GPU (§25) | ✅ | feat/HW1-cuda-gpu-profile | 9ee6bc3 | 2026-11-21 | Claude Code (orquestador Opus + hc) | PR #38; 1272 tests; cu126; validación NVIDIA pendiente; CP-074 |
 | HW3 · registro ANTs fast/full (§25) | ✅ | feat/HW3-registration-mode | f1f432a | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #36; 1237 tests; fast 2.6–3.0×; CP-072 |
-| REG1 · registro MNI reproducible + QC (§25) | 🟡 | feat/REG1-reproducible-registration | | | Claude Code (orquestador Opus + hc) | hallazgo de HW3; también §26 oleada 1; continúa WIP (`wip/REG1`); Codex |
+| REG1 · registro MNI reproducible + QC (§25) | ✅ | feat/REG1-reproducible-registration | b69de94 | 2026-11-21 | Codex (impl.) + Antigravity (rev.), orquestador Claude Opus + hc | PR #41; 3/3 hashes full y fast en 004/t0; fast +15 %; QC pendiente; CP-077 |
 | HW4 · modo híbrido macOS (§25) | ✅ | feat/HW4-macos-hybrid | b3512c1 | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #35; 1228 tests; MPS 16–34 s vs Rosetta 87–90 s; CP-071 |
 | HW2 · lanzador con detección de hardware (§25) | ✅ | feat/HW2-hardware-launcher | f68173b | 2026-11-21 | Claude Code (orquestador Opus + hc) | PR #39; 1310 tests; up.ps1 sin ejecutar en Windows; CP-075 |
 | UP1 · subida con find_study (§24) | ✅ | feat/UP1-upload-find-study | 8f02a18 | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #34; 1224 tests; 0.64 → 0.08 ms (marginal); CP-069 |
@@ -1335,3 +1335,25 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
   todo comando; decisión del usuario).
 - **Pendiente:** decidir si se cierra #17 (comentado con el enlace a #40).
 - **Siguiente:** oleada 1 de §26 en revisión: REG1 (#41), EVAL1 (#42), ATLAS0 (#43), FT-DOC (#44).
+
+### CP-077 · 2026-11-21 · REG1: registro ANTs determinista (§25 y §26)
+
+- **Integración:** [PR #41](https://github.com/MasamuneL/Cerberus/pull/41), merge `b69de94`. Implementó Codex
+  (gpt-6.2-sol), continuando el WIP de la sesión anterior (`5a72c64`); revisó Antigravity (gemini-4-hydrogen-high):
+  APROBADO a la primera.
+- **Cambio:** la etapa afín corre en un subproceso (`python -m cerberus_api.linear_reg`) con
+  `ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1` (ITK lo lee una vez por proceso) y `random_seed=42`, con los mismos
+  parámetros que la etapa lineal de `SyN` de ANTsPy 0.5.3 (`registration.py:565-583`). Después, `SyNOnly` con la afín
+  como `initial_transform`, semilla 42 y los hilos del worker. `REGISTRATION_VERSION = 2` en `_cache_key`: las
+  transformaciones viejas de `full` y `fast` se recalculan en el siguiente mapeo.
+- **Medición 004/t0** (3 corridas por perfil, proceso y storage nuevos, carga 10–29): SHA-256 del mapa de etiquetas
+  idéntico 3/3 en `full` y en `fast`; el revisor repitió las 6 corridas y obtuvo los mismos hashes. Mediana `full`
+  35.6 → 31.7 s; `fast` 13.3 → 15.3 s (**+15 %**). Una corrida `full` tardó 53 s (carga alta).
+- **Desviaciones:** archivo extra `linear_reg.py`. Se retiró el QC automático del WIP (determinante/rotación/Dice de
+  la máscara en `warnings`), que pedía la fila REG1 de §25 pero no el ticket de §26: **queda pendiente**.
+- **Recomendados no aplicados:** validar el JSON de entrada de `linear_reg.py` (`{}` → `KeyError`); tests unitarios de
+  todos los hiperparámetros de `AFFINE_STAGE`; contexto si stdout del subproceso no es JSON.
+- **Checks:** Ruff/formato/Pyright, 1311 tests rápidos (+1 del lanzador que solo falla dentro del sandbox de Codex por
+  `/bin/ps`), 2 slow de reproducibilidad.
+- **Sin validar:** reproducibilidad en otros estudios (solo 004/t0) y en Linux/Docker amd64.
+- **Siguiente:** EVAL1 (#42), ATLAS0 (#43) y FT-DOC (#44, ronda 2) en revisión.

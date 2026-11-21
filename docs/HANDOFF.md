@@ -32,6 +32,8 @@ Abre las PNG y revísalas: **no te fíes solo de los ✅**. Leer píxeles del ca
 
 ## 2. Estado actual
 
+**CP-077 · REG1 · registro determinista · 2026-11-21:** [PR #41](https://github.com/MasamuneL/Cerberus/pull/41), merge `b69de94`. Afín en subproceso con 1 hilo + semilla 42; SyNOnly multihilo. 004/t0: 3/3 hashes idénticos en `full` y `fast` (`fast` +15 %). Caché versionada: el primer mapeo de cada estudio se recalcula. Pendiente: QC automático del afín (fuera del ticket) y comprobar en otros estudios/Docker.
+
 **CP-076 · D3R · diagnóstico de un 502 · 2026-11-21:** [PR #40](https://github.com/MasamuneL/Cerberus/pull/40), merge `fd45b08`. Si vuelve el 502: seguir README «Diagnóstico de un 502» (`python -m cerberus_api.diagnostics --compose-stdin` dentro del contenedor `api`) y enviar `cerberus-diagnostico.json`. Ronda §26 (validez científica, `PLAN_VALIDEZ.md`) en curso: REG1 #41, EVAL1 #42, ATLAS0 #43, FT-DOC #44 en revisión. e2e de main en verde (33/7/3/4/5). Decisión pendiente: cerrar #17.
 
 **CP-075 · HW2 · lanzador por hardware · 2026-11-21:** [PR #39](https://github.com/MasamuneL/Cerberus/pull/39), merge `f68173b` (fallback: tag `pre-HW2`). Camino recomendado: `tools/launch/up.sh` (Windows: `up.ps1`); `--dry-run` muestra la decisión. HW1–HW4 completos. Pendiente manual: ejecutar `up.ps1` en Windows y validar en la PC NVIDIA. Siguiente: REG1 (registro ANTs reproducible + QC).
