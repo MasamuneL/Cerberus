@@ -7,9 +7,9 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 
 | Ticket | Estado | Rama | Commit | Fecha | Responsable / herramienta | Notas |
 |---|---|---|---|---|---|---|
-| HW1 · imagen CUDA + perfil GPU (§25) | ⬜ | feat/HW1-cuda-gpu-profile | | | Claude Code (orquestador Opus + hc) | oleada 1 |
-| HW3 · registro ANTs fast/full (§25) | ⬜ | feat/HW3-registration-mode | | | Claude Code (orquestador Opus + hc) | oleada 1 |
-| HW4 · modo híbrido macOS (§25) | ⬜ | feat/HW4-macos-hybrid | | | Claude Code (orquestador Opus + hc) | oleada 1 |
+| HW1 · imagen CUDA + perfil GPU (§25) | 🟡 | feat/HW1-cuda-gpu-profile | | | Claude Code (orquestador Opus + hc) | oleada 1 |
+| HW3 · registro ANTs fast/full (§25) | 🟡 | feat/HW3-registration-mode | | | Claude Code (orquestador Opus + hc) | oleada 1 |
+| HW4 · modo híbrido macOS (§25) | ✅ | feat/HW4-macos-hybrid | b3512c1 | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #35; 1228 tests; MPS 16–34 s vs Rosetta 87–90 s; CP-071 |
 | HW2 · lanzador con detección de hardware (§25) | ⬜ | feat/HW2-hardware-launcher | | | Claude Code (orquestador Opus + hc) | oleada 2 (tras HW1, HW4) |
 | UP1 · subida con find_study (§24) | ✅ | feat/UP1-upload-find-study | 8f02a18 | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #34; 1224 tests; 0.64 → 0.08 ms (marginal); CP-069 |
 | CFG2 · validar puertos en Vite (§24) | ✅ | feat/CFG2-vite-port-validation | bb8be2f | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #33; config sin variables idéntica; inválidos fallan al arrancar; CP-068 |
@@ -1205,3 +1205,18 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
 - **Pendiente nuevo (hipótesis no medida):** agrupar los refrescos GL en un solo `updateGLVolume` por lote, o alternar capas con
   opacidad 0 sin recargar. Antes de un ticket, perfilar ese ~92 % por llamada. Con GPU real (no SwiftShader) el reparto puede cambiar.
 - Siguiente: ERR1 en curso.
+
+### CP-071 · 2026-11-20 · HW4: modo híbrido macOS Apple Silicon
+
+- **Integración:** [PR #35](https://github.com/MasamuneL/Cerberus/pull/35), merge `b3512c1`. Fallback: tag `pre-HW4`
+  (main antes del merge) y `git revert -m 1 b3512c1`.
+- `compose.hybrid.yaml`: el worker de Docker queda bajo el perfil `docker-worker` (no arranca por defecto) y Redis se
+  publica solo en `127.0.0.1:${CERBERUS_REDIS_PORT:-6379}`. El worker corre nativo (`uv run`) con MPS y ANTs arm64
+  sobre los mismos `Data/`, `storage/` y `models/`. README: sección «Mac Apple Silicon: modo híbrido».
+- `backend/tests/test_compose_hybrid.py` (4 tests de `docker compose config`, sin daemon ni red; se saltan sin Compose v2).
+- **Medido en 001/t0** (Mac arm64 con carga alta de otras sesiones, 2 corridas): segmentación 16–34 s nativo contra
+  87–90 s en Docker+Rosetta; áreas en frío 26–38 s contra 67–70 s; con caché de registro 9 s contra 31 s.
+- **Checks:** Ruff/formato/Pyright, 1228 tests tras traer main. Revisión independiente (Opus) aprobada; sus 2 nits aplicados.
+- En curso: HW1 (CUDA) y HW3 (PR #36, en revisión). Hallazgo de HW3: el registro `full` no es determinista entre
+  corridas (004/t0, Dice 0.18 contra sí mismo); ticket aparte por definir.
+

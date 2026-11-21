@@ -32,6 +32,8 @@ Abre las PNG y revísalas: **no te fíes solo de los ✅**. Leer píxeles del ca
 
 ## 2. Estado actual
 
+**CP-071 · HW4 · modo híbrido macOS · 2026-11-20:** [PR #35](https://github.com/MasamuneL/Cerberus/pull/35), merge `b3512c1` (fallback: tag `pre-HW4`). Mac Apple Silicon: `docker compose -f compose.yaml -f compose.hybrid.yaml up -d` + worker nativo (README). Plan §25 en curso: HW1 (CUDA, implementando), HW3 (PR #36, en revisión); HW2 (lanzador) tras HW1. Ojo: registro ANTs `full` no determinista entre corridas (hallazgo HW3).
+
 **CP-070 · PERF8 descartado · 2026-11-20:** la decodificación es ≤ 8 % del toggle (gate 20 %); el ~92 % son `addVolume`/`updateGLVolume`/render con SwiftShader. Pendiente medido: perfilar ese tramo y valorar agrupar refrescos GL o alternar por opacidad sin recargar. Plan §24 restante: ERR1 (en curso).
 
 **CP-069 · UP1 · subidas con `find_study` · 2026-11-20:** [PR #34](https://github.com/MasamuneL/Cerberus/pull/34), merge `8f02a18`. Ganancia marginal (0.64 → 0.08 ms). Plan §24 restante: PERF8 (gate de medición en curso) y ERR1 (oleada 2).
