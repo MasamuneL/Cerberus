@@ -88,18 +88,34 @@ def list_studies(data_dir: Path, results_dir: Path) -> list[Study]:
     return [_make_study(p, t, files, results_dir) for (p, t), files in sorted(scanned.items())]
 
 
-def get_study(data_dir: Path, results_dir: Path, patient: str, timepoint: str) -> StudyDetail | None:
-    """Detalle de un estudio con el header de cada volumen; `None` si los IDs son inválidos o no existe.
-
-    Lectura del header portada de `cerberus_eda.py:107-117` (shape, spacing redondeado a 3 decimales, dtype).
-    """
+def _find_files(data_dir: Path, patient: str, timepoint: str) -> dict[str, Path] | None:
+    """Secuencias válidas de un estudio en disco; `None` si los IDs son inválidos o no existe."""
     try:
         validate_patient(patient)
         validate_timepoint(timepoint)
     except ValueError:
         return None
-    files = _scan(data_dir, f"{patient}/{timepoint}/*.nii.gz").get((patient, timepoint))
-    if not files:
+    return _scan(data_dir, f"{patient}/{timepoint}/*.nii.gz").get((patient, timepoint)) or None
+
+
+def find_study(data_dir: Path, results_dir: Path, patient: str, timepoint: str) -> Study | None:
+    """Resumen de un estudio sin leer headers; `None` si los IDs son inválidos o no existe.
+
+    Para quien solo necesita `sequences` y las banderas `has_*` (p. ej. encolar un job): evita abrir cada NIfTI.
+    """
+    files = _find_files(data_dir, patient, timepoint)
+    if files is None:
+        return None
+    return _make_study(patient, timepoint, files, results_dir)
+
+
+def get_study(data_dir: Path, results_dir: Path, patient: str, timepoint: str) -> StudyDetail | None:
+    """Detalle de un estudio con el header de cada volumen; `None` si los IDs son inválidos o no existe.
+
+    Lectura del header portada de `cerberus_eda.py:107-117` (shape, spacing redondeado a 3 decimales, dtype).
+    """
+    files = _find_files(data_dir, patient, timepoint)
+    if files is None:
         return None
 
     volumes: list[VolumeInfo] = []
