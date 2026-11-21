@@ -4,7 +4,7 @@
 > checkpoint. El historial completo está en [`PROGRESS.md`](PROGRESS.md) y el alcance y los contratos en
 > [`PLAN_MVP.md`](PLAN_MVP.md). Las reglas de trabajo están en [`../AGENTS.md`](../AGENTS.md).
 
-**Última actualización:** 2026-11-20 · último checkpoint: CP-063 · rama base: `main`
+**Última actualización:** 2026-11-20 · último checkpoint: CP-064 · rama base: `main`
 
 ## 1. Arranque rápido
 
@@ -31,6 +31,8 @@ Abre las PNG y revísalas: **no te fíes solo de los ✅**. Leer píxeles del ca
 (`preserveDrawingBuffer=false`), así que esos chequeos de píxeles no son confiables.
 
 ## 2. Estado actual
+
+**CP-064 · PERF4 · encolar sin leer headers · 2026-11-20:** [PR #29](https://github.com/MasamuneL/Cerberus/pull/29), merge `c9222d6`. En curso: PERF6 y CFG1 (PR #30, en revisión).
 
 **CP-063 · VIZ1 · bordes suaves integrados · 2026-11-20:** [PR #22](https://github.com/MasamuneL/Cerberus/pull/22), merge `d1edd20`.
 VIZ1 ahora es §22 del plan. Desbloquea PERF4/PERF6/PERF7. Ojo PERF6: la URL del GTV lleva `?smooth=1`; la copia suavizada depende solo

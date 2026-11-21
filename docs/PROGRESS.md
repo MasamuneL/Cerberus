@@ -12,7 +12,7 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 | PERF1 · volumetría recortada (§21) | ✅ | feat/PERF1-volumetry-crop | 2e50217 | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #26; 1191 tests; ~1.7 s → 76 ms; CP-059 |
 | PERF2 · caché de volumetría (§21) | ✅ | feat/PERF2-volumetry-cache | 15e1e4d | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #28; 1195 tests; caliente < 5 ms; CP-061 |
 | PERF3 · caché del predictor MONAI (§21) | ✅ | feat/PERF3-predictor-cache | 0f882b7 | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #25; 1181 tests; ~0.06 s/job; CP-060 |
-| PERF4 · encolar sin leer headers (§21) | 🟡 | feat/PERF4-study-lookup | | 2026-11-20 | Claude Code (orquestador Opus + hc) | oleada 3 |
+| PERF4 · encolar sin leer headers (§21) | ✅ | feat/PERF4-study-lookup | c9222d6 | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #29; 1213 tests; 13 → 0.5 ms; CP-064 |
 | PERF5 · visor diferido (§21) | ✅ | feat/PERF5-lazy-viewer | d05c119 | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #27; e2e 33/33; entrada 1183→279 kB; CP-062 |
 | PERF6 · caché de buffers del visor (§21) | 🟡 | feat/PERF6-viewer-buffer-cache | | 2026-11-20 | Claude Code (orquestador Opus + hc) | oleada 3 |
 | PERF7 · centroide GTV (§21) | ⬜ | | | | | tras PERF6 |
@@ -1103,3 +1103,15 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
 - **Notas:** con el chip activo, las lecturas del cursor sobre GTV y áreas usan la copia suavizada y pueden diferir en el
   borde (documentado en el PR). La rama `feat/viz-smooth-masks` sigue viva (worktree local `../Cerberus-viz`).
 - Siguiente: PERF4 + PERF6 (oleada 3); luego PERF7 y CFG1 (puertos configurables por env, pedido por el usuario).
+
+### CP-064 · 2026-11-20 · PERF4: encolar jobs sin leer headers NIfTI
+
+- **Integración:** [PR #29](https://github.com/MasamuneL/Cerberus/pull/29), merge `c9222d6`.
+- Nuevo `catalog.find_study` (validación + `_scan` + `_make_study`), que comparte el helper `_find_files` con
+  `get_study`. Lo usan `start_segmentation`, `start_area_mapping`, `worker.segment_study` y `worker.map_areas`.
+  `GET /studies/{p}/{t}` sigue con `get_study`.
+- **Benchmark** 001/t0: 10.7–13.3 ms → 0.22–0.52 ms por búsqueda. Equivalencia comprobada en los 8 estudios reales.
+- **Desviaciones:** un NIfTI con header corrupto ya no da 500 al encolar; falla en el job (`failed`). `get_study` reutiliza
+  `_find_files` y no `find_study`, porque necesita las rutas.
+- **Checks:** Ruff/formato/Pyright, 1213 tests rápidos. Revisión independiente (Opus) aprobada.
+- **Pendiente (fuera de alcance):** `routers/uploads.py` `_find_study` recorre `list_studies` entero; podría usar `find_study`.
