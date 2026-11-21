@@ -7,6 +7,10 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 
 | Ticket | Estado | Rama | Commit | Fecha | Responsable / herramienta | Notas |
 |---|---|---|---|---|---|---|
+| HW1 · imagen CUDA + perfil GPU (§25) | ⬜ | feat/HW1-cuda-gpu-profile | | | Claude Code (orquestador Opus + hc) | oleada 1 |
+| HW3 · registro ANTs fast/full (§25) | ⬜ | feat/HW3-registration-mode | | | Claude Code (orquestador Opus + hc) | oleada 1 |
+| HW4 · modo híbrido macOS (§25) | ⬜ | feat/HW4-macos-hybrid | | | Claude Code (orquestador Opus + hc) | oleada 1 |
+| HW2 · lanzador con detección de hardware (§25) | ⬜ | feat/HW2-hardware-launcher | | | Claude Code (orquestador Opus + hc) | oleada 2 (tras HW1, HW4) |
 | UP1 · subida con find_study (§24) | 🟡 | feat/UP1-upload-find-study | | | Claude Code (orquestador Opus + hc) | |
 | CFG2 · validar puertos en Vite (§24) | 🟡 | feat/CFG2-vite-port-validation | | | Claude Code (orquestador Opus + hc) | |
 | PERF8 · reutilizar NVImage (§24) | 🟡 | feat/PERF8-nvimage-reuse | | | Claude Code (orquestador Opus + hc) | gate < 20 % |

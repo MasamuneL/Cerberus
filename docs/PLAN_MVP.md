@@ -1117,3 +1117,20 @@ resultado ni comportamiento visible cambia (salvo el mensaje nuevo de ERR1 y el 
 | ERR1 | `ViewerErrorBoundary` alrededor del visor diferido: alerta «No se pudo cargar el visor.» + «Reintentar» (nuevo `lazy()`) | `App.tsx`, `components/ViewerErrorBoundary.tsx`, `tools/e2e/verify-viewer-chunk-error.mjs` | — | Con el chunk bloqueado, el panel lateral sigue montado; tras desbloquear, «Reintentar» muestra el visor |
 
 Orden: oleada 1 = UP1, CFG2, PERF8 · oleada 2 = ERR1 (sin archivos compartidos; espera solo para no saturar SwiftShader en los e2e).
+
+## 25. HW · Aceleración y adaptación al hardware (todos los SO)
+
+Solicitud del 2026-11-20: en algunas PCs la segmentación MONAI y las áreas de Brodmann tardan ≥ 5 min. Causas
+verificadas: la imagen Docker trae torch CPU (`pyproject.toml`, índice `pytorch-cpu`), `platform: linux/amd64`
+fuerza Rosetta en Apple Silicon (Docker en macOS no expone Metal/MPS), ANTs SyN es solo CPU y `mem_limit`/tope de
+hilos son fijos. Objetivo: cada SO usa lo mejor que tenga. Decisiones: registro `full` por defecto (`fast` opcional);
+GPU solo NVIDIA. Con la configuración por defecto (CPU, `full`, fp32) los resultados no cambian.
+
+| Ticket | Qué | Archivos | Depende de | Criterio de aceptación |
+|---|---|---|---|---|
+| HW1 | Variante CUDA de la imagen (`TORCH_VARIANT=cpu\|cu12x`, conflicto de extras en uv) + `compose.gpu.yaml` (reserva NVIDIA para el worker); `segresnet_predictor(..., amp=False)` con autocast fp16 solo en cuda, salida de la ventana deslizante en CPU y vuelta a CPU ante OOM (aviso en `warnings`); `SystemInfo.gpu_name`/`gpu_memory_gb` opcionales | `pyproject.toml`, `uv.lock`, `docker/backend.Dockerfile`, `compose.gpu.yaml`, `segmentation.py`, `runtime.py`, `schemas.py`, `frontend/src/api/types.ts` | — | Imagen CPU y `uv sync` local idénticos; tests con `torch.cuda` mockeado (amp solo en cuda, OOM → cpu, campos de GPU); en PC NVIDIA: `device: cuda` en `/api/system`, Dice fp16 vs fp32 ≥ 0.99 en 001/t0 y tiempo medido |
+| HW3 | `CERBERUS_REGISTRATION=full\|fast`: perfil de registro ANTs; `full` = actual; `fast` = SyN con menos iteraciones / SyNQuick y spacing 2 mm; el perfil entra en `_cache_key` y en `registration` («(rápido)») | `config.py`, `atlas.py`, `worker.py`, tests | — | `full` bit a bit igual (kwargs de `ants.registration` sin cambio); caché distinta por modo; valor inválido falla en settings; benchmark 001/t0 + otro paciente: `fast` ≥ 2× y mismo conjunto de áreas «Afectadas» |
+| HW4 | Modo híbrido macOS Apple Silicon: `compose.hybrid.yaml` (worker de Docker desactivado, Redis solo en `127.0.0.1:${CERBERUS_REDIS_PORT:-6379}`) + worker nativo (`uv run`) con MPS y ANTs arm64 sobre los mismos `Data/`, `storage/`, `models/` | `compose.hybrid.yaml`, `README.md` | — | `/api/system`: `darwin/arm64`, `mps`, `in_container: false`; la API del contenedor sirve los resultados del worker nativo; tiempos vs Docker+Rosetta medidos |
+| HW2 | Lanzador `tools/launch/up.sh` + `up.ps1`: detecta SO/arquitectura, CPU/RAM de Docker y NVIDIA; elige `compose.gpu.yaml`, modo híbrido o normal; fija `CERBERUS_WORKER_MEM_LIMIT = clamp(MemDocker − 2 GB, 5, 12 GB)`; sugiere `fast` con ≤ 4 CPU o emulación; respeta variables ya definidas; `--dry-run`, `--cpu`, `--no-hybrid`, `--fast`, `down`. Tope `MAX_AUTO_THREADS` 8 → 16 solo si el benchmark da > 15 % | `tools/launch/`, `runtime.py` (condicional), `README.md`, §5 | HW1, HW4 | `bash -n` + shellcheck; `--dry-run` correcto en Mac arm, Linux con/sin NVIDIA y Windows WSL2; README con tabla «Qué usa cada SO» |
+
+Orden: oleada 1 = HW1, HW3, HW4 (archivos disjuntos) · oleada 2 = HW2.
