@@ -1044,16 +1044,16 @@ Todos los subcomandos indicados fueron verificados en la CLI actual (`--help`). 
    uv run python -m cerberus_training inventory --config "$CFG" --summary "$WORK_DIR/inventory_summary.json"
    ```
    Auditar elegibles, exclusiones (`missing_channel`, `missing_label`), señales de revisión (`empty_label`, `invalid_brain_mask`) y carpetas rechazadas antes de tocar `split`.
-3. **Partición (`split`):**
+3. **Partición (`split`):** antes del primer `split`, fija en `"$CFG"` el valor definitivo de `split.pretraining_overlap` (p. ej. `verified` solo si ya comprobaste que los estudios no se solapan con el preentrenamiento). El valor entra en la huella de `splits.json` ([`splits.py:198`](../backend/cerberus_training/splits.py#L198), comparación en [`splits.py:229`](../backend/cerberus_training/splits.py#L229)): cambiarlo después deja el `splits.json` generado incompatible y `split`, `train` y `train --dry-run` salen con código `4`.
    ```bash
    uv run python -m cerberus_training split --config "$CFG"
    ```
-   Revisar las particiones 70/15/15, los avisos de duplicados fusionados y verificar `pretraining_overlap` antes de marcarlo como `verified`.
+   Revisar las particiones 70/15/15 y los avisos de duplicados fusionados.
 4. **Estimación previa (`preflight`):**
    ```bash
    uv run python -m cerberus_training preflight --config "$CFG"
    ```
-   Revisar explícitamente en la salida el espacio libre en disco, la ocupación actual de `cache/` y la cota estimada. Códigos de salida de `preflight` ([`__main__.py:253-268`](../backend/cerberus_training/__main__.py#L253-L268), [`preflight.py:118-130`](../backend/cerberus_training/preflight.py#L118-L130)): `0` = los recursos caben según la estimación; `6` = la caché estimada más claves antiguas supera `preprocess.cache_limit_gb` o el disco libre tras escribir queda por debajo de `preprocess.min_free_disk_gb`; `4` = inventario ilegible o sin estudios elegibles; `2` = configuración inválida. **Si `preflight` falla (código distinto de `0`) o muestra poco margen, detente aquí**: libera disco o ajusta `preprocess.cache_limit_gb` (y `preprocess.min_free_disk_gb` si aplica) en `"$CFG"`, y **vuelve a ejecutar `preflight`** hasta que devuelva `0` antes de preparar.
+   Revisar explícitamente en la salida el espacio libre en disco, la ocupación actual de `cache/` y la cota estimada. Códigos de salida de `preflight` ([`__main__.py:253-268`](../backend/cerberus_training/__main__.py#L253-L268), [`preflight.py:118-130`](../backend/cerberus_training/preflight.py#L118-L130)): `0` = los recursos caben según la estimación; `6` = la caché estimada más claves antiguas supera `preprocess.cache_limit_gb` o el disco libre tras escribir queda por debajo de `preprocess.min_free_disk_gb`; `4` = inventario ilegible o sin estudios elegibles; `2` = configuración inválida. **Si `preflight` no devuelve `0` o muestra poco margen, detente aquí** y corrige según el código: con `6` (o poco margen), libera disco o ajusta `preprocess.cache_limit_gb` (y `preprocess.min_free_disk_gb` si aplica) en `"$CFG"`; con `4`, revisa el inventario (paso 2); con `2`, corrige la configuración. Después **vuelve a ejecutar `preflight`** hasta que devuelva `0` antes de preparar.
 5. **Preparación de la caché (`prepare`, solo tras `preflight` en código `0` y revisión de disco/`cache_limit_gb`):**
    ```bash
    uv run python -m cerberus_training prepare --config "$CFG"
