@@ -1102,3 +1102,18 @@ variables sin definir, todo queda exactamente como hoy (8000 / 5173 / 6379).
 
 Docker sigue con `CERBERUS_HTTP_PORT` y `CERBERUS_KEYCLOAK_HTTP_PORT` (README). Los scripts de `tools/e2e/` usan
 `CERBERUS_UI` o, si falta, `http://localhost:${CERBERUS_UI_PORT:-5173}`. El comando `uvicorn … --port 8000` sigue funcionando.
+
+## 24. Pendientes post-PERF (tras CP-067)
+
+Los cuatro pendientes anotados en las CP-062, CP-064, CP-065 y CP-066. Regla común de §21: ningún contrato (§6/§7),
+resultado ni comportamiento visible cambia (salvo el mensaje nuevo de ERR1 y el error explícito de CFG2). Medido el
+2026-11-20 en `c122dcc`.
+
+| Ticket | Qué | Archivos | Depende de | Criterio de aceptación |
+|---|---|---|---|---|
+| UP1 | `routers/uploads.py`: `_study_or_500` usa `catalog.find_study` en lugar de recorrer `list_studies` | `routers/uploads.py`, `tests/test_uploads.py` | — | Respuestas de subida/confirmación idénticas; 0.64 → 0.08 ms (marginal: una llamada por subida) |
+| CFG2 | `vite.config.ts` valida `CERBERUS_UI_PORT` y `CERBERUS_API_PORT` (entero 1–65535) | `frontend/vite.config.ts` | — | Sin variables, config idéntica; `""`, `abc`, `0`, `70000`, `5.5` → Vite falla con mensaje claro |
+| PERF8 | Reutilizar el `NVImage` decodificado de la base y del GTV al alternar capas (restaurando contraste/opacidad/colormap) | `Viewer.tsx`, `tools/e2e/verify-overlay-toggle.mjs` | — | Gate: si la decodificación ahorrable es < 20 % del toggle, se para y se consulta. Si pasa: 0 decodificaciones de la base tras la primera; capturas idénticas; e2e en verde |
+| ERR1 | `ViewerErrorBoundary` alrededor del visor diferido: alerta «No se pudo cargar el visor.» + «Reintentar» (nuevo `lazy()`) | `App.tsx`, `components/ViewerErrorBoundary.tsx`, `tools/e2e/verify-viewer-chunk-error.mjs` | — | Con el chunk bloqueado, el panel lateral sigue montado; tras desbloquear, «Reintentar» muestra el visor |
+
+Orden: oleada 1 = UP1, CFG2, PERF8 · oleada 2 = ERR1 (sin archivos compartidos; espera solo para no saturar SwiftShader en los e2e).

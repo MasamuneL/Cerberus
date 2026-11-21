@@ -7,6 +7,10 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 
 | Ticket | Estado | Rama | Commit | Fecha | Responsable / herramienta | Notas |
 |---|---|---|---|---|---|---|
+| UP1 · subida con find_study (§24) | 🟡 | feat/UP1-upload-find-study | | | Claude Code (orquestador Opus + hc) | |
+| CFG2 · validar puertos en Vite (§24) | 🟡 | feat/CFG2-vite-port-validation | | | Claude Code (orquestador Opus + hc) | |
+| PERF8 · reutilizar NVImage (§24) | 🟡 | feat/PERF8-nvimage-reuse | | | Claude Code (orquestador Opus + hc) | gate < 20 % |
+| ERR1 · ErrorBoundary del visor (§24) | ⬜ | feat/ERR1-viewer-error-boundary | | | Claude Code (orquestador Opus + hc) | oleada 2 |
 | CFG1 · puertos configurables por env (§23) | ✅ | feat/CFG1-env-ports | c491be1 | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #30; 1219 tests; CP-065 |
 | VIZ1 · bordes suaves de máscaras (§22) | ✅ | feat/viz-smooth-masks | d1edd20 | 2026-11-20 | MasamuneL + Claude Code (revisión/merge) | PR #22; 1210 tests; e2e 33/33 + superficie + 3D; CP-063 |
 | PERF1 · volumetría recortada (§21) | ✅ | feat/PERF1-volumetry-crop | 2e50217 | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #26; 1191 tests; ~1.7 s → 76 ms; CP-059 |
