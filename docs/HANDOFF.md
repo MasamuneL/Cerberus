@@ -4,7 +4,7 @@
 > checkpoint. El historial completo está en [`PROGRESS.md`](PROGRESS.md) y el alcance y los contratos en
 > [`PLAN_MVP.md`](PLAN_MVP.md). Las reglas de trabajo están en [`../AGENTS.md`](../AGENTS.md).
 
-**Última actualización:** 2026-11-20 · último checkpoint: CP-065 · rama base: `main`
+**Última actualización:** 2026-11-20 · último checkpoint: CP-066 · rama base: `main`
 
 ## 1. Arranque rápido
 
@@ -31,6 +31,8 @@ Abre las PNG y revísalas: **no te fíes solo de los ✅**. Leer píxeles del ca
 (`preserveDrawingBuffer=false`), así que esos chequeos de píxeles no son confiables.
 
 ## 2. Estado actual
+
+**CP-066 · PERF6 · caché de buffers del visor · 2026-11-20:** [PR #31](https://github.com/MasamuneL/Cerberus/pull/31), merge `80dc618`. Alternar capas ya no vuelve a pedir la base; el tiempo lo domina la decodificación (posible mejora futura: reutilizar NVImage). En curso: PERF7.
 
 **CP-065 · CFG1 · puertos por entorno · 2026-11-20:** [PR #30](https://github.com/MasamuneL/Cerberus/pull/30), merge `c491be1`. Puertos de desarrollo: `CERBERUS_API_PORT`, `CERBERUS_UI_PORT`, `CERBERUS_REDIS_URL` (README). Arranque alternativo de la API: `uv run python -m cerberus_api.serve --reload`. En curso: PERF6; luego PERF7.
 

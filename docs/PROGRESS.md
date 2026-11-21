@@ -14,8 +14,8 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 | PERF3 · caché del predictor MONAI (§21) | ✅ | feat/PERF3-predictor-cache | 0f882b7 | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #25; 1181 tests; ~0.06 s/job; CP-060 |
 | PERF4 · encolar sin leer headers (§21) | ✅ | feat/PERF4-study-lookup | c9222d6 | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #29; 1213 tests; 13 → 0.5 ms; CP-064 |
 | PERF5 · visor diferido (§21) | ✅ | feat/PERF5-lazy-viewer | d05c119 | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #27; e2e 33/33; entrada 1183→279 kB; CP-062 |
-| PERF6 · caché de buffers del visor (§21) | 🟡 | feat/PERF6-viewer-buffer-cache | | 2026-11-20 | Claude Code (orquestador Opus + hc) | oleada 3 |
-| PERF7 · centroide GTV (§21) | ⬜ | | | | | tras PERF6 |
+| PERF6 · caché de buffers del visor (§21) | ✅ | feat/PERF6-viewer-buffer-cache | 80dc618 | 2026-11-20 | Claude Code (orquestador Opus + hc) | PR #31; e2e 33/33 + toggle 4/4; base 4 → 0 GET; CP-066 |
+| PERF7 · centroide GTV (§21) | 🟡 | feat/PERF7-gtv-centroid | | 2026-11-20 | Claude Code (orquestador Opus + hc) | oleada 4 |
 | FT5 · smoke y manual | ✅ | feat/FT5-smoke-manual | c891208 | 2026-11-19 | Claude Code (orquestador + subagentes) | PR #24; 1180 tests; smoke 13/13 sintético; e2e 33/33; CP-058 |
 | FT4 · evaluación y exportación | ✅ | feat/FT4-evaluate-export | 1f85245 | 2026-11-19 | Claude Code (orquestador + subagentes) | PR #23; 1173 tests; métricas por paciente, baseline TC, export recargable; CP-057 |
 | FT3 · transferencia y trainer | ✅ | feat/FT3-transfer-trainer | 548cd16 | 2026-11-19 | Claude Code (orquestador + subagentes) | PR #21; 1147 tests; carga estricta, head 1 logit, reanudación determinista; CP-056 |
@@ -1130,3 +1130,17 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
 - **Prueba manual:** API 8011/8012 y UI 5191/5192; `/api/health` responde a través del proxy.
 - **Checks:** Ruff/formato/Pyright, 1219 tests rápidos, `npm run build`. Revisión independiente (Opus) aprobada.
 - **Nota menor:** en Vite, un `CERBERUS_UI_PORT` vacío o no numérico da 0/NaN; la API sí lo rechaza.
+
+### CP-066 · 2026-11-20 · PERF6: caché de buffers del visor por estudio
+
+- **Integración:** [PR #31](https://github.com/MasamuneL/Cerberus/pull/31), merge `80dc618`.
+- `Viewer.tsx`: `fetchVolumeCached` con un `Map` por estudio de los buffers comprimidos de las URLs sin `v=` (base y GTV crudo/`?smooth=1`).
+  Límites: 1 base + 2 variantes de GTV, 128 MB por buffer. `monai_seg`/`brodmann` siempre van a la red. No se cachean errores.
+  Niivue 0.69.0 no transfiere ni muta el buffer (verificado en `dist/index.js:32807, 24864, 25008`).
+- Nuevo `tools/e2e/verify-overlay-toggle.mjs`: tras 4 toggles (GTV y «Bordes suaves»), GET de la base 4 → **0**; GTV 3 → 1.
+- **Medición honesta:** como la API ya respondía 304 (ETag + `no-cache`), el tiempo por toggle sin carga concurrente es igual
+  antes y después (~15–25 s con SwiftShader; domina la re-decodificación). La ganancia es menos peticiones y menos revalidación,
+  no menos tiempo de interfaz. Para bajar ese tiempo habría que reutilizar el `NVImage` decodificado (opción B, no hecha).
+- **Checks:** Ruff/formato/Pyright, 1210 tests, `npm run build`, e2e `verify` 33/33, `viewer-3d` 7/7, `mask-surface` 3/3,
+  `overlay-toggle` 4/4. Capturas revisadas. Revisión independiente (Opus) aprobada.
+- Siguiente: PERF7 (centroide del GTV).
