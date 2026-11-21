@@ -40,12 +40,19 @@ function computeGtvCentroidMM(vol: any): [number, number, number] | null {
     sy = 0,
     sz = 0,
     n = 0;
-  for (let i = 0; i < nx * ny * nz; i++) {
-    if (data[i] !== 0) {
-      sx += i % nx;
-      sy += Math.floor(i / nx) % ny;
-      sz += Math.floor(i / (nx * ny));
-      n++;
+  // Tres bucles z → y → x con índice lineal incremental: mismo orden (i creciente) y sumas enteras que la
+  // versión con `%` y `Math.floor` por vóxel, así que el centroide es bit-idéntico sin dividir.
+  let i = 0;
+  for (let z = 0; z < nz; z++) {
+    for (let y = 0; y < ny; y++) {
+      for (let x = 0; x < nx; x++, i++) {
+        if (data[i] !== 0) {
+          sx += x;
+          sy += y;
+          sz += z;
+          n++;
+        }
+      }
     }
   }
   if (n === 0) return null;
