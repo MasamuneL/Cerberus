@@ -67,15 +67,17 @@ runtime = [
 # Variantes de torch (HW1, docs/PLAN_MVP.md §25). Son excluyentes (`[tool.uv] conflicts`) y cada una fija su índice en
 # `[tool.uv.sources]`. `torch-cpu` es la de siempre: rueda CPU en Linux y PyPI en macOS/Windows (MPS en Apple
 # Silicon). `torch-cu126` es la imagen GPU NVIDIA: `uv sync --only-group runtime --only-group torch-cu126`.
+# `torch-cu130` (HW2) es la de Blackwell (RTX 50xx, sm_120): la rueda cu126 no trae sus kernels; exige driver ≥ 580.
 torch-cpu = ["torch>=2.14.1"]
 torch-cu126 = ["torch>=2.14.1"]
+torch-cu130 = ["torch>=2.14.1"]
 
 [tool.uv]
 # `uv sync` local instala la variante CPU, igual que antes de HW1 (el paquete ya no declara torch directamente; MONAI
 # lo pide igual). Para la variante CUDA, **cada** `uv sync` y `uv run` lleva `--no-group torch-cpu --group torch-cu126`
 # (o `uv run --no-sync` tras el sync): un `uv run` sin flags vuelve a los grupos por defecto y reinstala torch CPU.
 default-groups = ["dev", "torch-cpu"]
-conflicts = [[{ group = "torch-cpu" }, { group = "torch-cu126" }]]
+conflicts = [[{ group = "torch-cpu" }, { group = "torch-cu126" }, { group = "torch-cu130" }]]
 
 [build-system]
 requires = ["hatchling"]
@@ -102,13 +104,17 @@ extraPaths = ["backend/tests"]
 
 [tool.pytest.ini_options]
 testpaths = ["backend/tests"]
-markers = ["slow: tests que usan el modelo MONAI real o dcm2niix real"]
+markers = [
+    "slow: tests que usan el modelo MONAI real o dcm2niix real",
+    "launcher: lanzador tools/launch (bash con detección simulada; sin daemon ni red)",
+]
 
 [tool.uv.sources]
 torch = [
     { index = "pytorch-cpu", group = "torch-cpu", marker = "sys_platform == 'linux'" },
     # CUDA solo existe para Linux y Windows; en macOS la variante cae en la rueda de PyPI (sin CUDA).
     { index = "pytorch-cu126", group = "torch-cu126", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+    { index = "pytorch-cu130", group = "torch-cu130", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
 ]
 
 [[tool.uv.index]]
@@ -121,4 +127,11 @@ explicit = true
 [[tool.uv.index]]
 name = "pytorch-cu126"
 url = "https://download.pytorch.org/whl/cu126"
+explicit = true
+
+# cu130 (HW2): publica torch 2.14.1+cu130 cp311 (manylinux_2_28 x86_64/aarch64 y win_amd64), con kernels para
+# Blackwell; exige driver NVIDIA ≥ 580. tools/launch/ la elige solo con compute capability ≥ 10.0.
+[[tool.uv.index]]
+name = "pytorch-cu130"
+url = "https://download.pytorch.org/whl/cu130"
 explicit = true

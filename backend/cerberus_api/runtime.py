@@ -30,6 +30,10 @@ ENV_THREADS = "CERBERUS_CPU_THREADS"
 # Clave de Redis donde el worker publica su `SystemInfo`; la lee `GET /api/system`
 SYSTEM_INFO_KEY = "cerberus:system:worker"
 THREAD_ENV_VARS = ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS", "ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS")
+# Tope de `auto`. HW2 midió 001/t0 en un Mac de 14 CPU (worker nativo, MPS; 2026-11-21, 4 corridas por valor, máquina
+# compartida con load 8–52): la segmentación no depende de los hilos (MPS) y las áreas en frío con 12/14 hilos ganan
+# 12 %/19 % frente a 8 solo en las 2 corridas con poca carga, con dispersión mayor que la ganancia. No supera con
+# claridad el umbral del 15 % y más hilos empeoran la reproducibilidad del afín de ANTs (REG1): se queda en 8.
 MAX_AUTO_THREADS = 8
 # Pico medido del worker con 001/t0: ~4.2 GiB (MONAI en CPU + registro ANTs SyN)
 LOW_MEMORY_GB = 5.0

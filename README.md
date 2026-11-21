@@ -46,7 +46,10 @@ Cerberus/
 │   ├── QA_UX_UI.md        # evidencia y límites del QA visual
 │   └── QA_2026-10-29.md   # hallazgos pendientes de seguridad y robustez
 ├── compose.yaml           # redis, api, worker y frontend
+├── compose.gpu.yaml       # override GPU NVIDIA para el worker (torch cu126/cu130)
+├── compose.hybrid.yaml    # override del modo híbrido de Mac Apple Silicon
 ├── docker/                # Dockerfiles y configuración nginx
+├── tools/launch/          # lanzador con detección de hardware (up.sh, up.ps1)
 ├── tools/e2e/             # verificaciones de UX/UI y smoke Docker
 ├── storage/               # resultados, uploads, staging (generado, ignorado)
 ├── AGENTS.md / CLAUDE.md  # instrucciones para agentes de código
@@ -90,6 +93,7 @@ La instalación normal incluye la app web. Para el notebook histórico se habili
 
 | Cómo arrancaste la app | URL de la UI | Servidor que la entrega |
 |---|---|---|
+| `tools/launch/up.sh` o `up.ps1` | **http://localhost:8080** | nginx, con el frontend compilado por Vite |
 | `docker compose up -d --build` | **http://localhost:8080** | nginx, con el frontend compilado por Vite |
 | `cd frontend && npm run dev` | **http://localhost:5173** por defecto | servidor de desarrollo de Vite |
 
@@ -98,7 +102,74 @@ si solo levantaste Compose, abre **8080**. El puerto de Docker se puede cambiar 
 En desarrollo, Vite necesita seguir ejecutándose en una terminal; la API se inicia aparte en **8000**.
 Con Compose, nginx reenvía `/api` al puerto 8000 interno del contenedor, que no se publica en el host.
 
+### Lanzador con detección de hardware (camino recomendado)
+
+El lanzador revisa el sistema operativo, la arquitectura, las CPU y la RAM **que tiene Docker** (`docker info`) y la GPU
+NVIDIA (`nvidia-smi`), y levanta el stack con lo mejor que haya. Por dentro ejecuta los mismos comandos de
+`docker compose` de las secciones siguientes, que siguen siendo válidos si prefieres arrancarlo a mano.
+
+```bash
+tools/launch/up.sh               # macOS, Linux y WSL2: detecta y levanta
+tools/launch/up.sh --dry-run     # muestra los archivos compose, las variables y los comandos, sin ejecutar nada
+tools/launch/up.sh down          # baja el stack (y el worker nativo en el modo híbrido)
+```
+
+En Windows (PowerShell 5.1 o 7), con las mismas opciones:
+`powershell -ExecutionPolicy Bypass -File tools\launch\up.ps1 --dry-run`.
+
+**Qué usa cada SO**
+
+| Equipo | Qué levanta | Segmentación MONAI | Registro ANTs (áreas) |
+|---|---|---|---|
+| Mac Apple Silicon | modo híbrido: `compose.yaml` + `compose.hybrid.yaml` + worker nativo con `uv` | MPS (GPU de Apple) | nativo arm64 |
+| Mac Apple Silicon con `--no-hybrid` | `compose.yaml` (backend `linux/amd64` bajo Rosetta) | CPU emulada | CPU emulada; sugiere `--fast` |
+| Mac Intel | `compose.yaml` | CPU | CPU |
+| Linux, WSL2 o Windows con NVIDIA (cc 5.0–9.x, driver ≥ 525) | `compose.yaml` + `compose.gpu.yaml`, torch `cu126` | CUDA (fp16) | CPU |
+| Lo mismo con Blackwell (RTX 50xx, cc ≥ 10.0) y driver ≥ 580 | `compose.yaml` + `compose.gpu.yaml`, torch `cu130` | CUDA (fp16) | CPU |
+| Blackwell con driver < 580 | `compose.yaml` y un aviso para actualizar el driver | CPU | CPU |
+| Linux, WSL2 o Windows sin NVIDIA (o con `--cpu`) | `compose.yaml` | CPU | CPU |
+| Linux o Windows arm64 (también con NVIDIA: GB10/DGX Spark, Grace, Jetson) | `compose.yaml` (backend `linux/amd64` emulado; la GPU se ignora con un aviso, porque CUDA no funciona emulado) | CPU emulada | CPU emulada; sugiere `--fast` |
+
+GPU NVIDIA: en Linux hace falta [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/)
+(el lanzador comprueba el runtime `nvidia` en `docker info` y, si falta, avisa y usa CPU); en Windows basta Docker
+Desktop con WSL2 y el driver de Windows. La imagen GPU se etiqueta `cerberus-backend:<variante>` y pesa ~7 GB.
+
+Además del modo, el lanzador fija estas variables **solo si no las definiste tú** (en la terminal o en `.env`):
+
+| Variable | Valor del lanzador |
+|---|---|
+| `CERBERUS_WORKER_MEM_LIMIT` | `clamp(RAM de Docker − 2 GB, 5 GB, 12 GB)`; con GPU el mínimo es 6 GB (contexto CUDA). Con menos de 5 GB libres para el worker avisa (pico ~4.2 GB con 001/t0). No aplica al modo híbrido. Ojo: con Docker Desktop de 8 GB (~7.65 GiB) queda en **5g**, no en el `6g` que usa `docker compose up` a mano |
+| `CERBERUS_TORCH_VARIANT` | `cu126` o `cu130` según la compute capability y el driver (lo lee `compose.gpu.yaml`). El mínimo de 525 para cu126 se apoya en la *minor version compatibility* de CUDA 12: basta para las ruedas, pero sin JIT de PTX |
+| `CERBERUS_REGISTRATION` | `fast` con `--fast`. Con ≤ 4 CPU en Docker o con emulación lo sugiere sin aplicarlo |
+| `CERBERUS_UID` / `CERBERUS_GID` | en Linux y WSL2, `$(id -u)` / `$(id -g)` |
+
+Precedencia: **entorno de la terminal > `.env` de la raíz > valor del lanzador > default de `compose.yaml`**. Compose
+lee `.env` por su cuenta; el lanzador lo lee también para no exportar encima nada de lo que contiene y para pasar al worker
+nativo (que no lee `.env`) los mismos `CERBERUS_*_PATH`, `CERBERUS_REDIS_PORT`, `CERBERUS_CPU_THREADS`,
+`CERBERUS_REGISTRATION`, `CERBERUS_MAX_UPLOAD_MB` y `CERBERUS_MAX_ZIP_UNCOMPRESSED_MB`. Dos límites: el lanzador solo
+lee el `.env` de la raíz (si usas `COMPOSE_ENV_FILES` o `--env-file`, define ahí también lo que no quieras que proponga
+él), y una variable vacía en la terminal (`CERBERUS_X=`) cuenta como tuya: el informe la muestra vacía aunque Compose
+aplique su default (`:-…`).
+
+| Opción | Efecto |
+|---|---|
+| `--dry-run` | imprime la detección, los archivos compose, las variables (con su origen), los avisos y los comandos |
+| `--cpu` | ignora la GPU NVIDIA |
+| `--no-hybrid` | en Mac Apple Silicon usa el worker de Docker (Rosetta) en vez del nativo |
+| `--fast` | aplica `CERBERUS_REGISTRATION=fast` |
+| `--foreground` | modo híbrido: el worker nativo corre en la terminal (Ctrl+C lo detiene) en vez de en segundo plano |
+| `down` | detiene el worker nativo por su PID y baja el stack con los mismos `-f` del último arranque |
+
+En el modo híbrido el worker nativo queda en segundo plano con PID y log en `storage/launch/` (`worker.pid` y
+`worker.log`); `storage/launch/compose-files` guarda los `-f` para el `down`. Hace falta `uv` en el `PATH` (o
+`CERBERUS_UV=/ruta/a/uv`); antes de arrancarlo corre `uv sync --locked`, que se detiene si `uv.lock` no coincide con
+`pyproject.toml`. Si el worker ya corre, `up` lo reutiliza: para que cargue código nuevo, `down` y luego `up`. Si el puerto de Redis (6379) está ocupado, el lanzador se detiene y pide
+`CERBERUS_REDIS_PORT=6390` u otro libre. Para varias copias en paralelo, cambia también `COMPOSE_PROJECT_NAME`,
+`CERBERUS_HTTP_PORT` y `CERBERUS_KEYCLOAK_HTTP_PORT`.
+
 ### Opción rápida: Docker Desktop (recomendada para usarla)
+
+Son los comandos que ejecuta el lanzador en el caso CPU, por si prefieres arrancar a mano.
 
 Requisitos: [Docker Desktop](https://www.docker.com/products/docker-desktop/) con Compose **≥ 2.24** y **≥ 8 GB de RAM** asignados
 (Settings → Resources) y la muestra `Data/001` descargada con Git LFS. En Mac con Apple Silicon activa
@@ -138,7 +209,9 @@ la pantalla indica un fallo al consultar configuración o sesión, no identifica
 | `CERBERUS_HTTP_PORT` | 8080 | puerto local de la app |
 | `CERBERUS_CPU_THREADS` | auto | hilos de MONAI/ANTs; `auto` = máx(1, mín(floor(CPUs) − 1, 8)) según las CPU disponibles; un entero positivo lo fija (ver `GET /api/system`) |
 | `CERBERUS_REGISTRATION` | full | registro ANTs de las áreas de Brodmann: `full` (referencia) o `fast` (más rápido, resolución menor; el reporte lo anota «(rápido)»). También sirve en desarrollo nativo; otro valor impide arrancar la API/el worker |
-| `CERBERUS_WORKER_MEM_LIMIT` / `CERBERUS_API_MEM_LIMIT` | 6g / 2g | límites de memoria |
+| `CERBERUS_WORKER_MEM_LIMIT` / `CERBERUS_API_MEM_LIMIT` | 6g / 2g | límites de memoria (el lanzador calcula el del worker) |
+| `CERBERUS_TORCH_VARIANT` | cu126 | solo con `compose.gpu.yaml`: torch `cu126` o `cu130` (Blackwell, driver ≥ 580) |
+| `CERBERUS_REDIS_PORT` | 6379 | solo con `compose.hybrid.yaml`: puerto de Redis en `127.0.0.1` |
 | `CERBERUS_DATA_PATH` / `CERBERUS_MODELS_PATH` | `./Data` / `./models` | carpetas del host para datos y modelos |
 | `CERBERUS_STORAGE_PATH` | `./storage` | separar los resultados de Docker de los de desarrollo |
 | `CERBERUS_UID` / `CERBERUS_GID` | 1000 | solo en Linux: `$(id -u)` / `$(id -g)` |
@@ -159,6 +232,7 @@ worker corre **nativo** con `uv`: MONAI usa MPS y ANTs usa su wheel `macosx_arm6
 `models/` por bind mount y la cola de Redis, así que la app se usa igual que en el modo normal.
 
 Requisitos: los de la opción rápida, más [uv](https://docs.astral.sh/uv/) y los modelos descargados en `models/`.
+`tools/launch/up.sh` hace estos dos pasos solo (worker en segundo plano; `tools/launch/up.sh down` para todo). A mano:
 
 ```bash
 # Paso 1: stack en Docker sin worker (compose.hybrid.yaml lo desactiva y publica Redis solo en 127.0.0.1)

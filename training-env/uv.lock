@@ -209,6 +209,10 @@ torch-cu126 = [
     { name = "torch", marker = "sys_platform != 'linux' and sys_platform != 'win32'", specifier = ">=2.14.1" },
     { name = "torch", marker = "sys_platform == 'linux' or sys_platform == 'win32'", specifier = ">=2.14.1", index = "https://download.pytorch.org/whl/cu126", conflict = { package = "cerberus", group = "torch-cu126" } },
 ]
+torch-cu130 = [
+    { name = "torch", marker = "sys_platform != 'linux' and sys_platform != 'win32'", specifier = ">=2.14.1" },
+    { name = "torch", marker = "sys_platform == 'linux' or sys_platform == 'win32'", specifier = ">=2.14.1", index = "https://download.pytorch.org/whl/cu130", conflict = { package = "cerberus", group = "torch-cu130" } },
+]
 
 [[package]]
 name = "cerberus-training-env"
