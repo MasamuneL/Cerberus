@@ -1,16 +1,19 @@
 # Perfil GPU NVIDIA (HW1, docs/PLAN_MVP.md §25): Linux o Windows con WSL2, driver NVIDIA ≥ 525 y NVIDIA Container
 # Toolkit (en Docker Desktop para Windows viene incluido con el backend WSL2).
 #   docker compose -f compose.yaml -f compose.gpu.yaml up -d --build
+# Variante de torch: CERBERUS_TORCH_VARIANT=cu126 (por defecto, kernels sm_50…sm_90) o cu130 (Blackwell, RTX 50xx,
+# sm_120; driver ≥ 580). tools/launch/up.sh y up.ps1 la eligen según la compute capability de nvidia-smi.
 # Solo el worker usa la GPU (segmentación MONAI con autocast fp16); la API y el resto siguen con la imagen CPU.
 # El registro ANTs de las áreas de Brodmann es solo CPU.
 services:
   worker:
-    image: cerberus-backend:cuda
+    # Una etiqueta por variante: cambiar de cu126 a cu130 no reutiliza la imagen anterior por error.
+    image: cerberus-backend:${CERBERUS_TORCH_VARIANT:-cu126}
     build:
       context: .
       dockerfile: docker/backend.Dockerfile
       args:
-        TORCH_VARIANT: cu126
+        TORCH_VARIANT: ${CERBERUS_TORCH_VARIANT:-cu126}
     environment:
       # Las ruedas de PyTorch traen CUDA; el runtime de NVIDIA solo monta el driver y las utilidades.
       NVIDIA_VISIBLE_DEVICES: all
