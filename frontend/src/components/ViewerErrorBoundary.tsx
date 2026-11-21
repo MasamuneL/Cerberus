@@ -1,4 +1,5 @@
-import { Component, type ReactNode } from "react";
+import { Component, createRef, type ReactNode } from "react";
+import "./viewer.css";
 
 interface Props {
   children: ReactNode;
@@ -14,6 +15,8 @@ interface State {
 // para que el resto del Workspace (SidePanel incluido) siga montado.
 export default class ViewerErrorBoundary extends Component<Props, State> {
   state: State = { error: null };
+  private retryBtnRef = createRef<HTMLButtonElement>();
+  private pendingRetryFocus = false;
 
   static getDerivedStateFromError(error: Error): State {
     return { error };
@@ -23,7 +26,17 @@ export default class ViewerErrorBoundary extends Component<Props, State> {
     console.error("No se pudo cargar el visor:", error);
   }
 
+  componentDidUpdate(_prevProps: Props, prevState: State) {
+    if (this.state.error && prevState.error !== this.state.error && this.pendingRetryFocus) {
+      this.pendingRetryFocus = false;
+      this.retryBtnRef.current?.focus();
+    } else if (!this.state.error && !prevState.error) {
+      this.pendingRetryFocus = false;
+    }
+  }
+
   private retry = () => {
+    this.pendingRetryFocus = true;
     this.setState({ error: null });
     this.props.onRetry();
   };
@@ -33,7 +46,14 @@ export default class ViewerErrorBoundary extends Component<Props, State> {
       return (
         <div className="viewer-panel">
           <p className="error" role="alert">No se pudo cargar el visor.</p>
-          <button type="button" className="btn-secondary" onClick={this.retry}>Reintentar</button>
+          <button
+            ref={this.retryBtnRef}
+            type="button"
+            className="vw-btn-secondary"
+            onClick={this.retry}
+          >
+            Reintentar
+          </button>
         </div>
       );
     }
