@@ -4,7 +4,7 @@
 > checkpoint. El historial completo está en [`PROGRESS.md`](PROGRESS.md) y el alcance y los contratos en
 > [`PLAN_MVP.md`](PLAN_MVP.md). Las reglas de trabajo están en [`../AGENTS.md`](../AGENTS.md).
 
-**Última actualización:** 2026-11-21 · último checkpoint: CP-083 · rama base: `main`
+**Última actualización:** 2026-11-21 · último checkpoint: CP-084 · rama base: `main`
 
 ## 1. Arranque rápido
 
@@ -32,7 +32,7 @@ Abre las PNG y revísalas: **no te fíes solo de los ✅**. Leer píxeles del ca
 
 ## 2. Estado actual
 
-Última integración relevante: **CP-083** (ronda §26 en cierre; historial completo en [`PROGRESS.md`](PROGRESS.md)).
+Última integración relevante: **CP-084** (ronda §26 en cierre; historial completo en [`PROGRESS.md`](PROGRESS.md)).
 
 ### Qué funciona
 - **App web (MVP + §13–§24):** visor 2D/3D Niivue (capas, bordes suaves, fallback `ViewerErrorBoundary` y botón «Reintentar» `UI1`), volumetría/RANO longitudinal, segmentación MONAI (`EVAL1`: Dice TC vs GTV 0.824 ± 0.159 en n=8, 0.888 ± 0.026 con 4 canales en n=6; [`EVAL_MONAI.md`](EVAL_MONAI.md)), subida NIfTI/DICOM y auth OIDC/Keycloak A0–A4 (`demo`/`demo`).
@@ -48,7 +48,7 @@ Abre las PNG y revísalas: **no te fíes solo de los ✅**. Leer píxeles del ca
 - **Seguridad/datos ([`QA_2026-10-29.md`](QA_2026-10-29.md)):** ola P pendiente salvo `S1`/`S2` (cerrados en `A3`); `A5` (E2E de auth) depende de la ola P.
 
 ### Pendientes priorizados
-1. **Cierre de §26 y demo:** correr los 5 e2e en `main` con carga baja; ensayar la demo en la máquina del profesor con [`README.md`](../README.md) y usar `D3R` (`python -m cerberus_api.diagnostics --compose-stdin` en `api`) si vuelve el 502.
+1. **Demo:** §26 cerrada (CP-084; e2e de main en verde). Ensayar la demo en la máquina del profesor con [`README.md`](../README.md) y usar `D3R` (`python -m cerberus_api.diagnostics --compose-stdin` en `api`) si vuelve el 502.
 2. **Documentación y PRs:** actualizar [`PLAN_MVP.md` §13](PLAN_MVP.md#13-fase-2--áreas-de-brodmann-y-funciones-afectadas) (aún describe el atlas como MNI); decidir cierre del [PR #17](https://github.com/MasamuneL/Cerberus/pull/17) (rescatado en `D3R` / PR #40).
 3. **Registro (`REG1`):** QC automático del afín (determinante/rotación/Dice en `warnings`, fuera de §26) y pruebas en más estudios / Docker amd64.
 4. **Visor (`CP-070`):** perfilar el ~92 % del toggle de capas (refrescos GL en `Viewer.tsx`) antes de otro ticket de rendimiento.

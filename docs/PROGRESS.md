@@ -1498,3 +1498,22 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
 - Recomendados aplicados por el orquestador en este checkpoint: cabecera «último checkpoint» al día y la regla de no
   reabrir lo cerrado / acordar alcance del QA (estaba en el bloque borrado «Cómo retomar»).
 - **Siguiente:** cierre de §26 (checks, slow, build y 5 e2e en main con carga baja).
+
+### CP-084 · 2026-11-21 · Cierre de la ronda §26 «Validez científica y demo»
+
+- **Main en `aac1969`** (código igual a `0dbb72c`): Ruff, formato, Pyright, **1332** tests rápidos, **9 slow**
+  (1 skip), `npm run build`.
+- **e2e con API y worker reiniciados**, uno a uno (carga 4.9 al empezar; 10–14 durante las corridas por SwiftShader):
+  `verify` 33/33, `verify-viewer-3d` 7/7, `verify-mask-surface` 3/3, `verify-overlay-toggle` 4/4,
+  `verify-viewer-chunk-error` 5/5, `passed: true` en todos. Capturas revisadas: «Áreas» de 001/t0 ya con Lancaster
+  (BA40 izq 41 %, antes 63 %) y fallback del visor con el botón compacto.
+- **Tickets de §26:** D3R (CP-076), REG1 (CP-077), EVAL1 (CP-078), ATLAS0 (CP-079), FT-DOC (CP-080), ATLAS1 (CP-081),
+  UI1 (CP-082), DOC1 (CP-083). Agentes: Codex gpt-6.2-sol (D3R, REG1, EVAL1, ATLAS1), Antigravity
+  gemini-4-hydrogen-high (ATLAS0, FT-DOC, UI1, DOC1); revisor siempre de otra familia.
+- **Lecciones de orquestación:** Antigravity en `--mode plan` no puede ejecutar comandos en headless → revisores en
+  `--mode auto` con `git status` limpio comprobado. Los sandboxes de Codex/Antigravity bloquean `/bin/ps`,
+  `~/.docker/config.json` y `FETCH_HEAD`: `test_launcher`/`test_compose_startup` fallan solo dentro del sandbox. Los
+  revisores Claude a veces avisan con `hc send` antes de escribir el informe (hook de Write): comprobar que el archivo
+  existe. Codex puede agotar cuota a mitad de ticket: relanzar con un prompt de continuación.
+- **Para el usuario:** ensayar la demo en la máquina del profesor con el README; si vuelve el 502, ejecutar el
+  diagnóstico de D3R (README «Diagnóstico de un 502») y enviar `cerberus-diagnostico.json`.
