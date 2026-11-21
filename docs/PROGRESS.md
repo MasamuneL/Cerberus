@@ -10,7 +10,7 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 | ATLAS0 · informe de espacios del atlas (§26) | ✅ | feat/ATLAS0-atlas-spaces | 7ccb6e5 | 2026-11-21 | Antigravity (impl.) + Claude Opus (rev.), orquestador Claude Opus + hc | PR #43; Lancaster: 4.99 mm medio, 8/8 estudios cambian; recomienda A; CP-079 |
 | EVAL1 · evaluación MONAI en todos los estudios (§26) | ✅ | feat/EVAL1-monai-evaluation | 606277e | 2026-11-21 | Codex (impl.) + Claude Opus (rev.), orquestador Claude Opus + hc | PR #42; Dice 0.824 ± 0.159 (n=8), 0.888 ± 0.026 con 4 canales (n=6); CP-078 |
 | D3R · rescate del diagnóstico de #17 (§26) | ✅ | feat/D3R-diagnostics | fd45b08 | 2026-11-21 | Codex (impl.) + Antigravity (rev.), orquestador Claude Opus + hc | PR #40; 1327 tests; privacidad con test; CP-076 |
-| FT-DOC · fine-tuning: estado y pasos futuros (§26) | 🟡 | feat/FTDOC-future-steps | | | Claude Code (orquestador Opus + hc) | oleada 1; Antigravity |
+| FT-DOC · fine-tuning: estado y pasos futuros (§26) | ✅ | feat/FTDOC-future-steps | 2bd4edd | 2026-11-21 | Antigravity (impl.) + Codex (rev.), orquestador Claude Opus + hc | PR #44; 3 rondas + corrección final del orquestador; 1/8 elegible; CP-080 |
 | ATLAS1 · aplicar la opción elegida (§26) | 🟡 | feat/ATLAS1-a | | | Claude Code (orquestador Opus + hc) | oleada 2; opción A (usuario); Codex |
 | UI1 · botón «Reintentar» del visor (§26) | 🟡 | feat/UI1-retry-button | | | Claude Code (orquestador Opus + hc) | oleada 2; Antigravity |
 | DOC1 · compactar el HANDOFF (§26) | ⬜ | feat/DOC1-handoff-compact | | | Claude Code (orquestador Opus + hc) | oleada 3 |
@@ -1395,3 +1395,22 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
   (genericLabel, 6.70 %; NN real 0.031 mm / 0.28 %); la cifra «5–13 mm a ~1–2 mm» no tiene fuente; matiz de que
   `icbm_other2tal` no está validada para la 2009a sym; «desplazamiento» en vez de «error».
 - **Gate:** el usuario elige A, B o C antes de ATLAS1.
+
+### CP-080 · 2026-11-21 · FT-DOC: fine-tuning, estado y pasos futuros (§26)
+
+- **Integración:** [PR #44](https://github.com/MasamuneL/Cerberus/pull/44), merge `2bd4edd`. Implementó Antigravity
+  (gemini-4-hydrogen-high); revisó Codex (gpt-6.2-sol). CAMBIOS en las rondas 1, 2 y 3 (cada re-revisión resolvía lo
+  anterior y encontraba un hallazgo nuevo de exactitud); el último (fijar `split.pretraining_overlap` antes del
+  primer `split`, y qué hacer según el código de `preflight`) lo corrigió el orquestador por decisión del usuario,
+  sin otra ronda de revisión.
+- Nueva sección «Estado y pasos futuros» al final de [`docs/TRAINING.md`](TRAINING.md).
+- **Números:** inventario real sobre `Data/`: 8 estudios, 5 pacientes, **1 elegible** (004/t0); 7 excluidos por
+  `missing_channel` (5 sin `t2tse`, 002/t0 sin T1 y FLAIR, 003/t0 sin T1). Media local 478 MiB por estudio
+  (`du -sk`). TCIA (consultada 2026-11-21): 264 sujetos, 3 981 imágenes, 208.01 GB; **total de estudios sin
+  verificar**. Caché de `preflight` para 004/t0: 249 281 152 B; escenarios hipotéticos de 35 GiB (151 estudios con
+  `t2tse`) y 127 GiB (545), por encima del límite por defecto de 20 GiB.
+- **Pasos futuros** con comandos comprobados (`--help`, `zsh -n` 9/9): descarga con IBM Aspera, `inventory`,
+  `split`, `preflight` (separado de `prepare`), piloto GPU de 1 época en `training-env/` (cu126; Blackwell → cu130),
+  entrenamiento, evaluación frente a EVAL1 y exportación. CP-058 precisado por partición (val → `train` sale con 4;
+  test → falla al evaluar).
+- **Sin ejecutar:** piloto CUDA, descarga Faspex, entrenamiento real.

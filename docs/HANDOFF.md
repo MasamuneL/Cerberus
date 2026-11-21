@@ -32,6 +32,8 @@ Abre las PNG y revísalas: **no te fíes solo de los ✅**. Leer píxeles del ca
 
 ## 2. Estado actual
 
+**CP-080 · FT-DOC · pasos futuros del fine-tuning · 2026-11-21:** [PR #44](https://github.com/MasamuneL/Cerberus/pull/44), merge `2bd4edd`. Fine-tuning sin ejecutar nunca; pasos y comandos en `TRAINING.md` «Estado y pasos futuros». Bloqueo real: solo 1/8 estudios locales elegibles y el dataset completo (208 GB) no cabe hoy. En curso: ATLAS1 (opción A, Lancaster) y UI1.
+
 **CP-079 · ATLAS0 · espacios del atlas · 2026-11-21:** [PR #43](https://github.com/MasamuneL/Cerberus/pull/43), merge `7ccb6e5`. **Las áreas de Brodmann actuales no son válidas en sentido estricto:** atlas en Talairach sobre registro MNI sin conversión; Lancaster desplaza 4.99 mm de media y cambia el reporte en 8/8 estudios. Decisión A/B/C → ATLAS1.
 
 **CP-078 · EVAL1 · evaluación MONAI · 2026-11-21:** [PR #42](https://github.com/MasamuneL/Cerberus/pull/42), merge `606277e`. Tabla en `docs/EVAL_MONAI.md`: Dice TC vs GTV 0.824 ± 0.159 (n=8), 0.888 ± 0.026 con 4 canales (n=6). Reproducir: comando en ese documento (reutiliza máscaras de `storage/results`).
