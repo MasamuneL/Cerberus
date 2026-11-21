@@ -10,11 +10,13 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from cerberus_api import catalog, staging
 from cerberus_api.config import Settings
 from cerberus_api.deps import settings_dep
 from cerberus_api.main import create_app
 from cerberus_api.nifti import load_nifti
 from cerberus_api.routers import uploads
+from cerberus_api.schemas import SeriesInfo, Study, UploadManifest
 from conftest import MakeNifti
 
 # Starlette tipa la respuesta con httpx o httpx2 según lo instalado: se deja como `Any`
@@ -166,3 +168,97 @@ def test_upload_too_large_413(tmp_path: Path) -> None:
     assert r.status_code == 413
     assert _tmp_is_empty(small)
     assert not (small.data_dir / "001").exists()
+
+
+# --------------------------------------------------------------------------- UP1: catalog.find_study
+
+
+def _ready_staging(settings: Settings, make_nifti: MakeNifti, n: int = 2) -> str:
+    """Staging `ready` con `n` series convertidas (NIfTI 8×8×4), listo para `confirm`."""
+    upload_id = staging.new_upload_id()
+    series = []
+    for i in range(n):
+        make_nifti(staging.series_path(settings.staging_dir, upload_id, i), np.ones((8, 8, 4), np.float32))
+        series.append(
+            SeriesInfo(
+                index=i,
+                modality="MR",
+                description=f"serie {i}",
+                n_files=4,
+                shape=[8, 8, 4],
+                spacing_mm=[0.5, 0.5, 1.0],
+                converted=True,
+                suggested_sequence=None,
+            )
+        )
+    staging.write_manifest(settings.staging_dir, UploadManifest(upload_id=upload_id, status="ready", series=series))
+    return upload_id
+
+
+def _listed(settings: Settings, patient: str, timepoint: str) -> Study:
+    """El `Study` de (paciente, tiempo) según `catalog.list_studies` (referencia del comportamiento previo)."""
+    (match,) = [
+        s
+        for s in catalog.list_studies(settings.data_dir, settings.results_dir)
+        if (s.patient, s.timepoint) == (patient, timepoint)
+    ]
+    return match
+
+
+def _seed_studies(upload: Upload, nifti_bytes: NiftiBytes) -> None:
+    """Deja dos estudios en disco (001/t0 y 002/t1) para que el catálogo tenga más de uno."""
+    assert upload(nifti_bytes(), patient="001", timepoint="t0", sequence="flair").status_code == 201
+    assert upload(nifti_bytes(), patient="002", timepoint="t1", sequence="t1gd").status_code == 201
+
+
+def test_upload_study_equals_list_studies(
+    upload: Upload, settings: Settings, nifti_bytes: NiftiBytes, make_nifti: MakeNifti
+) -> None:
+    _seed_studies(upload, nifti_bytes)
+
+    # Subida: segunda secuencia del 001/t0 (el estudio ya tiene otra y hay un estudio vecino)
+    r = upload(nifti_bytes(), patient="001", timepoint="t0", sequence="t2star")
+    assert r.status_code == 201
+    got = Study.model_validate(r.json())
+    assert got.sequences == ["flair", "t2star"]
+    assert got == _listed(settings, "001", "t0")
+
+    # Confirm: estudio nuevo 003/t0 con el catálogo ya poblado
+    client = TestClient(_make_app(settings), base_url="http://localhost", headers={"X-Cerberus": "1"})
+    upload_id = _ready_staging(settings, make_nifti)
+    r = client.post(
+        f"/api/uploads/{upload_id}/confirm",
+        json={"patient": "003", "timepoint": "t0", "mapping": {"0": "flair", "1": "t1gd"}},
+    )
+    assert r.status_code == 201, r.text
+    got = Study.model_validate(r.json())
+    assert got.sequences == ["flair", "t1gd"]
+    assert got == _listed(settings, "003", "t0")
+
+
+def test_upload_and_confirm_do_not_scan_catalog(
+    upload: Upload,
+    settings: Settings,
+    nifti_bytes: NiftiBytes,
+    make_nifti: MakeNifti,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _seed_studies(upload, nifti_bytes)
+
+    def boom(*args: object, **kwargs: object) -> list[Study]:
+        raise AssertionError("catalog.list_studies no debe llamarse al subir ni al confirmar")
+
+    monkeypatch.setattr(catalog, "list_studies", boom)
+
+    r = upload(nifti_bytes(), patient="001", timepoint="t0", sequence="t2star")
+    assert r.status_code == 201
+    assert r.json()["sequences"] == ["flair", "t2star"]
+
+    client = TestClient(_make_app(settings), base_url="http://localhost", headers={"X-Cerberus": "1"})
+    upload_id = _ready_staging(settings, make_nifti, n=1)
+    r = client.post(
+        f"/api/uploads/{upload_id}/confirm",
+        json={"patient": "002", "timepoint": "t1", "mapping": {"0": "flair"}},
+    )
+    assert r.status_code == 201, r.text
+    assert r.json()["sequences"] == ["flair", "t1gd"]

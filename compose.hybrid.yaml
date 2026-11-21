@@ -1,0 +1,22 @@
+# Modo híbrido para Mac con Apple Silicon (HW4, docs/PLAN_MVP.md §25).
+#
+# Docker Desktop no expone Metal/MPS a los contenedores y ANTs no publica wheel Linux arm64, así que el worker
+# de Docker corre en CPU bajo Rosetta. Este override apaga ese worker y deja Redis alcanzable desde el host para que
+# un worker nativo (`uv run python -m cerberus_api.worker`, MONAI en MPS y ANTs arm64) consuma la misma cola.
+# API, Keycloak y frontend siguen en Docker y comparten Data/, storage/ y models/ por bind mount.
+#
+# Uso (comandos completos en README.md, «Mac Apple Silicon: modo híbrido»):
+#   docker compose -f compose.yaml -f compose.hybrid.yaml up -d --build
+#
+# Para volver al worker de Docker sin quitar el override: `--profile docker-worker` (y detén el worker nativo,
+# porque dos workers sobre la misma cola se repartirían los jobs).
+services:
+  worker:
+    # Un servicio con perfil no arranca con `up` salvo que se active el perfil `docker-worker`.
+    profiles: [docker-worker]
+
+  redis:
+    # Solo loopback: Redis corre sin contraseña, así que nunca debe publicarse en 0.0.0.0.
+    # Con CERBERUS_REDIS_PORT se evita chocar con un redis-server local en 6379.
+    ports:
+      - "127.0.0.1:${CERBERUS_REDIS_PORT:-6379}:6379"
