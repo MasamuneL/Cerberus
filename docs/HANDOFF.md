@@ -32,6 +32,8 @@ Abre las PNG y revísalas: **no te fíes solo de los ✅**. Leer píxeles del ca
 
 ## 2. Estado actual
 
+**CP-079 · ATLAS0 · espacios del atlas · 2026-11-21:** [PR #43](https://github.com/MasamuneL/Cerberus/pull/43), merge `7ccb6e5`. **Las áreas de Brodmann actuales no son válidas en sentido estricto:** atlas en Talairach sobre registro MNI sin conversión; Lancaster desplaza 4.99 mm de media y cambia el reporte en 8/8 estudios. Decisión A/B/C → ATLAS1.
+
 **CP-078 · EVAL1 · evaluación MONAI · 2026-11-21:** [PR #42](https://github.com/MasamuneL/Cerberus/pull/42), merge `606277e`. Tabla en `docs/EVAL_MONAI.md`: Dice TC vs GTV 0.824 ± 0.159 (n=8), 0.888 ± 0.026 con 4 canales (n=6). Reproducir: comando en ese documento (reutiliza máscaras de `storage/results`).
 
 **CP-077 · REG1 · registro determinista · 2026-11-21:** [PR #41](https://github.com/MasamuneL/Cerberus/pull/41), merge `b69de94`. Afín en subproceso con 1 hilo + semilla 42; SyNOnly multihilo. 004/t0: 3/3 hashes idénticos en `full` y `fast` (`fast` +15 %). Caché versionada: el primer mapeo de cada estudio se recalcula. Pendiente: QC automático del afín (fuera del ticket) y comprobar en otros estudios/Docker.

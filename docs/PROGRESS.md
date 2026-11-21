@@ -7,7 +7,7 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 
 | Ticket | Estado | Rama | Commit | Fecha | Responsable / herramienta | Notas |
 |---|---|---|---|---|---|---|
-| ATLAS0 · informe de espacios del atlas (§26) | 🟡 | feat/ATLAS0-atlas-spaces | | | Claude Code (orquestador Opus + hc) | oleada 1; Antigravity |
+| ATLAS0 · informe de espacios del atlas (§26) | ✅ | feat/ATLAS0-atlas-spaces | 7ccb6e5 | 2026-11-21 | Antigravity (impl.) + Claude Opus (rev.), orquestador Claude Opus + hc | PR #43; Lancaster: 4.99 mm medio, 8/8 estudios cambian; recomienda A; CP-079 |
 | EVAL1 · evaluación MONAI en todos los estudios (§26) | ✅ | feat/EVAL1-monai-evaluation | 606277e | 2026-11-21 | Codex (impl.) + Claude Opus (rev.), orquestador Claude Opus + hc | PR #42; Dice 0.824 ± 0.159 (n=8), 0.888 ± 0.026 con 4 canales (n=6); CP-078 |
 | D3R · rescate del diagnóstico de #17 (§26) | ✅ | feat/D3R-diagnostics | fd45b08 | 2026-11-21 | Codex (impl.) + Antigravity (rev.), orquestador Claude Opus + hc | PR #40; 1327 tests; privacidad con test; CP-076 |
 | FT-DOC · fine-tuning: estado y pasos futuros (§26) | 🟡 | feat/FTDOC-future-steps | | | Claude Code (orquestador Opus + hc) | oleada 1; Antigravity |
@@ -1376,3 +1376,22 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
   con medidas repetidas (005 aporta 3 filas).
 - **Checks:** Ruff/formato/Pyright, 1310 tests rápidos.
 - **Siguiente:** ATLAS0 (#43, en revisión) y FT-DOC (#44, ronda 3).
+
+### CP-079 · 2026-11-21 · ATLAS0: informe de espacios del atlas de Brodmann (§26)
+
+- **Integración:** [PR #43](https://github.com/MasamuneL/Cerberus/pull/43), merge `7ccb6e5`. Implementó Antigravity
+  (gemini-4-hydrogen-high); revisó Claude Opus: APROBADO a la primera, con la tabla reproducida idéntica.
+- [`docs/ATLAS_ESPACIOS.md`](ATLAS_ESPACIOS.md): el atlas es `fetch_atlas_talairach("ba")` de nilearn 0.14.1 (espacio
+  **Talairach**) y el registro va a la ICBM152 2009a no lineal simétrica (**MNI**), sin conversión.
+- **Medición** con Lancaster `icbm_other2tal` (matriz cotejada con BrainMap; dirección verificada empíricamente por
+  el revisor: con la dirección invertida la diferencia sería ~9 mm), sobre el mismo registro por estudio (7 de
+  `storage/results`, 004/t0 nuevo): desplazamiento medio de centroides de BA **4.99 mm** (máx. 13.40 mm, 005/t1 BA11).
+  **8/8** estudios cambian áreas reportadas (+6 / −29 / 20 cambios Afectada↔Cercana); en **7/8** hay áreas
+  elocuentes implicadas. `MARGIN_MM` = 10 mm.
+- **Opciones:** A (Lancaster, coste muy bajo, mismas 71 etiquetas), B (atlas BA nativo en MNI: ninguno cubre las 29
+  subcorticales; licencias no comerciales), C (etiquetar «aproximado»). Recomendación: **A**.
+- **Recomendados pendientes (para ATLAS1):** el doc cita rutas del scratchpad (efímeras) para los scripts de medición
+  (hay que versionar el script); la frase de verificación NN (0.00 mm / 0.27 %) no coincide con el script entregado
+  (genericLabel, 6.70 %; NN real 0.031 mm / 0.28 %); la cifra «5–13 mm a ~1–2 mm» no tiene fuente; matiz de que
+  `icbm_other2tal` no está validada para la 2009a sym; «desplazamiento» en vez de «error».
+- **Gate:** el usuario elige A, B o C antes de ATLAS1.
