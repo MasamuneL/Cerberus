@@ -294,6 +294,39 @@ def test_real_model_on_data(tmp_path: Path) -> None:
     assert res.dice_vs_gtv is not None and res.dice_vs_gtv.tc > 0.3
 
 
+@pytest.mark.slow
+def test_cuda_fp16_matches_fp32_on_data(tmp_path: Path) -> None:
+    """HW1 en una PC NVIDIA: autocast fp16 vs fp32 en 001/t0 (Dice ≥ 0.99 por región) y tiempos en la salida."""
+    import time
+
+    import torch
+
+    if not torch.cuda.is_available():
+        pytest.skip("Sin GPU CUDA")
+    study = REPO_ROOT / "Data" / "001" / "t0"
+    weights = REPO_ROOT / "models" / segmentation.BUNDLE_NAME / "models" / "model.pt"
+    if not study.is_dir() or not weights.exists():
+        pytest.skip("Sin Data/001/t0 o sin pesos en models/")
+    from monai.networks.nets.segresnet import SegResNet
+
+    net = SegResNet(
+        blocks_down=(1, 2, 2, 4), blocks_up=(1, 1, 1), init_filters=16, in_channels=4, out_channels=3, dropout_prob=0.2
+    )
+    net.load_state_dict(torch.load(weights, map_location="cpu"))
+    masks = {}
+    for amp in (False, True, False, True):  # dos mediciones de cada una (la primera calienta CUDA)
+        start = time.perf_counter()
+        regions = segmentation.segment_regions(
+            _files(study), tmp_path, predictor=segmentation.segresnet_predictor(net, "cuda", amp=amp)
+        )
+        print(f"cuda amp={amp}: {time.perf_counter() - start:.1f} s")
+        masks[amp] = regions
+    for name in ("tc", "wt", "et"):
+        d = segmentation.dice(getattr(masks[False], name), getattr(masks[True], name))
+        print(f"dice fp16 vs fp32 {name}: {d:.4f}")
+        assert d >= 0.99
+
+
 def test_metrics_known_overlap() -> None:
     pred = np.zeros((5, 5, 5), bool)
     ref = pred.copy()
