@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {mkdirSync,writeFileSync} from 'node:fs';
 import {chromium} from 'playwright-core';
 import AxeBuilder from '@axe-core/playwright';
-const base=process.env.CERBERUS_UI??'http://localhost:5173';
+const base=process.env.CERBERUS_UI??`http://localhost:${process.env.CERBERUS_UI_PORT??5173}`;
 const out=new URL('./shots/viewer-3d/',import.meta.url).pathname;
 mkdirSync(out,{recursive:true});
 const report={base,startedAt:new Date().toISOString(),checks:[],errors:[],screenshots:[]};

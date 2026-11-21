@@ -129,7 +129,9 @@ Variables de entorno (prefijo `CERBERUS_`; los valores por defecto son relativos
 | `CERBERUS_REDIS_URL` | `redis://localhost:6379` |
 | `CERBERUS_MAX_UPLOAD_MB` | `2048` |
 | `CERBERUS_MAX_ZIP_UNCOMPRESSED_MB` | `4096` |
-| `CERBERUS_CORS_ORIGINS` | `["http://localhost:5173"]` |
+| `CERBERUS_CORS_ORIGINS` | `["http://localhost:5173"]`; si no se fija, deriva de `CERBERUS_UI_PORT` (§23) |
+| `CERBERUS_API_HOST` / `CERBERUS_API_PORT` | `127.0.0.1` / `8000`; los usa `python -m cerberus_api.serve` y el proxy de Vite (§23) |
+| `CERBERUS_UI_PORT` | `5173`; puerto de Vite y origen derivado de CORS/`CERBERUS_APP_ORIGIN` (§23) |
 | `CERBERUS_CPU_THREADS` | `auto`; entero positivo para fijar los hilos del worker (§16) |
 
 La configuración de autenticación de A0 figura en §17.2. A2 monta las rutas OIDC y sesiones; la protección de
@@ -145,6 +147,7 @@ uv sync                                                    # deps Python (incluy
 redis-server                                               # terminal 1
 uv run python -m cerberus_api.worker              # terminal 2: worker
 uv run uvicorn cerberus_api.main:app --reload --reload-dir backend --port 8000  # terminal 3: API (docs en /docs)
+# alternativa con host/puerto del entorno (§23): uv run python -m cerberus_api.serve --reload
 cd frontend && npm install && npm run dev                  # terminal 4: UI en :5173
 
 # Checks obligatorios antes de un PR
