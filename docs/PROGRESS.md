@@ -619,6 +619,7 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
 - **Publicación:** implementación `ff989ea` en `feat/A0-auth-config`, subida y disponible en el
   [PR #5](https://github.com/MasamuneL/Cerberus/pull/5), pendiente de revisión/integración a `main`.
   El tablero conserva A0 🟡 hasta el merge. Siguiente paso: integrar A0 y entonces tomar A1.
+- **Plan de ejecución:** [`superpowers/plans/2026-11-05-A0-auth-config.md`](superpowers/plans/2026-11-05-A0-auth-config.md).
 
 ### CP-041 · 2026-11-05 · A0 integrado tras QA completo
 - **Autorización:** continuar los tickets posibles, hacer commits/push frecuentes y ejecutar QA antes del merge.
@@ -744,6 +745,7 @@ Leyenda: ⬜ pendiente · 🟡 en curso · ✅ hecho · ⛔ bloqueado.
   la rama de limpieza ajena. Worktree `/private/tmp/cerberus-auth-A1` y `.env.auth` local ignorado se conservan.
 - **Siguiente paso:** A4 (UI de acceso), luego dependencias de ola P y A5. La interfaz aún no refleja roles ni incluye
   login/logout: el acceso se inicia manualmente en `/api/auth/login`. S1/S2 cerrados; resto de ola P pendiente.
+- **Plan de ejecución:** [`superpowers/plans/2026-11-05-auth-remaining.md`](superpowers/plans/2026-11-05-auth-remaining.md).
 
 
 ### Validación previa a integración A4/B13 · 2026-11-10
@@ -778,6 +780,11 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
   validada previamente; no se reinició durante este merge para evitar interrumpir trabajos.
 - **Estado posterior:** A4 y B13 completados; A5 y ola P pendientes. Fine-tuning solo documentado,
   sin entrenamiento iniciado. Checkout principal actualizado a main y checkpoint subido.
+- **Histórico Docker local (2026-11-10, sustituido por CP-050):** imágenes construidas desde
+  `/private/tmp/cerberus-a4-metrics-docker-20261110` (snapshot `feat/A4-auth-ui` `52ebb0b` + B13 `2c48e71`),
+  Compose/`.env.auth` en `/private/tmp/cerberus-auth-A1`. Durante la recreación de API hubo un 504;
+  arq recuperó la segmentación 001/t0 en el segundo intento (2026-11-10 15:43:44 UTC): TC/GTV Dice
+  0.856827, recall 0.829519, precisión 0.885993, HD95 3.741657 mm (`storage/results/001/t0/monai_seg.json`).
 
 
 ### CP-047 · 2026-11-10 · Documentación del mapeo de Brodmann
@@ -870,7 +877,8 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
   Captura del formulario en español revisada. No se repitieron visor completo ni smoke nginx;
   no se ejecutaron modelos o subidas ni se modificaron cuentas de la demo existente.
 - **Siguiente paso:** actualizar el checkout del profesor y ejecutar la sincronización con Keycloak
-  listo si ya tenía un realm. El HTTP 502 requiere sus logs; crear una cuenta no corrige conectividad.
+  listo (`uv run python tools/auth/sync_realm.py`) si ya tenía un realm. El HTTP 502 requiere sus logs;
+  crear una cuenta no corrige conectividad.
 
 ### CP-050 · 2026-11-11 · Docker local actualizado desde main
 
@@ -933,7 +941,8 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
   analyst, visor 001/t0, GTV 33.14 cm³ y logout que vuelve a 401 en sesión/catálogo/NIfTI.
 - Los archivos de sesión temporal y el proyecto QA aislado se eliminaron al terminar. Se conservaron
   todos los volúmenes locales de la aplicación. No se ejecutaron modelos, subidas ni suite Vite completa.
-  A5 y ola P siguen pendientes. **Siguiente paso:** actualizar el clon del profesor y arrancar en 8082.
+  A5 y ola P siguen pendientes. **Siguiente paso:** actualizar el clon del profesor y arrancar en 8082
+  (`CERBERUS_HTTP_PORT=8082 docker compose up -d --build` y abrir `http://localhost:8082`).
 
 
 ### En revisión · 2026-11-11 · F12: superficie GTV y vista 3D del PR #15
@@ -985,6 +994,8 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
   CPU de la app intactos. No probado en GPU real; cu126 puede no cubrir `sm_120` (documentado).
 - **Checks:** Ruff/formato/Pyright y 934 tests rápidos (5 slow excluidos). Revisión independiente aplicada.
   Frontend sin cambios. Sin datos reales, entrenamiento ni evaluación. Contratos §6/§7 intactos.
+- **Nota CLI y datos locales:** `uv run python -m cerberus_training --help` funciona en CPU sin red;
+  en `Data/` local solo 1 de 8 estudios cumple el perfil estricto (falta `t2tse`, hay T2*).
 - Siguiente: FT1 (inventario y particiones) en `feat/FT1-inventory-splits`.
 
 ### CP-054 · 2026-11-19 · FT1: inventario de CFB-GBM y particiones por paciente
@@ -1054,8 +1065,9 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
 - **Definición de entrega (§10) cumplida:** comandos y artefactos existen, recorrido sintético completo,
   entradas incompatibles rechazadas, reanudación/exportación reproducibles.
 - **Pendiente (no ejecutado):** auditoría del dataset completo, piloto GPU, entrenamiento real, validación
-  científica, integración en API/UI y mecanismo de exclusión manual de estudios que fallen en `prepare`.
-  Ramas `wip/FT*` obsoletas.
+  científica, integración en API/UI y mecanismo de exclusión manual de estudios que fallen en `prepare`
+  (hoy dejan la caché incompleta y `train` sale con código 4). En `Data/` local solo 1 de 8 estudios
+  cumple el perfil estricto (falta `t2tse`). Serie completa de PR: #18–#24. Ramas `wip/FT*` obsoletas.
 
 ### CP-059 · 2026-11-20 · PERF1: volumetría recortada a la caja del GTV
 
@@ -1066,6 +1078,8 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
   anisotrópico y máscara aleatoria; revisor comparó los 8 pares reales de `Data/`: 0 diferencias.
 - **Benchmark** `Data/001/t0`: ~1700–1800 ms → 76–80 ms por estudio (`/volumetry`, y cada tiempo de `/longitudinal`).
 - **Checks:** Ruff/formato/Pyright, 1191 tests rápidos. Revisión independiente (Opus) aprobada sin cambios.
+- **Plan y orquestación:** plan PERF en `PLAN_MVP.md` §21 (7 tickets, sin cambio funcional); orquestación
+  con Herdr (`hc`): worktrees en `../Cerberus-wt/PERFN`, prompts y reportes en el scratchpad de la sesión.
 - Siguiente: PERF2 (caché de volumetría); PERF3 y PERF5 en revisión/curso.
 
 ### CP-060 · 2026-11-20 · PERF3: predictor MONAI reutilizado entre jobs
@@ -1104,6 +1118,10 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
   hashes nuevos), React desmonta el Workspace. Candidato a ticket aparte.
 - **Estado PERF:** PERF1/2/3/5 ✅. PERF4, PERF6 y PERF7 esperan el merge del PR #22 (VIZ1 toca `Viewer.tsx` y
   `routers/studies.py`). Siguiente: tras el merge de #22, oleada 3 (PERF4 + PERF6) y luego PERF7 según `PLAN_MVP.md` §21.
+- **Lecciones de Herdr (`hc`):** `uv` solo existe vía shim de pyenv (lanzar hijos con
+  `env PATH=~/.pyenv/versions/3.11.9/bin:$PATH`), `--add-dir=` va al final del comando (es variádico),
+  hijos en `--permission-mode auto`. `gh pr merge --delete-branch` ya borra el worktree y la rama locales;
+  worktrees en `../Cerberus-wt/PERFN` desde `origin/main`.
 
 ### CP-063 · 2026-11-20 · VIZ1: bordes suaves de GTV, MONAI y áreas (solo visualización)
 
@@ -1118,6 +1136,8 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
   `verify-mask-surface.mjs` y `verify-viewer-3d.mjs` en verde. Capturas revisadas (multiplanar con todas las capas, 3D).
 - **Notas:** con el chip activo, las lecturas del cursor sobre GTV y áreas usan la copia suavizada y pueden diferir en el
   borde (documentado en el PR). La rama `feat/viz-smooth-masks` sigue viva (worktree local `../Cerberus-viz`).
+- **Nota para PERF6:** desbloquea PERF4/PERF6/PERF7; la URL del GTV lleva `?smooth=1` y la copia suavizada
+  depende solo de `Data/`, así que puede cachearse como la base.
 - Siguiente: PERF4 + PERF6 (oleada 3); luego PERF7 y CFG1 (puertos configurables por env, pedido por el usuario).
 
 ### CP-064 · 2026-11-20 · PERF4: encolar jobs sin leer headers NIfTI
@@ -1146,6 +1166,8 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
 - **Prueba manual:** API 8011/8012 y UI 5191/5192; `/api/health` responde a través del proxy.
 - **Checks:** Ruff/formato/Pyright, 1219 tests rápidos, `npm run build`. Revisión independiente (Opus) aprobada.
 - **Nota menor:** en Vite, un `CERBERUS_UI_PORT` vacío o no numérico da 0/NaN; la API sí lo rechaza.
+- **Variables y siguiente:** puertos de desarrollo `CERBERUS_API_PORT`, `CERBERUS_UI_PORT` y
+  `CERBERUS_REDIS_URL` (README). Siguiente: PERF6; luego PERF7.
 
 ### CP-066 · 2026-11-20 · PERF6: caché de buffers del visor por estudio
 
@@ -1170,6 +1192,9 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
 - **Benchmark** (navegador, 001/t0, 54.5 M vóxeles): ~39 → 31 ms (−19 %). El coste dominante es recorrer el volumen.
 - **Checks:** Ruff/formato/Pyright, 1222 tests, `npm run build`, `verify.mjs` 33/33. Revisión independiente (Opus) aprobada.
 - **Plan PERF completo:** PERF1–PERF7 ✅ (CP-059–067), con VIZ1 (CP-063) y CFG1 (CP-065) integrados en la misma sesión.
+- **Pendientes anotados (base de §24):** ErrorBoundary para el chunk diferido del visor (CP-062),
+  `uploads._find_study` con `find_study` (CP-064), reutilizar el `NVImage` decodificado al alternar capas
+  (CP-066) y validar `CERBERUS_UI_PORT` en Vite (CP-065).
 
 ### CP-068 · 2026-11-20 · CFG2: Vite valida los puertos del entorno
 
@@ -1182,7 +1207,7 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
 - **Desviación:** antes un valor inválido arrancaba en un puerto aleatorio/NaN; ahora falla al arrancar. Un espacio inicial
   se rechaza (la API probablemente lo aceptaría).
 - **Checks:** Ruff/formato/Pyright, 1222 tests, `npm run build`. Revisión independiente (Opus) aprobada.
-- Siguiente: UP1 en revisión (PR #34), PERF8 midiendo el gate; luego ERR1.
+- Siguiente: UP1 en revisión (PR #34), PERF8 midiendo el gate; luego ERR1. En paralelo, otra sesión lleva el plan §25 (HW1–HW4).
 
 ### CP-069 · 2026-11-20 · UP1: las subidas resuelven el estudio con `find_study`
 
@@ -1225,6 +1250,7 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
 - **Medido en 001/t0** (Mac arm64 con carga alta de otras sesiones, 2 corridas): segmentación 16–34 s nativo contra
   87–90 s en Docker+Rosetta; áreas en frío 26–38 s contra 67–70 s; con caché de registro 9 s contra 31 s.
 - **Checks:** Ruff/formato/Pyright, 1228 tests tras traer main. Revisión independiente (Opus) aprobada; sus 2 nits aplicados.
+- **Comando manual:** `docker compose -f compose.yaml -f compose.hybrid.yaml up -d` + worker nativo (README).
 - En curso: HW1 (CUDA) y HW3 (PR #36, en revisión). Hallazgo de HW3: el registro `full` no es determinista entre
   corridas (004/t0, Dice 0.18 contra sí mismo); ticket aparte por definir.
 
@@ -1263,6 +1289,11 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
 - **Notas menores (no hechas):** el botón «Reintentar» sale sin estilo y a todo el ancho (`.btn-secondary` solo existe dentro de
   `.upload-panel`); tras un reintento fallido el foco cae a `<body>`. El trailer del commit `04835ef` dice Sonnet 5.5 en vez de Opus 5.5.
 - **Plan §24 cerrado:** CFG2, UP1 y ERR1 ✅; PERF8 descartado por el gate (CP-070).
+- **Cierre §24 en `main` (2026-11-21):** pasaron Ruff/formato/Pyright, 1237 tests rápidos, 7 slow y
+  `npm run build`; la pasada final de e2e no fue concluyente porque, con load average 40–49 (VM de Docker +
+  sesión HW en paralelo), SwiftShader bloquea el hilo ~180 s tras decodificar y todo expira. Pendiente
+  repetir `verify`, `verify-viewer-3d`, `verify-mask-surface`, `verify-overlay-toggle` y
+  `verify-viewer-chunk-error` con la máquina en reposo (en los PR pasaron: 33/33, 7/7, 3/3, 4/4, 5/5).
 
 ### CP-074 · 2026-11-21 · HW1: imagen CUDA y perfil GPU NVIDIA
 
@@ -1281,6 +1312,8 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
   B2: fallback por arquitectura. También se aplicaron los recomendados.
 - **Pendiente:** validar en la PC NVIDIA con `CERBERUS_REQUIRE_CUDA=1 uv run --no-group torch-cpu --group torch-cu126 pytest -m slow -k cuda_fp16 -s`
   y `docker stats` (¿bastan 6g de `mem_limit` con CUDA?). Para HW2: variante cu130 para Blackwell y ajuste de memoria.
+- **Comandos CUDA:** en Docker con NVIDIA `docker compose -f compose.yaml -f compose.gpu.yaml up -d --build`;
+  variante CUDA local con `uv run --no-group torch-cpu --group torch-cu126 ...`.
 - **Checks:** Ruff/formato/Pyright, 1272 tests, `npm run build`.
 - Siguiente: HW2 (lanzador). Después, REG1.
 
@@ -1333,6 +1366,9 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
   `verify-viewer-chunk-error` 5/5, 0 errores. Calibración: Codex y Antigravity (neon/argon/hydrogen) 3/3;
   `AGY_MODEL = gemini-4-hydrogen-high` (39 s). Revisores Antigravity en `--mode auto` (en `plan` headless deniega
   todo comando; decisión del usuario).
+- **Uso en contenedor y referencia:** seguir README «Diagnóstico de un 502»
+  (`python -m cerberus_api.diagnostics --compose-stdin` dentro del contenedor `api`) y enviar
+  `cerberus-diagnostico.json`. Ronda §26 documentada en [`PLAN_VALIDEZ.md`](PLAN_VALIDEZ.md).
 - **Pendiente:** decidir si se cierra #17 (comentado con el enlace a #40).
 - **Siguiente:** oleada 1 de §26 en revisión: REG1 (#41), EVAL1 (#42), ATLAS0 (#43), FT-DOC (#44).
 
@@ -1413,7 +1449,8 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
   `split`, `preflight` (separado de `prepare`), piloto GPU de 1 época en `training-env/` (cu126; Blackwell → cu130),
   entrenamiento, evaluación frente a EVAL1 y exportación. CP-058 precisado por partición (val → `train` sale con 4;
   test → falla al evaluar).
-- **Sin ejecutar:** piloto CUDA, descarga Faspex, entrenamiento real.
+- **Sin ejecutar:** piloto CUDA, descarga Faspex, entrenamiento real (el dataset completo de 208 GB no cabe hoy localmente).
+- **En curso en ese momento:** ATLAS1 (opción A, Lancaster) y UI1.
 
 ### CP-081 · 2026-11-21 · ATLAS1: atlas de Brodmann proyectado a MNI152 con Lancaster (opción A, §26)
 
@@ -1435,6 +1472,7 @@ de comprobarla. La repetición completa pasó. No se ejecutan modelos ni subidas
 - **Checks:** Ruff/formato/Pyright, 1331 tests rápidos.
 - **Sin validar / pendiente:** `icbm_other2tal` no está validada específicamente para la ICBM152 2009a sym; atlas de
   un único cerebro. `PLAN_MVP.md` §13 aún describe el atlas como MNI.
+- **Siguiente:** DOC1 (compactar HANDOFF) y cierre de §26.
 
 ### CP-082 · 2026-11-21 · UI1: botón «Reintentar» del visor (§26)
 

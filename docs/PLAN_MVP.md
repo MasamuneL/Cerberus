@@ -583,6 +583,7 @@ El estado del desarrollo vive en el repo, no en la memoria de una persona ni de 
 arranque rápido) para que otra herramienta (Codex, etc.) continúe sin contexto previo. Se actualiza en cada checkpoint.
 
 **Reglas:**
+- Antes de escribir un checkpoint: `git pull --rebase`; N = mayor CP existente + 1; si el push se rechaza, recalcula N.
 - La bitácora solo crece hacia abajo. No se reescriben checkpoints viejos; si algo cambió, se escribe uno nuevo.
 - Una desviación del plan (firma distinta, archivo extra, contrato ajustado) se anota en el checkpoint **y**
   se corrige en este plan en el mismo commit.
