@@ -7,7 +7,10 @@ Flujo:
    `MOVING_SPACING_MM` isotrópico (solo para acelerar el registro) y se registra a la plantilla MNI152 de 1 mm
    (enmascarada con su máscara de cerebro) con ANTs SyN (perfil `full`; `fast` usa 2 mm en ambas, ver
    `REGISTRATION_PROFILES`). El GTV dilatado `GTV_MARGIN_MM` se excluye del costo (`moving_mask`) para que el
-   tumor no deforme el campo.
+   tumor no deforme el campo. Desde REG1 el registro va en dos pasos para ser reproducible: la etapa afín corre en
+   un subproceso con 1 hilo (`cerberus_api.linear_reg`) y el SyN, multihilo, parte de ella (`SyNOnly`).
+   Al registrar se guarda un QC (determinante y rotación del afín, Dice de la máscara de cerebro en MNI) que
+   `map_atlas` convierte en avisos.
 2. El atlas, separado por hemisferio en MNI, vuelve al grid de la secuencia de referencia del visor (t1gd si
    existe) con `invtransforms` + `genericLabel`. Las transformaciones viven en el espacio físico, así que sirven
    para cualquier secuencia del estudio (todas están co-registradas en el dataset).
@@ -17,8 +20,13 @@ Flujo:
 
 import hashlib
 import json
+import math
+import os
 import shutil
+import subprocess
+import sys
 import tempfile
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -30,6 +38,7 @@ from scipy.ndimage import distance_transform_edt
 
 from cerberus_api.config import RegistrationMode
 from cerberus_api.nifti import load_nifti
+from cerberus_api.runtime import THREAD_ENV_VARS
 from cerberus_api.schemas import Hemisphere
 
 ATLAS_NAME = "Talairach-Brodmann (nilearn)"
@@ -44,9 +53,15 @@ MOVING_SPACING_MM = 1.5
 GTV_MARGIN_MM = 5.0
 LARGE_GTV_FRACTION = 0.10
 
-# "SyN" de ANTsPy: afín + SyN con reg_iterations=(40, 20, 0).
+# "SyN" de ANTsPy: afín + SyN con reg_iterations=(40, 20, 0). Desde REG1 se ejecuta en dos pasos (afín con 1 hilo
+# en `linear_reg` + `SyNOnly` multihilo) con los mismos parámetros; el nombre sigue siendo el del reporte.
 TYPE_OF_TRANSFORM = "SyN"
+SYN_STAGE = "SyNOnly"  # SyN sin etapas lineales: parte de la afín del subproceso (`initial_transform`)
 RANDOM_SEED = 42
+LINEAR_THREADS = 1  # hilos de la etapa afín: con 1 es bit a bit reproducible (REG1)
+# Versión del algoritmo de registro en la huella de caché: subirla invalida las transformaciones guardadas.
+# 2 = REG1 (afín con 1 hilo + SyNOnly, QC en transforms.json). Las de HW3 (sin versión) se recalculan.
+REGISTRATION_VERSION = 2
 
 
 @dataclass(frozen=True)
@@ -60,7 +75,7 @@ class RegistrationProfile:
     fixed_spacing_mm: float | None = None  # remuestreo de la plantilla MNI (None = su 1 mm original)
 
 
-# `full` es el registro de referencia (bit a bit el de antes de HW3): no cambiar sus valores sin revalidar.
+# `full` es el registro de referencia: no cambiar sus valores sin revalidar (benchmark de REG1 en 001, 004 y 005).
 # `fast` (benchmark de HW3 en 001/t0, 004/t0 y 005/t1): SyN con reg_iterations=(20, 10, 0), imagen móvil y plantilla
 # MNI a 2 mm. Bajar solo las iteraciones o la resolución de la móvil rinde ~1.3x porque el costo lo domina la
 # plantilla de 1 mm; bajar también la plantilla da ~3x con las mismas áreas «Afectadas». `antsRegistrationSyNQuick[s]`
@@ -77,6 +92,24 @@ CACHE_FILE = "transforms.json"
 WARN_NO_BRAIN = "Sin brain_mask: el registro es menos preciso"
 WARN_ONLY_T1GD = "Solo hay T1 con contraste: el registro usa t1gd"
 WARN_LARGE_GTV = "GTV grande (>10 % del cerebro): el atlas puede desplazarse"
+
+# QC del registro (REG1). Umbrales elegidos con los 8 estudios del dataset (docs/PLAN_MVP.md §25, fila REG1):
+# - Escala: el determinante de la afín (MNI → paciente) es el cociente de volúmenes; se compara con el cociente de
+#   las máscaras de cerebro (paciente / MNI) porque los cerebros del dataset miden 1.2–1.6 L y la máscara MNI 1.9 L
+#   (001/t0 tiene determinante 0.59 con un registro correcto). Sin brain_mask se usa el determinante crudo.
+# - Rotación: el cabeceo real del paciente en el escáner llega a ~22° (004/t0, verificado con QC visual), así que
+#   15° daría falsos positivos; se avisa por encima de `MAX_ROTATION_DEG`.
+# - Dice de la máscara de cerebro del paciente llevada a MNI contra la de la plantilla.
+SCALE_RANGE = (0.7, 1.4)
+MAX_ROTATION_DEG = 30.0
+MIN_BRAIN_DICE = 0.80
+QC_SPACING_MM = 2.0  # grid MNI del Dice de QC: a 2 mm cuesta ~0.1 s en vez de ~0.5 s a 1 mm
+WARN_REG_SCALE = "Registro a MNI dudoso: la afín escala el cerebro ×{:.2f} (esperado 0.7–1.4); revisa las áreas"
+WARN_REG_ROTATION = "Registro a MNI dudoso: la afín rota {:.0f}° (> {:.0f}°); revisa las áreas"
+WARN_REG_DICE = (
+    "Registro a MNI dudoso: la máscara de cerebro deformada solapa poco con la de MNI (Dice {:.2f} < {:.2f}); "
+    "revisa las áreas"
+)
 
 
 @dataclass
@@ -183,10 +216,10 @@ def _mask_on(img: nib.Nifti1Image, ref: nib.Nifti1Image) -> np.ndarray:
 
 
 def _cache_key(study_files: dict[str, Path], moving_seq: str, mode: RegistrationMode = "full") -> str:
-    """Huella del registro: archivos de entrada (ruta, tamaño, mtime) + perfil y parámetros.
+    """Huella del registro: archivos de entrada (ruta, tamaño, mtime) + perfil, parámetros y versión.
 
-    La huella de `full` es idéntica a la de antes de HW3 (no invalida cachés existentes); `fast` añade su
-    modo y sus kwargs para no mezclar transformaciones de ambos perfiles.
+    `fast` añade su modo y sus kwargs para no mezclar transformaciones de ambos perfiles. `REGISTRATION_VERSION`
+    entra en ambos modos: las transformaciones de antes de REG1 (afín multihilo, no reproducible) se recalculan.
     """
     profile = REGISTRATION_PROFILES[mode]
     h = hashlib.sha256()
@@ -200,6 +233,7 @@ def _cache_key(study_files: dict[str, Path], moving_seq: str, mode: Registration
     h.update(f"{profile.type_of_transform}:{profile.spacing_mm}:{GTV_MARGIN_MM}:{RANDOM_SEED}".encode())
     if mode != "full":
         h.update(f":{mode}:{profile.fixed_spacing_mm}:{sorted(profile.extra_kwargs.items())}".encode())
+    h.update(f":v{REGISTRATION_VERSION}:{SYN_STAGE}:{LINEAR_THREADS}".encode())
     return h.hexdigest()
 
 
@@ -218,23 +252,161 @@ def _load_cached(mni_dir: Path, key: str) -> list[str] | None:
     return inv if inv and all(Path(p).is_file() for p in inv) else None
 
 
-def _register(
-    study_files: dict[str, Path],
-    moving_seq: str,
-    mni_dir: Path,
-    models_dir: Path,
-    tmp: Path,
-    mode: RegistrationMode = "full",
-) -> list[str]:
-    """Registra paciente → MNI con ANTs y guarda las transformaciones en `mni_dir`. Devuelve `invtransforms`.
+class LinearStage:
+    """Etapa afín en un subproceso con `LINEAR_THREADS` hilos (`cerberus_api.linear_reg`).
 
-    `mode` elige el perfil de `REGISTRATION_PROFILES`: `full` usa SyN y 1.5 mm; `fast`, ver su definición.
+    Hace falta otro proceso porque ITK fija sus hilos al importarse y el worker ya importó ANTs con N hilos. Se lanza
+    al principio de `_register` para que el arranque (~1 s) se solape con la preparación de las imágenes; `submit`
+    le manda los argumentos y `result` espera la ruta de la afín. `close` mata el proceso si sigue vivo.
+    """
+
+    def __init__(self, tmp: Path) -> None:
+        env = dict(os.environ)
+        for var in THREAD_ENV_VARS:
+            env[var] = str(LINEAR_THREADS)
+        self._stderr_path = tmp / "linear_stderr.txt"
+        self._stderr = self._stderr_path.open("w", encoding="utf-8")
+        self._proc = subprocess.Popen(
+            [sys.executable, "-m", "cerberus_api.linear_reg"],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=self._stderr,  # a archivo: un pipe lleno bloquearía al hijo
+            text=True,
+            env=env,
+        )
+
+    def submit(self, args: dict[str, Any]) -> None:
+        """Envía los argumentos (ver `linear_reg`) y cierra stdin: el hijo empieza a registrar."""
+        assert self._proc.stdin is not None
+        self._proc.stdin.write(json.dumps(args))
+        self._proc.stdin.close()
+
+    def result(self) -> str:
+        """Espera al hijo y devuelve la ruta del `.mat`; `RuntimeError` si falló."""
+        assert self._proc.stdout is not None
+        out = self._proc.stdout.read()
+        code = self._proc.wait()
+        lines = out.strip().splitlines()
+        if code != 0 or not lines or not Path(lines[-1]).is_file():
+            self._stderr.flush()
+            detail = self._stderr_path.read_text(encoding="utf-8", errors="replace").strip()[-500:]
+            raise RuntimeError(f"Falló la etapa afín del registro (código {code}): {detail}")
+        return lines[-1]
+
+    def close(self) -> None:
+        if self._proc.poll() is None:
+            self._proc.kill()
+            self._proc.wait()
+        for stream in (self._proc.stdin, self._proc.stdout):
+            if stream is not None and not stream.closed:
+                stream.close()
+        self._stderr.close()
+
+
+def affine_matrix(mat_path: Path) -> np.ndarray:
+    """Parte lineal 3x3 de una afín de ANTs (`*GenericAffine.mat`: 9 coeficientes por filas + traslación)."""
+    import ants
+
+    params = np.asarray(ants.read_transform(str(mat_path)).parameters, dtype=float)
+    if params.size != 12:
+        raise ValueError(f"Afín 3D inesperada: {params.size} parámetros")
+    return params[:9].reshape(3, 3)
+
+
+def affine_qc(matrix: np.ndarray) -> tuple[float, float]:
+    """`(determinante, rotación en grados)` de la parte lineal de una afín.
+
+    La rotación sale de la descomposición polar (`R = U Vᵀ` de la SVD), así que no la contaminan escala ni cizalla.
+    """
+    u, _, vt = np.linalg.svd(matrix)
+    rot = u @ vt
+    cos = float(np.clip((np.trace(rot) - 1.0) / 2.0, -1.0, 1.0))
+    return float(np.linalg.det(matrix)), math.degrees(math.acos(cos))
+
+
+def dice(a: np.ndarray, b: np.ndarray) -> float:
+    """Dice de dos máscaras binarias del mismo grid (1.0 si ambas están vacías)."""
+    total = int(a.sum()) + int(b.sum())
+    return 2.0 * int((a & b).sum()) / total if total else 1.0
+
+
+def registration_warnings(qc: dict[str, Any]) -> list[str]:
+    """Avisos en español a partir del QC guardado en `transforms.json` (claves ausentes = sin aviso).
+
+    `scale` = determinante / cociente de volúmenes de cerebro (o el determinante crudo sin brain_mask).
+    """
+    out: list[str] = []
+    scale = qc.get("scale")
+    if scale is not None and not SCALE_RANGE[0] <= scale <= SCALE_RANGE[1]:
+        out.append(WARN_REG_SCALE.format(scale))
+    rotation = qc.get("rotation_deg")
+    if rotation is not None and rotation > MAX_ROTATION_DEG:
+        out.append(WARN_REG_ROTATION.format(rotation, MAX_ROTATION_DEG))
+    brain_dice = qc.get("brain_dice")
+    if brain_dice is not None and brain_dice < MIN_BRAIN_DICE:
+        out.append(WARN_REG_DICE.format(brain_dice, MIN_BRAIN_DICE))
+    return out
+
+
+def _registration_qc(
+    affine_path: Path,
+    fwdtransforms: list[str],
+    tmp: Path,
+    fixed_brain: np.ndarray,
+    fixed_voxel_mm3: float,
+    moving_brain: np.ndarray | None,
+    moving_voxel_mm3: float,
+) -> dict[str, Any]:
+    """QC del registro recién hecho: determinante, rotación, escala relativa y Dice del cerebro en MNI.
+
+    El Dice se mide en un grid MNI de `QC_SPACING_MM` (la máscara MNI remuestreada por vecino más cercano).
     """
     import ants
 
-    profile = REGISTRATION_PROFILES[mode]
-    spacing = profile.spacing_mm
+    det, rotation = affine_qc(affine_matrix(affine_path))
+    qc: dict[str, Any] = {"det": round(det, 4), "rotation_deg": round(rotation, 2), "scale": round(det, 4)}
+    if moving_brain is not None and moving_brain.any() and fixed_brain.any():
+        ratio = moving_brain.sum() * moving_voxel_mm3 / (fixed_brain.sum() * fixed_voxel_mm3)
+        qc["volume_ratio"] = round(float(ratio), 4)
+        qc["scale"] = round(det / float(ratio), 4)
+        grid = ants.resample_image(
+            ants.image_read(str(tmp / "fixed_mask.nii.gz")), (QC_SPACING_MM,) * 3, use_voxels=False, interp_type=1
+        )
+        warped = ants.apply_transforms(
+            fixed=grid,
+            moving=ants.image_read(str(tmp / "moving_brain.nii.gz")),
+            transformlist=fwdtransforms,
+            interpolator="genericLabel",
+        )
+        qc["brain_dice"] = round(dice(warped.numpy() > 0.5, grid.numpy() > 0.5), 4)
+    return qc
 
+
+def _load_qc(mni_dir: Path) -> dict[str, Any]:
+    """QC guardado en `transforms.json` (vacío si no existe o no se puede leer)."""
+    try:
+        meta = json.loads((mni_dir / CACHE_FILE).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    qc = meta.get("qc") if isinstance(meta, dict) else None
+    return qc if isinstance(qc, dict) else {}
+
+
+@dataclass
+class _Inputs:
+    """Lo que `_prepare_inputs` deja en `tmp` y el QC necesita después."""
+
+    mni_brain: np.ndarray  # máscara de la plantilla en su grid
+    fixed_voxel_mm3: float
+    brain: np.ndarray | None  # brain_mask del paciente en el grid de la imagen móvil
+    moving_voxel_mm3: float
+
+
+def _prepare_inputs(
+    study_files: dict[str, Path], moving_seq: str, models_dir: Path, tmp: Path, profile: RegistrationProfile
+) -> _Inputs:
+    """Escribe en `tmp` la plantilla, la imagen móvil, sus máscaras de costo y el cerebro del paciente."""
+    spacing = profile.spacing_mm
     template, template_mask = fetch_template(models_dir)
     if profile.fixed_spacing_mm is not None:
         # Plantilla y máscara a menor resolución: las transformaciones viven en el espacio físico, así que el
@@ -252,10 +424,12 @@ def _register(
     assert isinstance(moving_img, nib.Nifti1Image)
     moving_np = np.nan_to_num(np.asarray(moving_img.dataobj, dtype=np.float32))
     cost = np.ones(moving_np.shape, bool)
+    brain: np.ndarray | None = None
     if "brain_mask" in study_files:
         brain = _mask_on(load_nifti(study_files["brain_mask"]), moving_img)
         moving_np = moving_np * brain
         cost &= brain
+        nib.save(nib.Nifti1Image(brain.astype(np.uint8), moving_img.affine), tmp / "moving_brain.nii.gz")
     if "gtv" in study_files:
         gtv = _mask_on(load_nifti(study_files["gtv"]), moving_img)
         if gtv.any():
@@ -264,30 +438,85 @@ def _register(
             cost &= dist > GTV_MARGIN_MM
     nib.save(nib.Nifti1Image(moving_np, moving_img.affine), tmp / "moving.nii.gz")
     nib.save(nib.Nifti1Image(cost.astype(np.uint8), moving_img.affine), tmp / "moving_mask.nii.gz")
+    fixed_voxel_mm3 = float(np.prod(template.header.get_zooms()[:3]))
+    return _Inputs(mni_brain, fixed_voxel_mm3, brain, spacing**3)
+
+
+def _register(
+    study_files: dict[str, Path],
+    moving_seq: str,
+    mni_dir: Path,
+    models_dir: Path,
+    tmp: Path,
+    mode: RegistrationMode = "full",
+    while_linear: Callable[[], None] | None = None,
+) -> list[str]:
+    """Registra paciente → MNI con ANTs y guarda las transformaciones en `mni_dir`. Devuelve `invtransforms`.
+
+    `mode` elige el perfil de `REGISTRATION_PROFILES`: `full` usa SyN y 1.5 mm; `fast`, ver su definición.
+    Dos pasos (REG1): afín con 1 hilo en un subproceso (`LinearStage`) y `SyNOnly` multihilo que parte de ella.
+    Con `-z 1` ANTs colapsa la afín inicial en `pat2mni_0GenericAffine.mat`, así que la salida tiene la misma forma
+    que el "SyN" de un paso (afín + `1Warp`/`1InverseWarp`). `transforms.json` guarda además el QC.
+    `while_linear` (opcional) se ejecuta mientras el subproceso calcula la afín (trabajo de un hilo del llamador).
+    """
+    import ants
+
+    profile = REGISTRATION_PROFILES[mode]
+    stage = LinearStage(tmp)  # arranca ya: importa ANTs mientras se preparan las imágenes
+    try:
+        inputs = _prepare_inputs(study_files, moving_seq, models_dir, tmp, profile)
+        # Paso 1: afín reproducible (1 hilo). `moving_mask` (sin GTV) también entra en esta etapa, como hacía
+        # `mask_all_stages=True` en el SyN de un paso. Sus archivos quedan en `tmp`: el SyN la colapsa en su salida.
+        stage.submit(
+            {
+                "fixed": str(tmp / "fixed.nii.gz"),
+                "moving": str(tmp / "moving.nii.gz"),
+                "mask": str(tmp / "fixed_mask.nii.gz"),
+                "moving_mask": str(tmp / "moving_mask.nii.gz"),
+                "outprefix": str(tmp / "linear_"),
+                "random_seed": RANDOM_SEED,
+            }
+        )
+        if while_linear is not None:
+            while_linear()
+        linear = stage.result()
+    finally:
+        stage.close()
 
     # Limpia transformaciones viejas: ANTsPy arma la lista de salida con glob(outprefix + "*")
     if mni_dir.exists():
         shutil.rmtree(mni_dir)
     mni_dir.mkdir(parents=True)
+    # Paso 2: SyN multihilo desde la afín (mismos parámetros de SyN que el "SyN" de ANTsPy)
     reg = ants.registration(
         fixed=ants.image_read(str(tmp / "fixed.nii.gz")),
         moving=ants.image_read(str(tmp / "moving.nii.gz")),
-        type_of_transform=profile.type_of_transform,
+        type_of_transform=SYN_STAGE,
+        initial_transform=[linear],
         outprefix=str(mni_dir / TX_PREFIX),
         mask=ants.image_read(str(tmp / "fixed_mask.nii.gz")),
         moving_mask=ants.image_read(str(tmp / "moving_mask.nii.gz")),
-        mask_all_stages=True,  # el GTV queda fuera del costo también en la etapa afín
+        mask_all_stages=True,
         random_seed=RANDOM_SEED,
         **profile.extra_kwargs,
     )
+    fwd = [str(p) for p in reg["fwdtransforms"]]
     inv = [str(p) for p in reg["invtransforms"]]
+    affine_out = next((Path(p) for p in fwd if p.endswith(".mat")), None)
+    if affine_out is None or not any("Warp" in Path(p).name for p in fwd):
+        raise RuntimeError(f"Transformaciones inesperadas del registro: {[Path(p).name for p in fwd]}")
+    qc = _registration_qc(
+        affine_out, fwd, tmp, inputs.mni_brain, inputs.fixed_voxel_mm3, inputs.brain, inputs.moving_voxel_mm3
+    )
     meta = {
         "key": _cache_key(study_files, moving_seq, mode),
         "moving_sequence": moving_seq,
         "registration_mode": mode,
         "type_of_transform": profile.type_of_transform,
-        "fwdtransforms": [Path(p).name for p in reg["fwdtransforms"]],
+        "registration_version": REGISTRATION_VERSION,
+        "fwdtransforms": [Path(p).name for p in fwd],
         "invtransforms": [Path(p).name for p in inv],
+        "qc": qc,
     }
     (mni_dir / CACHE_FILE).write_text(json.dumps(meta, indent=2), encoding="utf-8")
     return inv
@@ -309,24 +538,37 @@ def map_atlas(
     import ants
 
     reference_seq, moving_seq = select_sequences(study_files)
-    ref_img = load_nifti(study_files[reference_seq])
+    prep: dict[str, Any] = {}
 
-    warnings: list[str] = []
-    brain_ref: np.ndarray | None = None
-    if "brain_mask" in study_files:
-        brain_ref = _mask_on(load_nifti(study_files["brain_mask"]), ref_img)
-    else:
-        warnings.append(WARN_NO_BRAIN)
-    if moving_seq == "t1gd":
-        warnings.append(WARN_ONLY_T1GD)
-    if "gtv" in study_files and brain_ref is not None and brain_ref.any():
-        gtv_ref = _mask_on(load_nifti(study_files["gtv"]), ref_img)
-        if (gtv_ref & brain_ref).sum() > LARGE_GTV_FRACTION * brain_ref.sum():
-            warnings.append(WARN_LARGE_GTV)
+    def prepare(tmp: Path) -> None:
+        """Avisos de entrada, atlas por hemisferio e imágenes ANTs del remuestreo final.
 
-    atlas_img, labels = fetch_atlas(models_dir)
-    split_img, split_entries = split_hemispheres(atlas_img, labels)
-    names: dict[int, tuple[str, Hemisphere]] = {v: (name, hemi) for v, name, hemi in split_entries}
+        Es trabajo de un hilo: en un registro nuevo corre mientras el subproceso calcula la afín.
+        """
+        ref_img = load_nifti(study_files[reference_seq])
+        warnings: list[str] = []
+        brain_ref: np.ndarray | None = None
+        if "brain_mask" in study_files:
+            brain_ref = _mask_on(load_nifti(study_files["brain_mask"]), ref_img)
+        else:
+            warnings.append(WARN_NO_BRAIN)
+        if moving_seq == "t1gd":
+            warnings.append(WARN_ONLY_T1GD)
+        if "gtv" in study_files and brain_ref is not None and brain_ref.any():
+            gtv_ref = _mask_on(load_nifti(study_files["gtv"]), ref_img)
+            if (gtv_ref & brain_ref).sum() > LARGE_GTV_FRACTION * brain_ref.sum():
+                warnings.append(WARN_LARGE_GTV)
+        atlas_img, labels = fetch_atlas(models_dir)
+        split_img, split_entries = split_hemispheres(atlas_img, labels)
+        nib.save(split_img, tmp / "atlas.nii.gz")
+        prep.update(
+            ref_img=ref_img,
+            warnings=warnings,
+            brain_ref=brain_ref,
+            entries=split_entries,
+            ants_ref=ants.image_read(str(study_files[reference_seq])),
+            ants_atlas=ants.image_read(str(tmp / "atlas.nii.gz")),
+        )
 
     # Un directorio por modo: `full` conserva `mni/` (y su caché) y alternar modos no se pisa
     mni_dir = out_dir / ("mni" if mode == "full" else f"mni_{mode}")
@@ -335,12 +577,18 @@ def map_atlas(
         tmp = Path(tmp_str)
         inv = _load_cached(mni_dir, _cache_key(study_files, moving_seq, mode))
         if inv is None:
-            inv = _register(study_files, moving_seq, mni_dir, models_dir, tmp, mode)
+            inv = _register(study_files, moving_seq, mni_dir, models_dir, tmp, mode, while_linear=lambda: prepare(tmp))
+        if not prep:
+            prepare(tmp)
+        ref_img: nib.Nifti1Image = prep["ref_img"]
+        warnings: list[str] = prep["warnings"]
+        brain_ref: np.ndarray | None = prep["brain_ref"]
+        names: dict[int, tuple[str, Hemisphere]] = {v: (name, hemi) for v, name, hemi in prep["entries"]}
+        warnings.extend(registration_warnings(_load_qc(mni_dir)))
 
-        nib.save(split_img, tmp / "atlas.nii.gz")
         warped = ants.apply_transforms(
-            fixed=ants.image_read(str(study_files[reference_seq])),
-            moving=ants.image_read(str(tmp / "atlas.nii.gz")),
+            fixed=prep["ants_ref"],
+            moving=prep["ants_atlas"],
             transformlist=inv,
             whichtoinvert=which_to_invert(inv),
             interpolator="genericLabel",
