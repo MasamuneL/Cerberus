@@ -150,6 +150,7 @@ uv run python -m cerberus_api.worker              # terminal 2: worker
 uv run uvicorn cerberus_api.main:app --reload --reload-dir backend --port 8000  # terminal 3: API (docs en /docs)
 # alternativa con host/puerto del entorno (§23): uv run python -m cerberus_api.serve --reload
 cd frontend && npm install && npm run dev                  # terminal 4: UI en :5173
+tools/launch/up.sh [--dry-run|--cpu|--no-hybrid|--fast|--foreground|down]  # stack Docker según el hardware (HW2, §25); Windows: up.ps1
 
 # Checks obligatorios antes de un PR
 uv run ruff check backend && uv run ruff format --check backend && uv run pyright && uv run pytest -m "not slow"
@@ -160,19 +161,29 @@ Las dependencias específicas del notebook están en el grupo opcional `notebook
 por defecto. Para ejecutar la referencia archivada, usar `uv run --group notebook` y las rutas de
 [`ARCHIVO.md`](ARCHIVO.md). La app web y el grupo `runtime` de Docker no dependen de esos archivos.
 
-torch va en dos grupos excluyentes (HW1, §25; `[tool.uv] conflicts`): `torch-cpu` (por defecto en `uv sync`: rueda
-CPU en Linux, PyPI en macOS/Windows) y `torch-cu126` (índice `pytorch-cu126`, Linux/Windows). La imagen elige con
-`--build-arg TORCH_VARIANT=cpu|cu126` (`uv sync --only-group runtime --only-group torch-<variante>`). GPU NVIDIA en
-Docker (Linux o Windows con WSL2; driver ≥ 525 y NVIDIA Container Toolkit):
+torch va en tres grupos excluyentes (HW1 y HW2, §25; `[tool.uv] conflicts`): `torch-cpu` (por defecto en `uv sync`:
+rueda CPU en Linux, PyPI en macOS/Windows), `torch-cu126` (índice `pytorch-cu126`, Linux/Windows) y `torch-cu130`
+(índice `pytorch-cu130`, Linux/Windows; Blackwell, driver ≥ 580). La imagen elige con
+`--build-arg TORCH_VARIANT=cpu|cu126|cu130` (`uv sync --only-group runtime --only-group torch-<variante>`). GPU NVIDIA
+en Docker (Linux o Windows con WSL2; driver ≥ 525 y NVIDIA Container Toolkit):
 `docker compose -f compose.yaml -f compose.gpu.yaml up -d --build` (solo el worker usa la GPU, imagen
-`cerberus-backend:cuda`). En local, la variante CUDA exige los mismos flags en **cada** `uv sync` y `uv run`:
+`cerberus-backend:${CERBERUS_TORCH_VARIANT:-cu126}`; `CERBERUS_TORCH_VARIANT=cu130` para Blackwell). En local, la variante CUDA exige los mismos flags en **cada** `uv sync` y `uv run`:
 `uv run --no-group torch-cpu --group torch-cu126 …`, o bien `uv sync --no-group torch-cpu --group torch-cu126` y después
 `uv run --no-sync …` (o `UV_NO_SYNC=1`). Un `uv run` sin flags vuelve a sincronizar los grupos por defecto y reinstala
 torch CPU sin avisar. Validación en la PC NVIDIA:
 `CERBERUS_REQUIRE_CUDA=1 uv run --no-group torch-cpu --group torch-cu126 pytest -m slow -k cuda_fp16 -s` (imprime
 `torch.version.cuda` y falla, en vez de saltarse, si no hay CUDA). La rueda cu126 trae kernels sm_50…sm_90: una GPU
 sin kernels compatibles (p. ej. RTX 50xx Blackwell, sm_120) cae a CPU con un aviso en `/api/system`
-(`runtime.cuda_arch_supported`).
+(`runtime.cuda_arch_supported`); para esas GPU está `torch-cu130`.
+
+Lanzador (HW2, §25): `tools/launch/up.sh` (macOS, Linux, WSL2) y `tools/launch/up.ps1` (Windows PowerShell 5.1+ y 7)
+eligen `compose.gpu.yaml` (con `CERBERUS_TORCH_VARIANT=cu126` o `cu130` según la compute capability y el driver de
+`nvidia-smi`), el modo híbrido en darwin/arm64 (`compose.hybrid.yaml` + worker nativo en segundo plano, PID y log en
+`storage/launch/`) o `compose.yaml`; fijan `CERBERUS_WORKER_MEM_LIMIT = clamp(RAM de Docker − 2 GB, 5, 12 GB)`
+(mínimo 6 con GPU) y `CERBERUS_UID/GID` en Linux; sugieren `--fast` con ≤ 4 CPU o emulación. Nunca sobrescriben
+una variable del entorno o de `.env`. `--dry-run` imprime la decisión sin ejecutar nada. Tabla «Qué usa cada SO» y
+precedencia en el README. Pruebas: `backend/tests/test_launcher.py` (marcador `launcher`, detección simulada con
+`CERBERUS_LAUNCH_FAKE_*`).
 
 Configuración que agrega B0 en `pyproject.toml`:
 - `[build-system]` hatchling; `[tool.hatch.build.targets.wheel] packages = ["backend/cerberus_api"]`.

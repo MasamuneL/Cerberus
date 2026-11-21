@@ -24,6 +24,7 @@ uv run python -m cerberus_api.worker              # terminal 2: worker
 uv run uvicorn cerberus_api.main:app --reload --port 8000  # terminal 3: API (docs en /docs)
 # alternativa con host/puerto del entorno (CERBERUS_API_HOST/PORT): uv run python -m cerberus_api.serve --reload
 cd frontend && npm install && npm run dev                  # terminal 4: UI en :5173
+tools/launch/up.sh --dry-run                               # stack Docker según el hardware (Windows: up.ps1); sin --dry-run lo levanta
 uv run python -m cerberus_training smoke --synthetic       # smoke sintético del fine-tuning (CPU, sin red; docs/TRAINING.md)
 
 # Checks obligatorios antes de un PR
